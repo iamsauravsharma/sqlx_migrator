@@ -1,0 +1,19 @@
+[package]
+name = "sqlx_migrator"
+version = "0.1.0"
+edition = "2021"
+authors = ["Saurav Sharma <appdroiddeveloper@gmail.com>"]
+homepage = "https://github.com/iamsauravsharma/sqlx_migrator"
+repository = "https://github.com/iamsauravsharma/sqlx_migrator"
+license = "MIT"
+readme = "README.MD"
+
+[dependencies]
+async-trait = "0.1.53"
+petgraph = { version = "0.6.0", default-features = false }
+sqlx = { version = "0.5.13" }
+
+[features]
+default = ["runtime-tokio-native-tls", "postgres"]
+runtime-tokio-native-tls = ["sqlx/runtime-tokio-native-tls"]
+postgres = ["sqlx/postgres"]
