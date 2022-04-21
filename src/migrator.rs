@@ -37,19 +37,19 @@ impl<'a> Migrator<'a> {
 
     /// Add single migration to migrator
     pub fn add_migration(&mut self, migration: Box<dyn Migration>) -> NodeIndex {
-        let (node_index, parents) = match self.migrations_map.get(&migration.full_name()) {
+        let (node_index, parents) = match self.migrations_map.get(&migration.name()) {
             None => {
-                let full_name = migration.full_name();
+                let name = migration.name();
                 let parents = migration.parents();
                 let node_index = self.graph.add_node(migration);
-                self.migrations_map.insert(full_name, node_index);
+                self.migrations_map.insert(name, node_index);
 
                 (node_index, parents)
             }
             Some(&val) => (val, migration.parents()),
         };
         for parent in parents {
-            let parent_index = match self.migrations_map.get(&parent.full_name()) {
+            let parent_index = match self.migrations_map.get(&parent.name()) {
                 None => self.add_migration(parent),
                 Some(&val) => val,
             };
@@ -75,7 +75,7 @@ impl<'a> Migrator<'a> {
                             .all(|x| added_node.contains(&x));
                         if parent_added {
                             added_node.push(nx);
-                            if !applied_migrations.contains(&migration.full_name()) {
+                            if !applied_migrations.contains(&migration.name()) {
                                 plan_vec.push(migration);
                             }
                         }
@@ -99,20 +99,20 @@ impl<'a> Migrator<'a> {
 
     #[allow(clippy::borrowed_box)]
     async fn apply_migration(&self, migration: &Box<dyn Migration>) -> Result<(), Error> {
-        tracing::info!("Applying migration {}", migration.full_name());
+        tracing::info!("Applying migration {}", migration.name());
         let mut transaction = self.pool.begin().await.context(format!(
             "Failed to begin transaction for {} up migration",
-            migration.full_name()
+            migration.name()
         ))?;
         for operation in migration.operations() {
             operation.up(&mut transaction).await?;
         }
 
-        self.add_migration_to_table(migration.full_name(), &mut transaction)
+        self.add_migration_to_table(migration.name(), &mut transaction)
             .await?;
         transaction.commit().await.context(format!(
             "Failed to commit transaction for {} up migration",
-            migration.full_name()
+            migration.name()
         ))?;
         Ok(())
     }
@@ -134,7 +134,7 @@ impl<'a> Migrator<'a> {
                             .all(|x| added_node.contains(&x));
                         if parent_added {
                             added_node.push(nx);
-                            if applied_migrations.contains(&migration.full_name()) {
+                            if applied_migrations.contains(&migration.name()) {
                                 plan_vec.push(migration);
                             }
                         }
@@ -159,21 +159,21 @@ impl<'a> Migrator<'a> {
 
     #[allow(clippy::borrowed_box)]
     async fn revert_migration(&self, migration: &Box<dyn Migration>) -> Result<(), Error> {
-        tracing::info!("Reverting migration {}", migration.full_name());
+        tracing::info!("Reverting migration {}", migration.name());
         let mut transaction = self.pool.begin().await.context(format!(
             "Failed to begin transaction for {} down migration",
-            migration.full_name()
+            migration.name()
         ))?;
         let mut operations = migration.operations();
         operations.reverse();
         for operation in operations {
             operation.down(&mut transaction).await?;
         }
-        self.delete_migration_from_table(migration.full_name(), &mut transaction)
+        self.delete_migration_from_table(migration.name(), &mut transaction)
             .await?;
         transaction.commit().await.context(format!(
             "Failed to commit transaction for {} down migration",
-            migration.full_name()
+            migration.name()
         ))?;
         Ok(())
     }
@@ -197,7 +197,7 @@ CREATE TABLE IF NOT EXISTS _migrator_migrations (
 
     async fn add_migration_to_table<'t>(
         &self,
-        migration_full_name: String,
+        migration_name: String,
         transaction: &mut Transaction<'t, Postgres>,
     ) -> Result<(), Error> {
         sqlx::query(
@@ -205,7 +205,7 @@ CREATE TABLE IF NOT EXISTS _migrator_migrations (
 INSERT INTO _migrator_migrations(migration_name) VALUES ($1)
             "#,
         )
-        .bind(migration_full_name)
+        .bind(migration_name)
         .execute(transaction)
         .await
         .context("Failed to add migration to table")?;
@@ -214,7 +214,7 @@ INSERT INTO _migrator_migrations(migration_name) VALUES ($1)
 
     async fn delete_migration_from_table<'t>(
         &self,
-        migration_full_name: String,
+        migration_name: String,
         transaction: &mut Transaction<'t, Postgres>,
     ) -> Result<(), Error> {
         sqlx::query(
@@ -222,7 +222,7 @@ INSERT INTO _migrator_migrations(migration_name) VALUES ($1)
 DELETE FROM  _migrator_migrations where migration_name = $1
             "#,
         )
-        .bind(migration_full_name)
+        .bind(migration_name)
         .execute(transaction)
         .await
         .context("Failed to delete migration from table")?;
