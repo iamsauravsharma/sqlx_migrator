@@ -6,10 +6,12 @@ use sqlx::{PgPool, Postgres, Row, Transaction};
 
 use crate::{Error, Migration};
 
+type PostgresBoxMigration = Box<dyn Migration<Database = sqlx::Postgres>>;
+
 /// Migrator struct which store migrations graph and information related to
 /// migration
 pub struct Migrator<'a> {
-    graph: Graph<Box<dyn Migration>, ()>,
+    graph: Graph<PostgresBoxMigration, ()>,
     migrations_map: HashMap<String, NodeIndex>,
     pool: &'a PgPool,
 }
@@ -25,10 +27,22 @@ impl<'a> Migrator<'a> {
         }
     }
 
+    /// Add vector of migrations to Migrator
+    pub fn add_migrations(&mut self, migrations: Vec<PostgresBoxMigration>) -> Vec<NodeIndex> {
+        let mut node_index_vec = Vec::new();
+        for migration in migrations {
+            node_index_vec.push(self.add_migration(migration));
+        }
+        node_index_vec
+    }
+
     /// Add single migration to migrator
-    pub fn add_migration(&mut self, migration: Box<dyn Migration>) -> NodeIndex {
+    pub fn add_migration(&mut self, migration: PostgresBoxMigration) -> NodeIndex {
         let parents = migration.parents();
-        let &mut node_index = self.migrations_map.entry(migration.name()).or_insert_with(|| self.graph.add_node(migration));
+        let &mut node_index = self
+            .migrations_map
+            .entry(migration.name())
+            .or_insert_with(|| self.graph.add_node(migration));
         for parent in parents {
             let parent_index = self.add_migration(parent);
             self.graph.add_edge(parent_index, node_index, ());
@@ -36,11 +50,11 @@ impl<'a> Migrator<'a> {
         node_index
     }
 
-    async fn apply_all_plan(&self) -> Result<Vec<&Box<dyn Migration>>, Error> {
+    async fn apply_all_plan(&self) -> Result<Vec<&PostgresBoxMigration>, Error> {
         let applied_migrations = self.list_applied_migration().await?;
         tracing::info!("Creating apply migration plan");
         let mut added_node = Vec::new();
-        let mut plan_vec = Vec::<&Box<dyn Migration>>::new();
+        let mut plan_vec = Vec::<&PostgresBoxMigration>::new();
         while added_node.len() < self.graph.node_indices().len() {
             for node_index in self.graph.node_indices() {
                 let mut dfs = petgraph::visit::Dfs::new(&self.graph, node_index);
@@ -76,7 +90,7 @@ impl<'a> Migrator<'a> {
     }
 
     #[allow(clippy::borrowed_box)]
-    async fn apply_migration(&self, migration: &Box<dyn Migration>) -> Result<(), Error> {
+    async fn apply_migration(&self, migration: &PostgresBoxMigration) -> Result<(), Error> {
         tracing::info!("Applying migration {}", migration.name());
         let mut transaction = self.pool.begin().await?;
         for operation in migration.operations() {
@@ -89,11 +103,11 @@ impl<'a> Migrator<'a> {
         Ok(())
     }
 
-    async fn revert_all_plan(&self) -> Result<Vec<&Box<dyn Migration>>, Error> {
+    async fn revert_all_plan(&self) -> Result<Vec<&PostgresBoxMigration>, Error> {
         let applied_migrations = self.list_applied_migration().await?;
         tracing::info!("Creating revert migration plan");
         let mut added_node = Vec::new();
-        let mut plan_vec = Vec::<&Box<dyn Migration>>::new();
+        let mut plan_vec = Vec::<&PostgresBoxMigration>::new();
         while added_node.len() < self.graph.node_indices().len() {
             for node_index in self.graph.node_indices() {
                 let mut dfs = petgraph::visit::Dfs::new(&self.graph, node_index);
@@ -130,7 +144,7 @@ impl<'a> Migrator<'a> {
     }
 
     #[allow(clippy::borrowed_box)]
-    async fn revert_migration(&self, migration: &Box<dyn Migration>) -> Result<(), Error> {
+    async fn revert_migration(&self, migration: &PostgresBoxMigration) -> Result<(), Error> {
         tracing::info!("Reverting migration {}", migration.name());
         let mut transaction = self.pool.begin().await?;
         let mut operations = migration.operations();

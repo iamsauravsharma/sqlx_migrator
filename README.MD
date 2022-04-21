@@ -1,2 +1,2 @@
 # SQLX migrator
-Migrator for writing sqlx migration using Rust instead of SQL
+Migrator for writing sqlx migration using Rust instead of SQL for Postgres

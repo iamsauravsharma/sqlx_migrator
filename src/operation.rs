@@ -1,4 +1,3 @@
-use sqlx::postgres::Postgres;
 use sqlx::Transaction;
 
 use crate::Error;
@@ -6,8 +5,9 @@ use crate::Error;
 /// Trait of operation
 #[async_trait::async_trait]
 pub trait Operation {
+    type Database: sqlx::Database;
     /// Up command
-    async fn up(&self, transaction: &mut Transaction<Postgres>) -> Result<(), Error>;
+    async fn up(&self, transaction: &mut Transaction<Self::Database>) -> Result<(), Error>;
     /// Down command
-    async fn down(&self, transaction: &mut Transaction<Postgres>) -> Result<(), Error>;
+    async fn down(&self, transaction: &mut Transaction<Self::Database>) -> Result<(), Error>;
 }
