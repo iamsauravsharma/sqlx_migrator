@@ -1,8 +1,7 @@
-//! Sqlx migrator to write migration using rust
+mod migration;
+mod migrator;
+mod operation;
 
-/// Migration module
-pub mod migration;
-/// Migrator module
-pub mod migrator;
-/// Operation module
-pub mod operation;
+pub use migration::Migration;
+pub use migrator::Migrator;
+pub use operation::Operation;

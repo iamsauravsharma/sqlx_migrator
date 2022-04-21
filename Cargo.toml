@@ -9,11 +9,11 @@ license = "MIT"
 readme = "README.MD"
 
 [dependencies]
-async-trait = "0.1.53"
+sqlx = { version = "0.5.13", default-features = false, features = [
+    "runtime-tokio-native-tls",
+    "postgres",
+] }
+anyhow = "1.0.56"
 petgraph = { version = "0.6.0", default-features = false }
-sqlx = { version = "0.5.13" }
-
-[features]
-default = ["runtime-tokio-native-tls", "postgres"]
-runtime-tokio-native-tls = ["sqlx/runtime-tokio-native-tls"]
-postgres = ["sqlx/postgres"]
+async-trait = "0.1.53"
+tracing = "0.1.34"

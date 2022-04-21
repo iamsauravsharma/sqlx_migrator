@@ -1,94 +1,25 @@
-use std::hash::{Hash, Hasher};
+use crate::Operation;
 
-use sqlx::{Error, Transaction};
+/// Trait for migration
+pub trait Migration {
+    /// App name for migration
+    fn app(&self) -> &str;
 
-use crate::operation::Operation;
+    /// Migration name
+    fn name(&self) -> &str;
 
-/// Struct to store migration
-pub struct Migration<'a, D>
-where
-    D: sqlx::Database,
-{
-    identifier: &'a str,
-    parents: Vec<Migration<'a, D>>,
-    operations: Vec<Operation<D>>,
-}
+    /// Description of migration
+    fn description(&self) -> &str;
 
-impl<'a, D> Migration<'a, D>
-where
-    D: sqlx::Database,
-{
-    /// Create new migration with identifier
-    pub fn new(identifier: &'a str) -> Self {
-        Self {
-            identifier,
-            parents: vec![],
-            operations: vec![],
-        }
-    }
+    /// Parents of migration
+    fn parents(&self) -> Vec<Box<dyn Migration>>;
 
-    /// get identifier of migration
-    pub fn identifier(&self) -> &str {
-        self.identifier
-    }
+    /// Operation performed for migration
+    fn operations(&self) -> Vec<Box<dyn Operation>>;
 
-    /// get parents of migration
-    pub fn parents(&self) -> &[Migration<D>] {
-        &self.parents
-    }
-
-    /// get operation of migration
-    pub fn operations(&self) -> &[Operation<D>] {
-        &self.operations
-    }
-
-    /// Add parent to migration
-    pub fn add_parent(&mut self, parent: Migration<'a, D>) {
-        self.parents.push(parent);
-    }
-
-    /// Add operation to migration
-    pub fn add_operation(&mut self, operation: Operation<D>) {
-        self.operations.push(operation);
-    }
-
-    /// Apply migration operations
-    pub fn apply(&self, transaction: &mut Transaction<D>) -> Result<(), Error> {
-        for operation in &self.operations {
-            operation.apply(transaction)?;
-        }
-        Ok(())
-    }
-
-    /// Revert migration operations
-    pub fn revert(&self, transaction: &mut Transaction<D>) -> Result<(), Error> {
-        for operation in self.operations.iter().rev() {
-            operation.revert(transaction)?;
-        }
-        Ok(())
+    /// Full name of migration created using app and name function by default in
+    /// format {app}/{name}
+    fn full_name(&self) -> String {
+        format!("{}/{}", self.app(), self.name())
     }
 }
-
-impl<'a, D> Hash for Migration<'a, D>
-where
-    D: sqlx::Database,
-{
-    fn hash<H>(&self, state: &mut H)
-    where
-        H: Hasher,
-    {
-        self.identifier.hash(state);
-        self.parents.hash(state);
-    }
-}
-
-impl<'a, D> PartialEq for Migration<'a, D>
-where
-    D: sqlx::Database,
-{
-    fn eq(&self, other: &Self) -> bool {
-        self.identifier == other.identifier && self.parents == other.parents
-    }
-}
-
-impl<'a, D> Eq for Migration<'a, D> where D: sqlx::Database {}
