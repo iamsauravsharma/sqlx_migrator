@@ -10,5 +10,4 @@ pub trait Migration {
 
     /// Operation performed for migration
     fn operations(&self) -> Vec<Box<dyn Operation>>;
-
 }

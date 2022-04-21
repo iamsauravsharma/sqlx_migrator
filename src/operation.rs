@@ -1,6 +1,7 @@
-use anyhow::Error;
 use sqlx::postgres::Postgres;
 use sqlx::Transaction;
+
+use crate::Error;
 
 /// Trait of operation
 #[async_trait::async_trait]
