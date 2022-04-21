@@ -1,10 +1,10 @@
 use sqlx::Transaction;
 
-use crate::Error;
+use crate::error::Error;
 
 /// Trait of operation
 #[async_trait::async_trait]
-pub trait Operation {
+pub trait Operation: Send + Sync {
     type Database: sqlx::Database;
     /// Up command
     async fn up(&self, transaction: &mut Transaction<Self::Database>) -> Result<(), Error>;
