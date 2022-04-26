@@ -1,3 +1,5 @@
+//! Library to create sqlx migration using rust files
+
 pub mod error;
 pub mod migration;
 pub mod migrator;

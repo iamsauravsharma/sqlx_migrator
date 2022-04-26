@@ -1,3 +1,5 @@
+//! Postgres migrator module
+
 use std::collections::HashMap;
 
 use petgraph::graph::NodeIndex;

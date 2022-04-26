@@ -1,3 +1,5 @@
+//! Module for library error
+
 /// Error enum to store different types of error
 #[derive(Debug, thiserror::Error)]
 #[non_exhaustive]

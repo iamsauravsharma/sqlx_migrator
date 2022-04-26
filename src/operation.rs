@@ -1,3 +1,5 @@
+//! Operation module
+
 use sqlx::Transaction;
 
 use crate::error::Error;

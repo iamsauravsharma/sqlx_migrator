@@ -1,3 +1,5 @@
+//! Module defining migration trait
+
 use crate::operation::Operation;
 
 /// Trait for migration
