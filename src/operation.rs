@@ -2,7 +2,7 @@ use sqlx::Transaction;
 
 use crate::error::Error;
 
-/// Trait of operation
+/// Trait for operation
 #[async_trait::async_trait]
 pub trait Operation: Send + Sync {
     type Database: sqlx::Database;

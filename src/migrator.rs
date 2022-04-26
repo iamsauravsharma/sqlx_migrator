@@ -8,24 +8,42 @@ use crate::error::Error;
 use crate::migration::Migration;
 
 #[async_trait::async_trait]
+/// Migrator trait
 pub trait MigratorTrait: Send {
+    /// Database type
     type Database: sqlx::Database;
+
+    /// Return graph
     fn graph(&self) -> &Graph<Box<dyn Migration<Database = Self::Database>>, ()>;
+
+    /// Return mutable reference of graph
     fn graph_mut(&mut self) -> &mut Graph<Box<dyn Migration<Database = Self::Database>>, ()>;
+
+    /// Return migrations map
     fn migrations_map(&self) -> &HashMap<String, NodeIndex>;
+
+    /// Return database pool
     fn pool(&self) -> &Pool<Self::Database>;
 
+    /// Ensure migration table is created before running migrations. If not
+    /// created create one
     async fn ensure_migration_table(&self) -> Result<(), Error>;
+
+    /// Add migration to migration table
     async fn add_migration_to_table<'t>(
         &self,
         migration_name: String,
         transaction: &mut Transaction<'t, Self::Database>,
     ) -> Result<(), Error>;
+
+    /// Delete migration from table
     async fn delete_migration_from_table<'t>(
         &self,
         migration_name: String,
         transaction: &mut Transaction<'t, Self::Database>,
     ) -> Result<(), Error>;
+
+    /// List all applied migrations
     async fn list_applied_migration(&self) -> Result<Vec<String>, Error>;
 
     /// Add vector of migrations to Migrator
@@ -57,11 +75,14 @@ pub trait MigratorTrait: Send {
         node_index
     }
 
+    /// Create apply all migration plan
     async fn apply_all_plan(
         &self,
     ) -> Result<Vec<&Box<dyn Migration<Database = Self::Database>>>, Error> {
         let applied_migrations = self.list_applied_migration().await?;
-        tracing::info!("Creating apply migration plan");
+        if cfg!(feature = "tracing") {
+            tracing::info!("Creating apply migration plan");
+        }
         let mut added_node = Vec::new();
         let mut plan_vec = Vec::<&Box<dyn Migration<Database = Self::Database>>>::new();
         while added_node.len() < self.graph().node_indices().len() {
@@ -88,6 +109,7 @@ pub trait MigratorTrait: Send {
     }
 
     /// Apply missing migration
+    ///
     /// # Errors
     /// If any migration or operation fails
     async fn apply(&self) -> Result<(), Error> {
@@ -98,12 +120,15 @@ pub trait MigratorTrait: Send {
         Ok(())
     }
 
+    /// Apply certain migration to database
     #[allow(clippy::borrowed_box)]
     async fn apply_migration(
         &self,
         migration: &Box<dyn Migration<Database = Self::Database>>,
     ) -> Result<(), Error> {
-        tracing::info!("Applying migration {}", migration.name());
+        if cfg!(feature = "tracing") {
+            tracing::info!("Applying migration {}", migration.name());
+        }
         let mut transaction = self.pool().begin().await?;
         for operation in migration.operations() {
             operation.up(&mut transaction).await?;
@@ -115,11 +140,14 @@ pub trait MigratorTrait: Send {
         Ok(())
     }
 
+    /// Create revert all plan
     async fn revert_all_plan(
         &self,
     ) -> Result<Vec<&Box<dyn Migration<Database = Self::Database>>>, Error> {
         let applied_migrations = self.list_applied_migration().await?;
-        tracing::info!("Creating revert migration plan");
+        if cfg!(feature = "tracing") {
+            tracing::info!("Creating revert migration plan");
+        }
         let mut added_node = Vec::new();
         let mut plan_vec = Vec::<&Box<dyn Migration<Database = Self::Database>>>::new();
         while added_node.len() < self.graph().node_indices().len() {
@@ -147,6 +175,7 @@ pub trait MigratorTrait: Send {
     }
 
     /// Revert all applied migration
+    ///
     /// # Errors
     /// If any migration or operation fails
     async fn revert(&self) -> Result<(), Error> {
@@ -157,12 +186,15 @@ pub trait MigratorTrait: Send {
         Ok(())
     }
 
+    /// Revert migration
     #[allow(clippy::borrowed_box)]
     async fn revert_migration(
         &self,
         migration: &Box<dyn Migration<Database = Self::Database>>,
     ) -> Result<(), Error> {
-        tracing::info!("Reverting migration {}", migration.name());
+        if cfg!(feature = "tracing") {
+            tracing::info!("Reverting migration {}", migration.name());
+        }
         let mut transaction = self.pool().begin().await?;
         let mut operations = migration.operations();
         operations.reverse();

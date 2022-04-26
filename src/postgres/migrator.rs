@@ -37,7 +37,9 @@ impl<'a> MigratorTrait for PostgresMigrator<'a> {
     }
 
     async fn ensure_migration_table(&self) -> Result<(), Error> {
-        tracing::info!("Creating migration table if not exists");
+        if cfg!(feature = "tracing") {
+            tracing::info!("Creating migration table if not exists");
+        }
         sqlx::query(
             r#"
 CREATE TABLE IF NOT EXISTS _migrator_migrations (
