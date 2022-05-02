@@ -12,14 +12,13 @@ use crate::migrator::MigratorTrait;
 
 /// Migrator struct which store migrations graph and information related to
 /// postgres migration
-pub struct PostgresMigrator<'a> {
+pub struct PostgresMigrator {
     graph: Graph<Box<dyn Migration<Database = Postgres>>, ()>,
     migrations_map: HashMap<String, NodeIndex>,
-    pool: &'a Pool<Postgres>,
 }
 
 #[async_trait::async_trait]
-impl<'a> MigratorTrait for PostgresMigrator<'a> {
+impl MigratorTrait for PostgresMigrator {
     type Database = Postgres;
 
     fn graph(&self) -> &Graph<Box<dyn Migration<Database = Self::Database>>, ()> {
@@ -34,24 +33,17 @@ impl<'a> MigratorTrait for PostgresMigrator<'a> {
         &self.migrations_map
     }
 
-    fn pool(&self) -> &Pool<Self::Database> {
-        self.pool
-    }
-
-    async fn ensure_migration_table(&self) -> Result<(), Error> {
-        if cfg!(feature = "tracing") {
-            tracing::info!("Creating migration table if not exists");
-        }
+    async fn ensure_migration_table(&self, pool: &Pool<Self::Database>) -> Result<(), Error> {
         sqlx::query(
             r#"
-CREATE TABLE IF NOT EXISTS _migrator_migrations (
+CREATE TABLE IF NOT EXISTS _sqlx_migrator_migrations (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     migration_name TEXT UNIQUE NOT NULL,
     applied_time TIMESTAMPTZ NOT NULL DEFAULT now()
 )
             "#,
         )
-        .execute(self.pool)
+        .execute(pool)
         .await?;
         Ok(())
     }
@@ -63,7 +55,7 @@ CREATE TABLE IF NOT EXISTS _migrator_migrations (
     ) -> Result<(), Error> {
         sqlx::query(
             r#"
-INSERT INTO _migrator_migrations(migration_name) VALUES ($1)
+INSERT INTO _sqlx_migrator_migrations(migration_name) VALUES ($1)
             "#,
         )
         .bind(migration_name)
@@ -79,7 +71,7 @@ INSERT INTO _migrator_migrations(migration_name) VALUES ($1)
     ) -> Result<(), Error> {
         sqlx::query(
             r#"
-DELETE FROM  _migrator_migrations where migration_name = $1
+DELETE FROM _sqlx_migrator_migrations WHERE migration_name = $1
             "#,
         )
         .bind(migration_name)
@@ -88,10 +80,13 @@ DELETE FROM  _migrator_migrations where migration_name = $1
         Ok(())
     }
 
-    async fn list_applied_migration(&self) -> Result<Vec<String>, Error> {
+    async fn list_applied_migration(
+        &self,
+        pool: &Pool<Self::Database>,
+    ) -> Result<Vec<String>, Error> {
         let mut applied_migrations = Vec::new();
-        let rows = sqlx::query("SELECT migration_name FROM _migrator_migrations")
-            .fetch_all(self.pool)
+        let rows = sqlx::query("SELECT migration_name FROM _sqlx_migrator_migrations")
+            .fetch_all(pool)
             .await?;
 
         for row in rows {
