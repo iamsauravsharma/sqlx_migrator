@@ -12,15 +12,23 @@ use crate::migrator::MigratorTrait;
 
 /// Migrator struct which store migrations graph and information related to
 /// postgres migrations
-#[derive(Default)]
-pub struct PostgresMigrator {
+pub struct Migrator {
     graph: Graph<Box<dyn Migration<Database = Postgres>>, ()>,
     migrations_map: HashMap<String, NodeIndex>,
+    pool: Pool<Postgres>,
 }
 
 #[async_trait::async_trait]
-impl MigratorTrait for PostgresMigrator {
+impl MigratorTrait for Migrator {
     type Database = Postgres;
+
+    fn new_from_pool(pool: &Pool<Self::Database>) -> Self {
+        Self {
+            graph: Graph::new(),
+            migrations_map: HashMap::new(),
+            pool: pool.clone(),
+        }
+    }
 
     fn graph(&self) -> &Graph<Box<dyn Migration<Database = Self::Database>>, ()> {
         &self.graph
@@ -34,7 +42,11 @@ impl MigratorTrait for PostgresMigrator {
         &self.migrations_map
     }
 
-    async fn ensure_migration_table(&self, pool: &Pool<Self::Database>) -> Result<(), Error> {
+    fn pool(&self) -> &Pool<Self::Database> {
+        &self.pool
+    }
+
+    async fn ensure_migration_table(&self) -> Result<(), Error> {
         sqlx::query(
             r#"
 CREATE TABLE IF NOT EXISTS _sqlx_migrator_migrations (
@@ -44,7 +56,7 @@ CREATE TABLE IF NOT EXISTS _sqlx_migrator_migrations (
 )
             "#,
         )
-        .execute(pool)
+        .execute(self.pool())
         .await?;
         Ok(())
     }
@@ -81,13 +93,10 @@ DELETE FROM _sqlx_migrator_migrations WHERE migration_name = $1
         Ok(())
     }
 
-    async fn list_applied_migration(
-        &self,
-        pool: &Pool<Self::Database>,
-    ) -> Result<Vec<String>, Error> {
+    async fn list_applied_migration(&self) -> Result<Vec<String>, Error> {
         let mut applied_migrations = Vec::new();
         let rows = sqlx::query("SELECT migration_name FROM _sqlx_migrator_migrations")
-            .fetch_all(pool)
+            .fetch_all(self.pool())
             .await?;
 
         for row in rows {

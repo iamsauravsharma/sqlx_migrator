@@ -15,6 +15,9 @@ pub trait MigratorTrait: Send {
     /// Database type
     type Database: sqlx::Database;
 
+    /// Create new migrator from pool
+    fn new_from_pool(pool: &Pool<Self::Database>) -> Self;
+
     /// Return graph
     fn graph(&self) -> &Graph<Box<dyn Migration<Database = Self::Database>>, ()>;
 
@@ -24,9 +27,12 @@ pub trait MigratorTrait: Send {
     /// Return migrations map
     fn migrations_map(&self) -> &HashMap<String, NodeIndex>;
 
+    /// Return pool
+    fn pool(&self) -> &Pool<Self::Database>;
+
     /// Ensure migration table is created before running migrations. If not
     /// created create one
-    async fn ensure_migration_table(&self, pool: &Pool<Self::Database>) -> Result<(), Error>;
+    async fn ensure_migration_table(&self) -> Result<(), Error>;
 
     /// Add migration to migration table
     async fn add_migration_to_table<'t>(
@@ -43,10 +49,7 @@ pub trait MigratorTrait: Send {
     ) -> Result<(), Error>;
 
     /// List all applied migrations
-    async fn list_applied_migration(
-        &self,
-        pool: &Pool<Self::Database>,
-    ) -> Result<Vec<String>, Error>;
+    async fn list_applied_migration(&self) -> Result<Vec<String>, Error>;
 
     /// Add vector of migrations to Migrator
     fn add_migrations(
@@ -80,9 +83,8 @@ pub trait MigratorTrait: Send {
     /// Create apply all migration plan
     async fn apply_all_plan(
         &self,
-        pool: &Pool<Self::Database>,
     ) -> Result<Vec<&Box<dyn Migration<Database = Self::Database>>>, Error> {
-        let applied_migrations = self.list_applied_migration(pool).await?;
+        let applied_migrations = self.list_applied_migration().await?;
         if cfg!(feature = "tracing") {
             tracing::info!("Creating apply migration plan");
         }
@@ -115,13 +117,13 @@ pub trait MigratorTrait: Send {
     ///
     /// # Errors
     /// If any migration or operation fails
-    async fn apply(&self, pool: &Pool<Self::Database>) -> Result<(), Error> {
+    async fn apply(&self) -> Result<(), Error> {
         if cfg!(feature = "tracing") {
             tracing::info!("Creating migration table if not exists");
         }
-        self.ensure_migration_table(pool).await?;
-        for migration in self.apply_all_plan(pool).await? {
-            self.apply_migration(migration, pool).await?;
+        self.ensure_migration_table().await?;
+        for migration in self.apply_all_plan().await? {
+            self.apply_migration(migration).await?;
         }
         Ok(())
     }
@@ -131,12 +133,11 @@ pub trait MigratorTrait: Send {
     async fn apply_migration(
         &self,
         migration: &Box<dyn Migration<Database = Self::Database>>,
-        pool: &Pool<Self::Database>,
     ) -> Result<(), Error> {
         if cfg!(feature = "tracing") {
             tracing::info!("Applying migration {}", migration.name());
         }
-        let mut transaction = pool.begin().await?;
+        let mut transaction = self.pool().begin().await?;
         for operation in migration.operations() {
             operation.up(&mut transaction).await?;
         }
@@ -150,9 +151,8 @@ pub trait MigratorTrait: Send {
     /// Create revert all plan
     async fn revert_all_plan(
         &self,
-        pool: &Pool<Self::Database>,
     ) -> Result<Vec<&Box<dyn Migration<Database = Self::Database>>>, Error> {
-        let applied_migrations = self.list_applied_migration(pool).await?;
+        let applied_migrations = self.list_applied_migration().await?;
         if cfg!(feature = "tracing") {
             tracing::info!("Creating revert migration plan");
         }
@@ -186,13 +186,13 @@ pub trait MigratorTrait: Send {
     ///
     /// # Errors
     /// If any migration or operation fails
-    async fn revert(&self, pool: &Pool<Self::Database>) -> Result<(), Error> {
+    async fn revert(&self) -> Result<(), Error> {
         if cfg!(feature = "tracing") {
             tracing::info!("Creating migration table if not exists");
         }
-        self.ensure_migration_table(pool).await?;
-        for migration in self.revert_all_plan(pool).await? {
-            self.revert_migration(migration, pool).await?;
+        self.ensure_migration_table().await?;
+        for migration in self.revert_all_plan().await? {
+            self.revert_migration(migration).await?;
         }
         Ok(())
     }
@@ -202,12 +202,11 @@ pub trait MigratorTrait: Send {
     async fn revert_migration(
         &self,
         migration: &Box<dyn Migration<Database = Self::Database>>,
-        pool: &Pool<Self::Database>,
     ) -> Result<(), Error> {
         if cfg!(feature = "tracing") {
             tracing::info!("Reverting migration {}", migration.name());
         }
-        let mut transaction = pool.begin().await?;
+        let mut transaction = self.pool().begin().await?;
         let mut operations = migration.operations();
         operations.reverse();
         for operation in operations {
