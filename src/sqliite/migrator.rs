@@ -1,26 +1,26 @@
-//! Postgres migrator module
+//! Sqlite migrator module
 
 use std::collections::HashMap;
 
 use petgraph::graph::NodeIndex;
 use petgraph::Graph;
-use sqlx::{Pool, Postgres, Row, Transaction};
+use sqlx::{Pool, Row, Sqlite, Transaction};
 
 use crate::error::Error;
 use crate::migration::Migration;
 use crate::migrator::MigratorTrait;
 
 /// Migrator struct which store migrations graph and information related to
-/// postgres migrations
+/// Sqlite migration
 #[derive(Default)]
-pub struct PostgresMigrator {
-    graph: Graph<Box<dyn Migration<Database = Postgres>>, ()>,
+pub struct SqliteMigrator {
+    graph: Graph<Box<dyn Migration<Database = Sqlite>>, ()>,
     migrations_map: HashMap<String, NodeIndex>,
 }
 
 #[async_trait::async_trait]
-impl MigratorTrait for PostgresMigrator {
-    type Database = Postgres;
+impl MigratorTrait for SqliteMigrator {
+    type Database = Sqlite;
 
     fn graph(&self) -> &Graph<Box<dyn Migration<Database = Self::Database>>, ()> {
         &self.graph
@@ -38,9 +38,9 @@ impl MigratorTrait for PostgresMigrator {
         sqlx::query(
             r#"
 CREATE TABLE IF NOT EXISTS _sqlx_migrator_migrations (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
     migration_name TEXT UNIQUE NOT NULL,
-    applied_time TIMESTAMPTZ NOT NULL DEFAULT now()
+    applied_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 )
             "#,
         )

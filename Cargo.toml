@@ -13,9 +13,10 @@ sqlx = { version = "0.5.13", default-features = false }
 petgraph = { version = "0.6.0", default-features = false }
 async-trait = "0.1.53"
 tracing = { version = "0.1.34", optional = true }
-thiserror = "1.0.30"
+thiserror = "1.0.31"
 
 [features]
 default = ["runtime-tokio-native-tls", "postgres", "tracing"]
 runtime-tokio-native-tls = ["sqlx/runtime-tokio-native-tls"]
 postgres = ["sqlx/postgres"]
+sqlite = ["sqlx/sqlite"]
