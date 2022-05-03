@@ -8,7 +8,7 @@ use sqlx::{Pool, Postgres, Row, Transaction};
 
 use crate::error::Error;
 use crate::migration::Migration;
-use crate::migrator::MigratorTrait;
+use crate::migrator::{MigratorTrait, NewMigrator};
 
 /// Migrator struct which store migrations graph and information related to
 /// postgres migrations
@@ -19,7 +19,7 @@ pub struct Migrator {
 }
 
 #[async_trait::async_trait]
-impl MigratorTrait for Migrator {
+impl NewMigrator for Migrator {
     type Database = Postgres;
 
     fn new_from_pool(pool: &Pool<Self::Database>) -> Self {
@@ -29,6 +29,20 @@ impl MigratorTrait for Migrator {
             pool: pool.clone(),
         }
     }
+
+    async fn new_from_uri(uri: &str) -> Result<Box<Self>, Error> {
+        let pool = Pool::<Self::Database>::connect(uri).await?;
+        Ok(Box::new(Self {
+            graph: Graph::new(),
+            migrations_map: HashMap::new(),
+            pool,
+        }))
+    }
+}
+
+#[async_trait::async_trait]
+impl MigratorTrait for Migrator {
+    type Database = Postgres;
 
     fn graph(&self) -> &Graph<Box<dyn Migration<Database = Self::Database>>, ()> {
         &self.graph

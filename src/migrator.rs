@@ -9,14 +9,31 @@ use sqlx::{Pool, Transaction};
 use crate::error::Error;
 use crate::migration::Migration;
 
+/// New migrator trait
 #[async_trait::async_trait]
-/// Migrator trait
-pub trait MigratorTrait: Send {
+pub trait NewMigrator {
     /// Database type
     type Database: sqlx::Database;
 
     /// Create new migrator from pool
     fn new_from_pool(pool: &Pool<Self::Database>) -> Self;
+
+    /// Create new migrator from uri
+    async fn new_from_uri(uri: &str) -> Result<Box<Self>, Error>;
+
+    /// Create new migrator from env
+    async fn new_from_env() -> Result<Box<Self>, Error> {
+        let database_uri = std::env::var("DATABASE_URL")
+            .map_err(|_| Error::FailedToGetEnv(String::from("DATABASE_URL")))?;
+        Self::new_from_uri(database_uri.as_str()).await
+    }
+}
+
+#[async_trait::async_trait]
+/// Migrator trait
+pub trait MigratorTrait: Send {
+    /// Database type
+    type Database: sqlx::Database;
 
     /// Return graph
     fn graph(&self) -> &Graph<Box<dyn Migration<Database = Self::Database>>, ()>;
