@@ -18,11 +18,9 @@ pub struct Migrator {
     pool: Pool<Sqlite>,
 }
 
-#[async_trait::async_trait]
-impl NewMigrator for Migrator {
-    type Database = Sqlite;
-
-    fn new_from_pool(pool: &Pool<Self::Database>) -> Self {
+impl Migrator {
+    /// Create new migrator from pool
+    pub fn new_from_pool(pool: &Pool<Sqlite>) -> Self {
         Self {
             graph: Graph::new(),
             migrations_map: HashMap::new(),
@@ -30,13 +28,17 @@ impl NewMigrator for Migrator {
         }
     }
 
-    async fn new_from_uri(uri: &str) -> Result<Box<Self>, Error> {
-        let pool = Pool::<Self::Database>::connect(uri).await?;
-        Ok(Box::new(Self {
-            graph: Graph::new(),
-            migrations_map: HashMap::new(),
-            pool,
-        }))
+    /// Create new migrator from uri
+    pub async fn new_from_uri(uri: &str) -> Result<Self, Error> {
+        let pool = Pool::connect(uri).await?;
+        Ok(Self::new_from_pool(&pool))
+    }
+
+    /// Create new migrator from env
+    pub async fn new_from_env() -> Result<Self, Error> {
+        let database_uri = std::env::var("DATABASE_URL")
+            .map_err(|_| Error::FailedToGetEnv(String::from("DATABASE_URL")))?;
+        Self::new_from_uri(database_uri.as_str()).await
     }
 }
 
