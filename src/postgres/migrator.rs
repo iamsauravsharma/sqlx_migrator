@@ -62,7 +62,7 @@ impl MigratorTrait for Migrator {
         &self.pool
     }
 
-    async fn ensure_migration_table(&self) -> Result<(), Error> {
+    async fn ensure_migration_table_exists(&self) -> Result<(), Error> {
         sqlx::query(
             r#"
 CREATE TABLE IF NOT EXISTS _sqlx_migrator_migrations (
@@ -77,7 +77,7 @@ CREATE TABLE IF NOT EXISTS _sqlx_migrator_migrations (
         Ok(())
     }
 
-    async fn add_migration_to_table<'t>(
+    async fn add_migration_to_db_table<'t>(
         &self,
         migration_name: String,
         transaction: &mut Transaction<'t, Self::Database>,
@@ -93,7 +93,7 @@ INSERT INTO _sqlx_migrator_migrations(migration_name) VALUES ($1)
         Ok(())
     }
 
-    async fn delete_migration_from_table<'t>(
+    async fn delete_migration_from_db_table<'t>(
         &self,
         migration_name: String,
         transaction: &mut Transaction<'t, Self::Database>,
@@ -109,7 +109,7 @@ DELETE FROM _sqlx_migrator_migrations WHERE migration_name = $1
         Ok(())
     }
 
-    async fn list_applied_migration(&self) -> Result<Vec<String>, Error> {
+    async fn fetch_applied_migration_from_db(&self) -> Result<Vec<String>, Error> {
         let mut applied_migrations = Vec::new();
         let rows = sqlx::query("SELECT migration_name FROM _sqlx_migrator_migrations")
             .fetch_all(self.pool())
