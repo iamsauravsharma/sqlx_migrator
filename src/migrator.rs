@@ -8,11 +8,10 @@ use sqlx::{Pool, Transaction};
 
 use crate::error::Error;
 use crate::migration::Migration;
-use crate::postgres::migrator;
 
 #[async_trait::async_trait]
 /// Migrator trait
-pub trait MigratorTrait: Send {
+pub trait Migrator: Send {
     /// Database type
     type Database: sqlx::Database;
 
@@ -79,9 +78,8 @@ pub trait MigratorTrait: Send {
     }
 
     /// Generate full migration plan
-    fn generate_full_migration_plan(
-        &self,
-    ) -> Result<Vec<&Box<dyn Migration<Database = Self::Database>>>, Error> {
+    #[allow(clippy::borrowed_box)]
+    fn generate_full_migration_plan(&self) -> Vec<&Box<dyn Migration<Database = Self::Database>>> {
         let mut added_node = Vec::new();
         let mut plan_vec = Vec::<&Box<dyn Migration<Database = Self::Database>>>::new();
         while added_node.len() < self.graph().node_indices().len() {
@@ -102,7 +100,7 @@ pub trait MigratorTrait: Send {
                 }
             }
         }
-        Ok(plan_vec)
+        plan_vec
     }
 
     /// Generate apply all migration plan
@@ -113,7 +111,7 @@ pub trait MigratorTrait: Send {
         if cfg!(feature = "tracing") {
             tracing::info!("Creating apply migration plan");
         }
-        let full_plan = self.generate_full_migration_plan()?;
+        let full_plan = self.generate_full_migration_plan();
         let mut apply_all_plan = Vec::new();
         for plan in full_plan {
             if !applied_migrations.contains(&plan.name()) {
@@ -166,7 +164,7 @@ pub trait MigratorTrait: Send {
         if cfg!(feature = "tracing") {
             tracing::info!("Creating revert migration plan");
         }
-        let full_plan = self.generate_full_migration_plan()?;
+        let full_plan = self.generate_full_migration_plan();
         let mut revert_all_plan = Vec::new();
         for plan in full_plan {
             if applied_migrations.contains(&plan.name()) {
