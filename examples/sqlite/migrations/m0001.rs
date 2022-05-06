@@ -8,11 +8,17 @@ pub(crate) struct M0001Operation;
 impl Operation for M0001Operation {
     type Database = sqlx::Sqlite;
 
-    async fn up(&self, _transaction: &mut Transaction<Self::Database>) -> Result<(), Error> {
+    async fn up(&self, transaction: &mut Transaction<Self::Database>) -> Result<(), Error> {
+        sqlx::query("CREATE TABLE sample (id INTEGER PRIMARY KEY, name TEXT)")
+            .execute(transaction)
+            .await?;
         Ok(())
     }
 
-    async fn down(&self, _transaction: &mut Transaction<Self::Database>) -> Result<(), Error> {
+    async fn down(&self, transaction: &mut Transaction<Self::Database>) -> Result<(), Error> {
+        sqlx::query("DROP TABLE sample")
+            .execute(transaction)
+            .await?;
         Ok(())
     }
 }
