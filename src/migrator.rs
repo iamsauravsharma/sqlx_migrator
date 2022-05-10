@@ -52,7 +52,11 @@ pub trait Migrator: Send {
 
     /// Add single migration to migrator
     fn add_migration(&mut self, migration: Box<dyn Migration<Database = Self::Database>>) {
+        let parents = migration.parents();
         self.migrations_mut().insert(migration);
+        for parent in parents {
+            self.add_migration(parent);
+        }
     }
 
     /// Generate full migration plan
