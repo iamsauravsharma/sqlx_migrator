@@ -1,9 +1,6 @@
 //! Postgres migrator module
+use std::collections::HashSet;
 
-use std::collections::HashMap;
-
-use petgraph::graph::NodeIndex;
-use petgraph::Graph;
 use sqlx::{Pool, Postgres, Row, Transaction};
 
 use crate::error::Error;
@@ -13,8 +10,7 @@ use crate::migrator::Migrator as MigratorTrait;
 /// Migrator struct which store migrations graph and information related to
 /// postgres migrations
 pub struct Migrator {
-    graph: Graph<Box<dyn Migration<Database = Postgres>>, ()>,
-    migrations_map: HashMap<String, NodeIndex>,
+    migrations: HashSet<Box<dyn Migration<Database = Postgres>>>,
     pool: Pool<Postgres>,
 }
 
@@ -23,8 +19,7 @@ impl Migrator {
     #[must_use]
     pub fn new_from_pool(pool: &Pool<Postgres>) -> Self {
         Self {
-            graph: Graph::new(),
-            migrations_map: HashMap::new(),
+            migrations: HashSet::new(),
             pool: pool.clone(),
         }
     }
@@ -54,16 +49,12 @@ impl Migrator {
 impl MigratorTrait for Migrator {
     type Database = Postgres;
 
-    fn graph(&self) -> &Graph<Box<dyn Migration<Database = Self::Database>>, ()> {
-        &self.graph
+    fn migrations(&self) -> &HashSet<Box<dyn Migration<Database = Self::Database>>> {
+        &self.migrations
     }
 
-    fn graph_mut(&mut self) -> &mut Graph<Box<dyn Migration<Database = Self::Database>>, ()> {
-        &mut self.graph
-    }
-
-    fn migrations_map(&self) -> &HashMap<String, NodeIndex> {
-        &self.migrations_map
+    fn migrations_mut(&mut self) -> &mut HashSet<Box<dyn Migration<Database = Self::Database>>> {
+        &mut self.migrations
     }
 
     fn pool(&self) -> &Pool<Self::Database> {

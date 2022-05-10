@@ -1,9 +1,7 @@
 //! migrator module
 
-use std::collections::HashMap;
+use std::collections::HashSet;
 
-use petgraph::graph::NodeIndex;
-use petgraph::Graph;
 use sqlx::{Pool, Transaction};
 
 use crate::error::Error;
@@ -15,20 +13,17 @@ pub trait Migrator: Send {
     /// Database type
     type Database: sqlx::Database;
 
-    /// Return graph
-    fn graph(&self) -> &Graph<Box<dyn Migration<Database = Self::Database>>, ()>;
+    /// Return migrations
+    fn migrations(&self) -> &HashSet<Box<dyn Migration<Database = Self::Database>>>;
 
-    /// Return mutable reference of graph
-    fn graph_mut(&mut self) -> &mut Graph<Box<dyn Migration<Database = Self::Database>>, ()>;
-
-    /// Return migrations map
-    fn migrations_map(&self) -> &HashMap<String, NodeIndex>;
+    /// Return mutable reference of migrations
+    fn migrations_mut(&mut self) -> &mut HashSet<Box<dyn Migration<Database = Self::Database>>>;
 
     /// Return pool
     fn pool(&self) -> &Pool<Self::Database>;
 
     /// Ensure migration table is created before running migrations. If not
-    /// created create one
+    /// create one
     async fn ensure_migration_table_exists(&self) -> Result<(), Error>;
 
     /// Add migration to migration table
@@ -49,58 +44,39 @@ pub trait Migrator: Send {
     async fn fetch_applied_migration_from_db(&self) -> Result<Vec<String>, Error>;
 
     /// Add vector of migrations to Migrator
-    fn add_migrations(
-        &mut self,
-        migrations: Vec<Box<dyn Migration<Database = Self::Database>>>,
-    ) -> Vec<NodeIndex> {
-        let mut node_index_vec = Vec::new();
+    fn add_migrations(&mut self, migrations: Vec<Box<dyn Migration<Database = Self::Database>>>) {
         for migration in migrations {
-            node_index_vec.push(self.add_migration(migration));
+            self.add_migration(migration);
         }
-        node_index_vec
     }
 
     /// Add single migration to migrator
-    fn add_migration(
-        &mut self,
-        migration: Box<dyn Migration<Database = Self::Database>>,
-    ) -> NodeIndex {
-        let parents = migration.parents();
-        let mut migrations_map = self.migrations_map().clone();
-        let &mut node_index = migrations_map
-            .entry(migration.name())
-            .or_insert_with(|| self.graph_mut().add_node(migration));
-        for parent in parents {
-            let parent_index = self.add_migration(parent);
-            self.graph_mut().add_edge(parent_index, node_index, ());
-        }
-        node_index
+    fn add_migration(&mut self, migration: Box<dyn Migration<Database = Self::Database>>) {
+        self.migrations_mut().insert(migration);
     }
 
     /// Generate full migration plan
     #[allow(clippy::borrowed_box)]
-    fn generate_full_migration_plan(&self) -> Vec<&Box<dyn Migration<Database = Self::Database>>> {
-        let mut added_node = Vec::new();
-        let mut plan_vec = Vec::<&Box<dyn Migration<Database = Self::Database>>>::new();
-        while added_node.len() < self.graph().node_indices().len() {
-            for node_index in self.graph().node_indices() {
-                let mut dfs = petgraph::visit::Dfs::new(&self.graph(), node_index);
-                while let Some(nx) = dfs.next(&self.graph()) {
-                    if !added_node.contains(&nx) {
-                        let migration = &self.graph()[nx];
-                        let parent_added = self
-                            .graph()
-                            .neighbors_directed(nx, petgraph::Direction::Incoming)
-                            .all(|x| added_node.contains(&x));
-                        if parent_added {
-                            added_node.push(nx);
-                            plan_vec.push(migration);
-                        }
-                    }
+    fn generate_full_migration_plan(
+        &self,
+    ) -> Result<Vec<&Box<dyn Migration<Database = Self::Database>>>, Error> {
+        let mut migration_plan = Vec::new();
+        while migration_plan.len() != self.migrations().len() {
+            let old_migration_plan_length = migration_plan.len();
+            for migration in self.migrations() {
+                if migration
+                    .parents()
+                    .iter()
+                    .all(|migration| migration_plan.contains(&migration))
+                {
+                    migration_plan.push(migration);
                 }
             }
+            if old_migration_plan_length == migration_plan.len() {
+                return Err(Error::FailedToCreateMigrationPlan);
+            }
         }
-        plan_vec
+        Ok(migration_plan)
     }
 
     /// Generate apply all migration plan
@@ -111,7 +87,7 @@ pub trait Migrator: Send {
         if cfg!(feature = "tracing") {
             tracing::info!("Creating apply migration plan");
         }
-        let full_plan = self.generate_full_migration_plan();
+        let full_plan = self.generate_full_migration_plan()?;
         let mut apply_all_plan = Vec::new();
         for plan in full_plan {
             if !applied_migrations.contains(&plan.name()) {
@@ -164,7 +140,7 @@ pub trait Migrator: Send {
         if cfg!(feature = "tracing") {
             tracing::info!("Creating revert migration plan");
         }
-        let full_plan = self.generate_full_migration_plan();
+        let full_plan = self.generate_full_migration_plan()?;
         let mut revert_all_plan = Vec::new();
         for plan in full_plan {
             if applied_migrations.contains(&plan.name()) {

@@ -1,4 +1,5 @@
 //! Module defining migration trait
+use std::hash::Hash;
 
 use crate::operation::Operation;
 
@@ -15,4 +16,24 @@ pub trait Migration: Send + Sync {
 
     /// Operation performed for migration
     fn operations(&self) -> Vec<Box<dyn Operation<Database = Self::Database>>>;
+}
+
+impl<DB> PartialEq for dyn Migration<Database = DB>
+where
+    DB: sqlx::Database,
+{
+    fn eq(&self, other: &Self) -> bool {
+        self.name() == other.name()
+    }
+}
+
+impl<DB> Eq for dyn Migration<Database = DB> where DB: sqlx::Database {}
+
+impl<DB> Hash for dyn Migration<Database = DB>
+where
+    DB: sqlx::Database,
+{
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.name().hash(state);
+    }
 }
