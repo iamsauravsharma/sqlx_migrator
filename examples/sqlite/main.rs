@@ -8,10 +8,7 @@ async fn main() {
     let pool = sqlx::Pool::connect(&uri).await.unwrap();
     let mut migrator = Migrator::new_from_pool(&pool);
     migrator.add_migrations(migrations::migrations());
-    migrator.apply_all().await.unwrap();
-    sqlx::query("SELECT * FROM sample")
-        .execute(&pool)
+    sqlx_migrator::clap::run_cli(Box::new(migrator))
         .await
         .unwrap();
-    migrator.revert_all().await.unwrap();
 }

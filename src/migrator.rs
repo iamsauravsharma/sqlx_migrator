@@ -9,7 +9,7 @@ use crate::migration::Migration;
 
 #[async_trait::async_trait]
 /// Migrator trait
-pub trait Migrator: Send {
+pub trait Migrator: Send + Sync {
     /// Database type
     type Database: sqlx::Database;
 
@@ -59,6 +59,19 @@ pub trait Migrator: Send {
         }
     }
 
+    async fn list_applied_migrations(
+        &self,
+    ) -> Result<Vec<&Box<dyn Migration<Database = Self::Database>>>, Error> {
+        let applied_migration_list = self.fetch_applied_migration_from_db().await?;
+        let mut applied_migrations = Vec::new();
+        for migration in self.migrations() {
+            if applied_migration_list.contains(&migration.name()) {
+                applied_migrations.push(migration);
+            }
+        }
+        Ok(applied_migrations)
+    }
+
     /// Generate full migration plan
     #[allow(clippy::borrowed_box)]
     fn generate_full_migration_plan(
@@ -87,14 +100,14 @@ pub trait Migrator: Send {
     async fn apply_all_plan(
         &self,
     ) -> Result<Vec<&Box<dyn Migration<Database = Self::Database>>>, Error> {
-        let applied_migrations = self.fetch_applied_migration_from_db().await?;
+        let applied_migrations = self.list_applied_migrations().await?;
         if cfg!(feature = "tracing") {
             tracing::info!("Creating apply migration plan");
         }
         let full_plan = self.generate_full_migration_plan()?;
         let mut apply_all_plan = Vec::new();
         for plan in full_plan {
-            if !applied_migrations.contains(&plan.name()) {
+            if !applied_migrations.contains(&plan) {
                 apply_all_plan.push(plan);
             }
         }
@@ -140,14 +153,14 @@ pub trait Migrator: Send {
     async fn revert_all_plan(
         &self,
     ) -> Result<Vec<&Box<dyn Migration<Database = Self::Database>>>, Error> {
-        let applied_migrations = self.fetch_applied_migration_from_db().await?;
+        let applied_migrations = self.list_applied_migrations().await?;
         if cfg!(feature = "tracing") {
             tracing::info!("Creating revert migration plan");
         }
         let full_plan = self.generate_full_migration_plan()?;
         let mut revert_all_plan = Vec::new();
         for plan in full_plan {
-            if applied_migrations.contains(&plan.name()) {
+            if applied_migrations.contains(&plan) {
                 revert_all_plan.push(plan);
             }
         }
