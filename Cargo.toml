@@ -19,10 +19,11 @@ clap = { version = "3.1.18", features = ["derive"], optional = true }
 tokio = { version = "1.18.2", features = ["rt-multi-thread", "macros"] }
 
 [features]
-default = ["clap", "runtime-tokio-native-tls", "postgres", "tracing"]
+default = ["cli", "runtime-tokio-native-tls", "postgres", "tracing"]
 runtime-tokio-native-tls = ["sqlx/runtime-tokio-native-tls"]
 postgres = ["sqlx/postgres"]
 sqlite = ["sqlx/sqlite"]
+cli = ["clap"]
 
 [[example]]
 name = "postgres"

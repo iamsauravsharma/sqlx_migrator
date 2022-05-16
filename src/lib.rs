@@ -1,7 +1,7 @@
 //! Library to create sqlx migration using rust files
 
-#[cfg(feature = "clap")]
-pub mod clap;
+#[cfg(feature = "cli")]
+pub mod cli;
 pub mod error;
 pub mod migration;
 pub mod migrator;

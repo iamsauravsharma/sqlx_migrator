@@ -1,3 +1,4 @@
+//! Module for creating and running cli with help of migrator
 use clap::{Parser, Subcommand};
 
 use crate::error::Error;
@@ -14,6 +15,7 @@ enum SubCommand {
     List,
     ApplyAll,
     RevertAll,
+    RevertLatest,
 }
 
 async fn print_all_migrations<DB>(migrator: Box<dyn Migrator<Database = DB>>) -> Result<(), Error>
@@ -47,6 +49,18 @@ where
     Ok(())
 }
 
+async fn revert_latest<DB>(migrator: Box<dyn Migrator<Database = DB>>) -> Result<(), Error>
+where
+    DB: sqlx::Database,
+{
+    let revert_plan = migrator.revert_all_plan().await?;
+    if let Some(latest_migration) = revert_plan.iter().next() {
+        migrator.revert_migration(latest_migration).await?
+    }
+    Ok(())
+}
+
+/// Run cli by parsing args with help of migrator
 pub async fn run_cli<DB>(migrator: Box<dyn Migrator<Database = DB>>) -> Result<(), Error>
 where
     DB: sqlx::Database,
@@ -57,6 +71,7 @@ where
         SubCommand::List => print_all_migrations(migrator).await?,
         SubCommand::ApplyAll => apply_all_migrations(migrator).await?,
         SubCommand::RevertAll => revert_all_migrations(migrator).await?,
+        SubCommand::RevertLatest => revert_latest(migrator).await?,
     }
     Ok(())
 }
