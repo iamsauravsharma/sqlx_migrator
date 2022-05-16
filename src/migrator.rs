@@ -7,6 +7,8 @@ use sqlx::{Pool, Transaction};
 use crate::error::Error;
 use crate::migration::Migration;
 
+type MigrationVecResult<'a, DB> = Result<Vec<&'a Box<dyn Migration<Database = DB>>>, Error>;
+
 #[async_trait::async_trait]
 /// Migrator trait
 pub trait Migrator: Send + Sync {
@@ -59,9 +61,7 @@ pub trait Migrator: Send + Sync {
         }
     }
 
-    async fn list_applied_migrations(
-        &self,
-    ) -> Result<Vec<&Box<dyn Migration<Database = Self::Database>>>, Error> {
+    async fn list_applied_migrations(&self) -> MigrationVecResult<Self::Database> {
         let applied_migration_list = self.fetch_applied_migration_from_db().await?;
         let mut applied_migrations = Vec::new();
         for migration in self.migrations() {
@@ -74,9 +74,7 @@ pub trait Migrator: Send + Sync {
 
     /// Generate full migration plan
     #[allow(clippy::borrowed_box)]
-    fn generate_full_migration_plan(
-        &self,
-    ) -> Result<Vec<&Box<dyn Migration<Database = Self::Database>>>, Error> {
+    fn generate_full_migration_plan(&self) -> MigrationVecResult<Self::Database> {
         let mut migration_plan = Vec::new();
         while migration_plan.len() != self.migrations().len() {
             let old_migration_plan_length = migration_plan.len();
@@ -97,9 +95,7 @@ pub trait Migrator: Send + Sync {
     }
 
     /// Generate apply all migration plan
-    async fn apply_all_plan(
-        &self,
-    ) -> Result<Vec<&Box<dyn Migration<Database = Self::Database>>>, Error> {
+    async fn apply_all_plan(&self) -> MigrationVecResult<Self::Database> {
         let applied_migrations = self.list_applied_migrations().await?;
         if cfg!(feature = "tracing") {
             tracing::info!("Creating apply migration plan");
@@ -150,9 +146,7 @@ pub trait Migrator: Send + Sync {
     }
 
     /// Create revert all plan
-    async fn revert_all_plan(
-        &self,
-    ) -> Result<Vec<&Box<dyn Migration<Database = Self::Database>>>, Error> {
+    async fn revert_all_plan(&self) -> MigrationVecResult<Self::Database> {
         let applied_migrations = self.list_applied_migrations().await?;
         if cfg!(feature = "tracing") {
             tracing::info!("Creating revert migration plan");

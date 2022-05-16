@@ -54,14 +54,17 @@ where
     DB: sqlx::Database,
 {
     let revert_plan = migrator.revert_all_plan().await?;
-    if let Some(latest_migration) = revert_plan.iter().next() {
-        migrator.revert_migration(latest_migration).await?
+    if let Some(latest_migration) = revert_plan.get(0) {
+        migrator.revert_migration(latest_migration).await?;
     }
     Ok(())
 }
 
 /// Run cli by parsing args with help of migrator
-pub async fn run_cli<DB>(migrator: Box<dyn Migrator<Database = DB>>) -> Result<(), Error>
+///
+/// # Errors
+/// When command is failed when migrations run fails
+pub async fn run<DB>(migrator: Box<dyn Migrator<Database = DB>>) -> Result<(), Error>
 where
     DB: sqlx::Database,
 {

@@ -9,9 +9,7 @@ async fn main() {
     let mut migrator = Migrator::new_from_pool(&pool);
     migrator.add_migrations(migrations::migrations());
     // There are two way to run migration. Either you can create cli as shown below
-    sqlx_migrator::cli::run_cli(Box::new(migrator))
-        .await
-        .unwrap();
+    sqlx_migrator::cli::run(Box::new(migrator)).await.unwrap();
     // Or you can run migrator apply function as required as commented out part
     // below
     // migrator.apply_all().await.unwrap();
