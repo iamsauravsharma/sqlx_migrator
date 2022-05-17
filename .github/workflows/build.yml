@@ -1,0 +1,45 @@
+name: Build rust
+
+on:
+  push:
+    branches:
+      - master
+      - staging
+      - trying
+
+jobs:
+  build:
+    name: Build
+    strategy:
+       matrix:
+         include:
+           - os: "ubuntu-latest"
+             rust-version: "stable"
+           - os: "macos-latest"
+             rust-version: "stable"
+           - os: "windows-latest"
+             rust-version: "stable"
+           - os: "ubuntu-latest"
+             rust-version: "beta"
+           - os: "ubuntu-latest"
+             rust-version: "nightly"
+    runs-on: ${{ matrix.os }}
+    env:
+      FEATURES_FLAG: "--all-features"
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+     - uses: actions/checkout@v2
+     - name: Setup rust toolchain
+       uses: actions-rs/toolchain@v1
+       with:
+         toolchain: ${{ matrix.rust-version }}
+         default: true
+         components: rustfmt, clippy
+     - name: Install cargo make
+       uses: davidB/rust-cargo-make@v1
+     - name: Run tests
+       run: |
+        cargo make ci --env FEATURES_FLAG=$FEATURES_FLAG VERBOSE_FLAG=$VERBOSE_FLAG TARGET_TRIPLE_FLAG=$TARGET_TRIPLE_FLAG

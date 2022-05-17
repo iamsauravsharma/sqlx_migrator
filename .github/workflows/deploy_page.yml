@@ -1,0 +1,41 @@
+name: Deploy github pages
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+
+  deploy_page:
+    name: Deploy Github page
+    runs-on: ubuntu-latest
+    env:
+      FEATURES_FLAG: "--all-features"
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly
+          default: true
+          profile: default
+      - name: Install cargo make
+        uses: davidB/rust-cargo-make@v1
+      - name: Generate documentation
+        run: |
+          cargo make rustdoc --env FEATURES_FLAG=$FEATURES_FLAG VERBOSE_FLAG=$VERBOSE_FLAG TARGET_TRIPLE_FLAG=$TARGET_TRIPLE_FLAG
+      - name: Generate index page
+        run: |
+          echo "<meta http-equiv=refresh content=0;url=sqlx_migrator/index.html>" > target/doc/index.html          
+      - name: Install SSH Client
+        uses: webfactory/ssh-agent@v0.4.1
+        with:
+          ssh-private-key: ${{ secrets.DEPLOY_KEY }}
+      - name: Deploy GitHub Page
+        uses: JamesIves/github-pages-deploy-action@3.7.1
+        with:
+          SSH: true
+          BRANCH: gh-pages
+          FOLDER: target/doc
