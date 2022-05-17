@@ -67,11 +67,37 @@ args = [
     "@@split(TARGET_TRIPLE_FLAG, )"
 ]
 
+[tasks.doc]
+description = "Run rustdoc"
+command = "cargo"
+args = [
+    "doc",
+    "--workspace",
+    "--no-deps",
+    "@@split(FEATURES_FLAG, )",
+    "@@remove-empty(VERBOSE_FLAG)",
+    "@@split(TARGET_TRIPLE_FLAG, )"
+]
+
+[tasks.rustdoc]
+description = "Run rustdoc"
+command = "cargo"
+args = [
+    "rustdoc",
+    "@@split(FEATURES_FLAG, )",
+    "@@remove-empty(VERBOSE_FLAG)",
+    "@@split(TARGET_TRIPLE_FLAG, )",
+    "--",
+    "--cfg",
+    "docsrs"
+]
+
 [tasks.ci]
 dependencies = [
     "clean",
     "fmt",
     "build",
     "clippy",
+    "doc",
     "test"
 ]
