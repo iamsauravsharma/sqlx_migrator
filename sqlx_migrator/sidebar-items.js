@@ -1,0 +1,1 @@
+initSidebarItems({"mod":[["cli","Module for creating and running cli with help of migrator"],["error","Module for library error"],["migration","Module defining migration trait"],["migrator","migrator module"],["operation","Operation module"],["postgres","Postgres module"],["sqlite","sqlite module"]]});

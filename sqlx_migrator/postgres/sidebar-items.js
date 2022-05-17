@@ -1,0 +1,1 @@
+initSidebarItems({"mod":[["migrator","Postgres migrator module"]]});

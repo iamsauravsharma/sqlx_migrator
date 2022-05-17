@@ -1,0 +1,1 @@
+initSidebarItems({"fn":[["run","Run cli by parsing args with help of migrator"]]});

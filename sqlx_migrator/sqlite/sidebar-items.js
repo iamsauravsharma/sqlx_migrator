@@ -1,0 +1,1 @@
+initSidebarItems({"mod":[["migrator","Sqlite migrator module"]]});
