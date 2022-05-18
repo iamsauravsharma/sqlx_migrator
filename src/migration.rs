@@ -5,7 +5,7 @@ use crate::operation::Operation;
 
 /// Trait for migration
 pub trait Migration: Send + Sync {
-    // Type of database
+    /// Type of database
     type Database: sqlx::Database;
 
     /// Migration name

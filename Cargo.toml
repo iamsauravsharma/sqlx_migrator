@@ -34,3 +34,7 @@ required-features = ["postgres", "runtime-tokio-native-tls"]
 name = "sqlite"
 path = "examples/sqlite/main.rs"
 required-features = ["sqlite", "runtime-tokio-native-tls"]
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]

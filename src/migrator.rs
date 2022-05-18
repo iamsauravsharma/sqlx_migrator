@@ -61,6 +61,7 @@ pub trait Migrator: Send + Sync {
         }
     }
 
+    /// List all applied migrations
     async fn list_applied_migrations(&self) -> MigrationVecResult<Self::Database> {
         let applied_migration_list = self.fetch_applied_migration_from_db().await?;
         let mut applied_migrations = Vec::new();

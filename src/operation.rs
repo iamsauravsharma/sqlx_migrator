@@ -7,6 +7,7 @@ use crate::error::Error;
 /// Trait for operation
 #[async_trait::async_trait]
 pub trait Operation: Send + Sync {
+    /// Database type
     type Database: sqlx::Database;
     /// Up command
     async fn up(&self, transaction: &mut Transaction<Self::Database>) -> Result<(), Error>;
