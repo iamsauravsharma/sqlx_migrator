@@ -205,6 +205,7 @@
 <span id="198">198</span>
 <span id="199">199</span>
 <span id="200">200</span>
+<span id="201">201</span>
 </pre><pre class="rust"><code><span class="doccomment">//! migrator module</span>
 
 <span class="kw">use</span> <span class="ident">std::collections::HashSet</span>;
@@ -268,6 +269,7 @@
         }
     }
 
+    <span class="doccomment">/// List all applied migrations</span>
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">list_applied_migrations</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">MigrationVecResult</span><span class="op">&lt;</span><span class="ident"><span class="self">Self</span>::Database</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">applied_migration_list</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">fetch_applied_migration_from_db</span>().<span class="kw">await</span><span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">applied_migrations</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
@@ -406,5 +408,5 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="sqlx_migrator" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (c52b9c10b 2022-05-16)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="sqlx_migrator" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (4c5f6e627 2022-05-17)" ></div>
 </body></html>

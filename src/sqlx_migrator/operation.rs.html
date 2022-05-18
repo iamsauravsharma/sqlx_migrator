@@ -20,6 +20,7 @@
 <span id="13">13</span>
 <span id="14">14</span>
 <span id="15">15</span>
+<span id="16">16</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Operation module</span>
 
 <span class="kw">use</span> <span class="ident">sqlx::Transaction</span>;
@@ -29,6 +30,7 @@
 <span class="doccomment">/// Trait for operation</span>
 <span class="attribute">#[<span class="ident">async_trait::async_trait</span>]</span>
 <span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">Operation</span>: <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Sync</span> {
+    <span class="doccomment">/// Database type</span>
     <span class="kw">type</span> <span class="ident">Database</span>: <span class="ident">sqlx::Database</span>;
     <span class="doccomment">/// Up command</span>
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">up</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">transaction</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Transaction</span><span class="op">&lt;</span><span class="ident"><span class="self">Self</span>::Database</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">Error</span><span class="op">&gt;</span>;
@@ -36,5 +38,5 @@
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">down</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">transaction</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Transaction</span><span class="op">&lt;</span><span class="ident"><span class="self">Self</span>::Database</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">Error</span><span class="op">&gt;</span>;
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="sqlx_migrator" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (c52b9c10b 2022-05-16)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="sqlx_migrator" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (4c5f6e627 2022-05-17)" ></div>
 </body></html>
