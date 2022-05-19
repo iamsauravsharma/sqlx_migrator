@@ -10,7 +10,7 @@ async fn main() {
     migrator.add_migrations(migrations::migrations());
     // There are two way to run migration. Either you can create cli as shown below
     sqlx_migrator::cli::run(Box::new(migrator)).await.unwrap();
-    // Or you can run migrator apply function as required as commented out part
-    // below
+    // Or you can directly use migrator apply_all function instead of creating
+    // cli
     // migrator.apply_all().await.unwrap();
 }

@@ -39,8 +39,8 @@ impl Migrator {
     /// - If env var is not set or is not valid
     /// - If pool creation fails
     pub async fn new_from_env() -> Result<Self, Error> {
-        let database_uri = std::env::var("DATABASE_URL")
-            .map_err(|_| Error::FailedToGetEnv(String::from("DATABASE_URL")))?;
+        let database_uri =
+            std::env::var("DATABASE_URL").map_err(|_| Error::FailedToGetEnv("DATABASE_URL"))?;
         Self::new_from_uri(database_uri.as_str()).await
     }
 }
@@ -78,7 +78,7 @@ CREATE TABLE IF NOT EXISTS _sqlx_migrator_migrations (
 
     async fn add_migration_to_db_table<'t>(
         &self,
-        migration_name: String,
+        migration_name: &str,
         transaction: &mut Transaction<'t, Self::Database>,
     ) -> Result<(), Error> {
         sqlx::query(
@@ -94,7 +94,7 @@ INSERT INTO _sqlx_migrator_migrations(migration_name) VALUES ($1)
 
     async fn delete_migration_from_db_table<'t>(
         &self,
-        migration_name: String,
+        migration_name: &str,
         transaction: &mut Transaction<'t, Self::Database>,
     ) -> Result<(), Error> {
         sqlx::query(
@@ -115,7 +115,7 @@ DELETE FROM _sqlx_migrator_migrations WHERE migration_name = $1
             .await?;
 
         for row in rows {
-            let migration_name: String = row.try_get("migration_name")?;
+            let migration_name = row.try_get("migration_name")?;
             applied_migrations.push(migration_name);
         }
         Ok(applied_migrations)

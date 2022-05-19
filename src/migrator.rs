@@ -31,18 +31,18 @@ pub trait Migrator: Send + Sync {
     /// Add migration to migration table
     async fn add_migration_to_db_table<'t>(
         &self,
-        migration_name: String,
+        migration_name: &str,
         transaction: &mut Transaction<'t, Self::Database>,
     ) -> Result<(), Error>;
 
     /// Delete migration from table
     async fn delete_migration_from_db_table<'t>(
         &self,
-        migration_name: String,
+        migration_name: &str,
         transaction: &mut Transaction<'t, Self::Database>,
     ) -> Result<(), Error>;
 
-    /// List all applied migrations
+    /// List all applied migrations from database in string format
     async fn fetch_applied_migration_from_db(&self) -> Result<Vec<String>, Error>;
 
     /// Add vector of migrations to Migrator
@@ -61,12 +61,12 @@ pub trait Migrator: Send + Sync {
         }
     }
 
-    /// List all applied migrations
+    /// List all applied migrations. Returns a vector of migration
     async fn list_applied_migrations(&self) -> MigrationVecResult<Self::Database> {
         let applied_migration_list = self.fetch_applied_migration_from_db().await?;
         let mut applied_migrations = Vec::new();
         for migration in self.migrations() {
-            if applied_migration_list.contains(&migration.name()) {
+            if applied_migration_list.contains(&migration.name().to_owned()) {
                 applied_migrations.push(migration);
             }
         }
@@ -74,7 +74,6 @@ pub trait Migrator: Send + Sync {
     }
 
     /// Generate full migration plan
-    #[allow(clippy::borrowed_box)]
     fn generate_full_migration_plan(&self) -> MigrationVecResult<Self::Database> {
         let mut migration_plan = Vec::new();
         while migration_plan.len() != self.migrations().len() {

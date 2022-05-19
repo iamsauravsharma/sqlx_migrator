@@ -29,16 +29,14 @@ pub(crate) struct M0001Migration;
 impl Migration for M0001Migration {
     type Database = sqlx::Postgres;
 
-    fn name(&self) -> String {
-        String::from("M001")
+    fn name(&self) -> &str {
+        "M001"
     }
 
-    /// Parents of migration
     fn parents(&self) -> Vec<Box<dyn Migration<Database = Self::Database>>> {
         vec![]
     }
 
-    /// Operation performed for migration
     fn operations(&self) -> Vec<Box<dyn Operation<Database = Self::Database>>> {
         vec![Box::new(M0001Operation)]
     }

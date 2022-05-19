@@ -9,7 +9,7 @@ pub trait Migration: Send + Sync {
     type Database: sqlx::Database;
 
     /// Migration name
-    fn name(&self) -> String;
+    fn name(&self) -> &str;
 
     /// Parents of migration
     fn parents(&self) -> Vec<Box<dyn Migration<Database = Self::Database>>>;
