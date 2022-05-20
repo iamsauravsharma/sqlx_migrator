@@ -7,7 +7,7 @@ pub(crate) struct M0001Operation;
 
 #[async_trait::async_trait]
 impl Operation for M0001Operation {
-    type Database = sqlx::Postgres;
+    type Database = sqlx::Sqlite;
 
     async fn up(&self, transaction: &mut Transaction<Self::Database>) -> Result<(), Error> {
         sqlx::query("CREATE TABLE sample (id INTEGER PRIMARY KEY, name TEXT)")
@@ -28,10 +28,10 @@ pub(crate) struct M0001Migration;
 
 #[async_trait::async_trait]
 impl Migration for M0001Migration {
-    type Database = sqlx::Postgres;
+    type Database = sqlx::Sqlite;
 
     fn name(&self) -> &str {
-        "M001"
+        "m0001_simple"
     }
 
     fn parents(&self) -> Vec<Box<dyn Migration<Database = Self::Database>>> {

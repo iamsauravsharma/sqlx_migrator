@@ -31,11 +31,11 @@ impl Migration for M0002Migration {
     type Database = sqlx::Postgres;
 
     fn name(&self) -> &str {
-        "M002"
+        "m0002_with_parents"
     }
 
     fn parents(&self) -> Vec<Box<dyn Migration<Database = Self::Database>>> {
-        vec![Box::new(crate::migrations::m0001::M0001Migration)]
+        vec![Box::new(crate::migrations::m0001_simple::M0001Migration)]
     }
 
     fn operations(&self) -> Vec<Box<dyn Operation<Database = Self::Database>>> {
