@@ -2,6 +2,7 @@ use sqlx::Transaction;
 use sqlx_migrator::error::Error;
 use sqlx_migrator::migration::Migration;
 use sqlx_migrator::operation::Operation;
+
 pub(crate) struct M0001Operation;
 
 #[async_trait::async_trait]

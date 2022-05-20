@@ -11,4 +11,4 @@ sqlx_migrator = "0.1.0"
 
 # Usage
 
-For usage see examples present at examples/ directory
+For detailed usage see examples present at examples/ directory

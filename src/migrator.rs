@@ -63,7 +63,11 @@ pub trait Migrator: Send + Sync {
 
     /// List all applied migrations. Returns a vector of migration
     async fn list_applied_migrations(&self) -> MigrationVecResult<Self::Database> {
+        if cfg!(feature = "tracing") {
+            tracing::info!("Fetching applied migration name");
+        }
         let applied_migration_list = self.fetch_applied_migration_from_db().await?;
+
         let mut applied_migrations = Vec::new();
         for migration in self.migrations() {
             if applied_migration_list.contains(&migration.name().to_owned()) {
@@ -83,6 +87,7 @@ pub trait Migrator: Send + Sync {
                     .parents()
                     .iter()
                     .all(|migration| migration_plan.contains(&migration))
+                    && !migration_plan.contains(&migration)
                 {
                     migration_plan.push(migration);
                 }
@@ -106,6 +111,9 @@ pub trait Migrator: Send + Sync {
             if !applied_migrations.contains(&plan) {
                 apply_all_plan.push(plan);
             }
+        }
+        if cfg!(feature = "tracing") {
+            tracing::info!("Created apply migration plan");
         }
         Ok(apply_all_plan)
     }
