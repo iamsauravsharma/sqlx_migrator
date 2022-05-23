@@ -17,31 +17,11 @@ pub struct Migrator {
 impl Migrator {
     /// Create new migrator from pool
     #[must_use]
-    pub fn new_from_pool(pool: &Pool<Postgres>) -> Self {
+    pub fn new(pool: &Pool<Postgres>) -> Self {
         Self {
             migrations: HashSet::new(),
             pool: pool.clone(),
         }
-    }
-
-    /// Create new migrator from uri
-    ///
-    /// # Errors
-    /// - If pool creation fails
-    pub async fn new_from_uri(uri: &str) -> Result<Self, Error> {
-        let pool = Pool::connect(uri).await?;
-        Ok(Self::new_from_pool(&pool))
-    }
-
-    /// Create new migrator from env
-    ///
-    /// # Errors
-    /// - If env var is not set or is not valid
-    /// - If pool creation fails
-    pub async fn new_from_env() -> Result<Self, Error> {
-        let database_uri =
-            std::env::var("DATABASE_URL").map_err(|_| Error::FailedToGetEnv("DATABASE_URL"))?;
-        Self::new_from_uri(database_uri.as_str()).await
     }
 }
 
@@ -89,6 +69,7 @@ INSERT INTO _sqlx_migrator_migrations(migration_name) VALUES ($1)
         .bind(migration_name)
         .execute(transaction)
         .await?;
+
         Ok(())
     }
 

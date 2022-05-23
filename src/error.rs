@@ -9,8 +9,8 @@ pub enum Error {
     SqlxError(#[from] sqlx::error::Error),
 
     /// Error for failed to get env variable
-    #[error("Failed to get env {0}")]
-    FailedToGetEnv(&'static str),
+    #[error("Failed to get env DATABASE_URL")]
+    FailedToGetEnv,
 
     /// Error for failed to create migrations plan from cyclic dependency
     #[error("Failed to create migrations plan due to migration cyclic dependency")]
