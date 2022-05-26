@@ -63,7 +63,7 @@ where
 /// Run cli by parsing args with help of migrator
 ///
 /// # Errors
-/// When command is failed when migrations run fails
+/// When command fails to run
 pub async fn run<DB>(migrator: Box<dyn Migrator<Database = DB>>) -> Result<(), Error>
 where
     DB: sqlx::Database,

@@ -4,7 +4,7 @@
 #![warn(clippy::pedantic)]
 #![cfg_attr(docsrs, feature(doc_auto_cfg))]
 
-//! Library to create sqlx migration using rust files
+//! Library to create sqlx migration using rust code instead of sql
 #[cfg(feature = "cli")]
 pub mod cli;
 pub mod error;

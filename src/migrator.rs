@@ -21,7 +21,7 @@ pub trait Migrator: Send + Sync {
     /// Return mutable reference of migrations
     fn migrations_mut(&mut self) -> &mut HashSet<Box<dyn Migration<Database = Self::Database>>>;
 
-    /// Return pool
+    /// Return pool of database
     fn pool(&self) -> &Pool<Self::Database>;
 
     /// Ensure migration table is created before running migrations. If not
@@ -42,17 +42,18 @@ pub trait Migrator: Send + Sync {
         transaction: &mut Transaction<'t, Self::Database>,
     ) -> Result<(), Error>;
 
-    /// List all applied migrations from database in string format
+    /// List all applied migrations from database in string format (name of
+    /// migration)
     async fn fetch_applied_migration_from_db(&self) -> Result<Vec<String>, Error>;
 
-    /// Add vector of migrations to Migrator
+    /// Add vector of migrations to Migrator object
     fn add_migrations(&mut self, migrations: Vec<Box<dyn Migration<Database = Self::Database>>>) {
         for migration in migrations {
             self.add_migration(migration);
         }
     }
 
-    /// Add single migration to migrator
+    /// Add single migration to migrator object
     fn add_migration(&mut self, migration: Box<dyn Migration<Database = Self::Database>>) {
         let parents = migration.parents();
         self.migrations_mut().insert(migration);
@@ -77,7 +78,8 @@ pub trait Migrator: Send + Sync {
         Ok(applied_migrations)
     }
 
-    /// Generate full migration plan
+    /// Generate full migration plan for all migrations. Returns a vector of
+    /// migration
     fn generate_full_migration_plan(&self) -> MigrationVecResult<Self::Database> {
         let mut migration_plan = Vec::new();
         while migration_plan.len() != self.migrations().len() {
@@ -99,7 +101,11 @@ pub trait Migrator: Send + Sync {
         Ok(migration_plan)
     }
 
-    /// Generate apply all migration plan
+    /// Generate apply all migration plan. Returns a vector of migration
+    /// operation to be applied
+    ///
+    /// # Errors
+    /// If failed to generate migration plan or list applied migration
     async fn apply_all_plan(&self) -> MigrationVecResult<Self::Database> {
         let applied_migrations = self.list_applied_migrations().await?;
         if cfg!(feature = "tracing") {
@@ -118,10 +124,10 @@ pub trait Migrator: Send + Sync {
         Ok(apply_all_plan)
     }
 
-    /// Apply missing migration
+    /// Apply missing migration plan
     ///
     /// # Errors
-    /// If any migration or operation fails
+    /// If failed to apply migration
     async fn apply_all(&self) -> Result<(), Error> {
         if cfg!(feature = "tracing") {
             tracing::info!("Creating migration table if not exists");
@@ -133,7 +139,7 @@ pub trait Migrator: Send + Sync {
         Ok(())
     }
 
-    /// Apply certain migration to database
+    /// Apply certain migration to database and add it to applied migration
     #[allow(clippy::borrowed_box)]
     async fn apply_migration(
         &self,
@@ -153,7 +159,11 @@ pub trait Migrator: Send + Sync {
         Ok(())
     }
 
-    /// Create revert all plan
+    /// Create revert all plan for all migrations. Returns a vector of migration
+    /// operation to be reverted
+    ///
+    /// # Errors
+    /// If failed to create revert plan or list applied migration
     async fn revert_all_plan(&self) -> MigrationVecResult<Self::Database> {
         let applied_migrations = self.list_applied_migrations().await?;
         if cfg!(feature = "tracing") {
@@ -170,7 +180,7 @@ pub trait Migrator: Send + Sync {
         Ok(revert_all_plan)
     }
 
-    /// Revert all applied migration
+    /// Revert all applied migration from database
     ///
     /// # Errors
     /// If any migration or operation fails
