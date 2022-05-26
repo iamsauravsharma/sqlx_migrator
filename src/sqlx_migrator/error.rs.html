@@ -19,10 +19,6 @@
 <span id="12">12</span>
 <span id="13">13</span>
 <span id="14">14</span>
-<span id="15">15</span>
-<span id="16">16</span>
-<span id="17">17</span>
-<span id="18">18</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Module for library error</span>
 
 <span class="doccomment">/// Error enum to store different types of error</span>
@@ -33,14 +29,10 @@
     <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
     <span class="ident">SqlxError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">sqlx::error::Error</span>),
 
-    <span class="doccomment">/// Error for failed to get env variable</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Failed to get env DATABASE_URL&quot;</span>)]</span>
-    <span class="ident">FailedToGetEnv</span>,
-
     <span class="doccomment">/// Error for failed to create migrations plan from cyclic dependency</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Failed to create migrations plan due to migration cyclic dependency&quot;</span>)]</span>
     <span class="ident">FailedToCreateMigrationPlan</span>,
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="sqlx_migrator" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (b2eed72a6 2022-05-22)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="sqlx_migrator" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (4cbaac699 2022-05-25)" ></div>
 </body></html>

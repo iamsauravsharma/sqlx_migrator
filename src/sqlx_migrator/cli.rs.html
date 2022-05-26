@@ -150,7 +150,7 @@
 <span class="doccomment">/// Run cli by parsing args with help of migrator</span>
 <span class="doccomment">///</span>
 <span class="doccomment">/// # Errors</span>
-<span class="doccomment">/// When command is failed when migrations run fails</span>
+<span class="doccomment">/// When command fails to run</span>
 <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">run</span><span class="op">&lt;</span><span class="ident">DB</span><span class="op">&gt;</span>(<span class="ident">migrator</span>: <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Migrator</span><span class="op">&lt;</span><span class="ident">Database</span> <span class="op">=</span> <span class="ident">DB</span><span class="op">&gt;</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">Error</span><span class="op">&gt;</span>
 <span class="kw">where</span>
     <span class="ident">DB</span>: <span class="ident">sqlx::Database</span>,
@@ -166,5 +166,5 @@
     <span class="prelude-val">Ok</span>(())
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="sqlx_migrator" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (b2eed72a6 2022-05-22)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="sqlx_migrator" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (4cbaac699 2022-05-25)" ></div>
 </body></html>
