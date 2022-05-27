@@ -65,7 +65,7 @@ pub trait Migrator: Send + Sync {
     /// List all applied migrations. Returns a vector of migration
     async fn list_applied_migrations(&self) -> MigrationVecResult<Self::Database> {
         if cfg!(feature = "tracing") {
-            tracing::info!("Fetching applied migration name");
+            tracing::info!("Fetching applied migrations");
         }
         let applied_migration_list = self.fetch_applied_migration_from_db().await?;
 
@@ -81,6 +81,9 @@ pub trait Migrator: Send + Sync {
     /// Generate full migration plan for all migrations. Returns a vector of
     /// migration
     fn generate_full_migration_plan(&self) -> MigrationVecResult<Self::Database> {
+        if cfg!(feature = "tracing") {
+            tracing::info!("Generating full migration plan");
+        }
         let mut migration_plan = Vec::new();
         while migration_plan.len() != self.migrations().len() {
             let old_migration_plan_length = migration_plan.len();
@@ -109,7 +112,7 @@ pub trait Migrator: Send + Sync {
     async fn apply_all_plan(&self) -> MigrationVecResult<Self::Database> {
         let applied_migrations = self.list_applied_migrations().await?;
         if cfg!(feature = "tracing") {
-            tracing::info!("Creating apply migration plan");
+            tracing::info!("Creating apply all migration plan");
         }
         let full_plan = self.generate_full_migration_plan()?;
         let mut apply_all_plan = Vec::new();
@@ -117,9 +120,6 @@ pub trait Migrator: Send + Sync {
             if !applied_migrations.contains(&plan) {
                 apply_all_plan.push(plan);
             }
-        }
-        if cfg!(feature = "tracing") {
-            tracing::info!("Created apply migration plan");
         }
         Ok(apply_all_plan)
     }
@@ -130,7 +130,7 @@ pub trait Migrator: Send + Sync {
     /// If failed to apply migration
     async fn apply_all(&self) -> Result<(), Error> {
         if cfg!(feature = "tracing") {
-            tracing::info!("Creating migration table if not exists");
+            tracing::info!("Applying all migration");
         }
         self.ensure_migration_table_exists().await?;
         for migration in self.apply_all_plan().await? {
@@ -167,7 +167,7 @@ pub trait Migrator: Send + Sync {
     async fn revert_all_plan(&self) -> MigrationVecResult<Self::Database> {
         let applied_migrations = self.list_applied_migrations().await?;
         if cfg!(feature = "tracing") {
-            tracing::info!("Creating revert migration plan");
+            tracing::info!("Creating revert all migration plan");
         }
         let full_plan = self.generate_full_migration_plan()?;
         let mut revert_all_plan = Vec::new();
@@ -186,7 +186,7 @@ pub trait Migrator: Send + Sync {
     /// If any migration or operation fails
     async fn revert_all(&self) -> Result<(), Error> {
         if cfg!(feature = "tracing") {
-            tracing::info!("Creating migration table if not exists");
+            tracing::info!("Reverting all migration");
         }
         self.ensure_migration_table_exists().await?;
         for migration in self.revert_all_plan().await? {

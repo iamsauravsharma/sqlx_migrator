@@ -12,9 +12,13 @@ struct Args {
 
 #[derive(Subcommand, Debug)]
 enum SubCommand {
+    #[clap(about = "List all migrations along with their status")]
     List,
+    #[clap(about = "Apply all migrations")]
     ApplyAll,
+    #[clap(about = "Revert all migrations")]
     RevertAll,
+    #[clap(about = "Revert latest migration")]
     RevertLatest,
 }
 

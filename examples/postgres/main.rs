@@ -4,7 +4,6 @@ use sqlx_migrator::postgres::migrator::Migrator;
 mod migrations;
 #[tokio::main]
 async fn main() {
-    tracing_subscriber::fmt::init();
     let uri = std::env::var("SQLITE_DATABASE_URL").unwrap();
     let pool = sqlx::Pool::connect(&uri).await.unwrap();
     let mut migrator = Migrator::new(&pool);
