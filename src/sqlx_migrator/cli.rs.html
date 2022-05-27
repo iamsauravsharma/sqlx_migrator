@@ -85,6 +85,10 @@
 <span id="78">78</span>
 <span id="79">79</span>
 <span id="80">80</span>
+<span id="81">81</span>
+<span id="82">82</span>
+<span id="83">83</span>
+<span id="84">84</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Module for creating and running cli with help of migrator</span>
 <span class="kw">use</span> <span class="ident">clap</span>::{<span class="ident">Parser</span>, <span class="ident">Subcommand</span>};
 
@@ -99,9 +103,13 @@
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Subcommand</span>, <span class="ident">Debug</span>)]</span>
 <span class="kw">enum</span> <span class="ident">SubCommand</span> {
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">about</span> <span class="op">=</span> <span class="string">&quot;List all migrations along with their status&quot;</span>)]</span>
     <span class="ident">List</span>,
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">about</span> <span class="op">=</span> <span class="string">&quot;Apply all migrations&quot;</span>)]</span>
     <span class="ident">ApplyAll</span>,
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">about</span> <span class="op">=</span> <span class="string">&quot;Revert all migrations&quot;</span>)]</span>
     <span class="ident">RevertAll</span>,
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">about</span> <span class="op">=</span> <span class="string">&quot;Revert latest migration&quot;</span>)]</span>
     <span class="ident">RevertLatest</span>,
 }
 
@@ -166,5 +174,5 @@
     <span class="prelude-val">Ok</span>(())
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="sqlx_migrator" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (4cbaac699 2022-05-25)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="sqlx_migrator" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (490324f7b 2022-05-26)" ></div>
 </body></html>
