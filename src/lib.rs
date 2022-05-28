@@ -15,3 +15,5 @@ pub mod operation;
 pub mod postgres;
 #[cfg(feature = "sqlite")]
 pub mod sqlite;
+
+pub use sqlx;
