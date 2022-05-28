@@ -1,7 +1,9 @@
 # SQLX migrator
 Migrator for writing sqlx migration using Rust instead of SQL
 
-__Support Postgres and SQLite__
+Supported Databases:
+- [X] PostgreSQL
+- [X] SQLite
 
 ## Installation
 
