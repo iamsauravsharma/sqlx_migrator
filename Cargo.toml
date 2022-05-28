@@ -5,6 +5,7 @@ edition = "2021"
 authors = ["Saurav Sharma <appdroiddeveloper@gmail.com>"]
 homepage = "https://github.com/iamsauravsharma/sqlx_migrator"
 repository = "https://github.com/iamsauravsharma/sqlx_migrator"
+description = "Migrator for writing sqlx migration using Rust instead of SQL"
 license = "MIT"
 readme = "README.MD"
 
