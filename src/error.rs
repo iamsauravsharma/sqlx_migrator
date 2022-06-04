@@ -4,11 +4,11 @@
 #[derive(Debug, thiserror::Error)]
 #[non_exhaustive]
 pub enum Error {
-    /// Error type for all sqlx error
+    /// Error type created from error raised by sqlx
     #[error(transparent)]
     SqlxError(#[from] sqlx::error::Error),
 
     /// Error for failed to create migrations plan from cyclic dependency
-    #[error("Failed to create migrations plan due to migration cyclic dependency")]
+    #[error("Failed to create migrations plan due to  cyclic dependency")]
     FailedToCreateMigrationPlan,
 }
