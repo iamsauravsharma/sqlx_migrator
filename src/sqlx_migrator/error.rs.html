@@ -25,14 +25,14 @@
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">thiserror::Error</span>)]</span>
 <span class="attribute">#[<span class="ident">non_exhaustive</span>]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">Error</span> {
-    <span class="doccomment">/// Error type for all sqlx error</span>
+    <span class="doccomment">/// Error type created from error raised by sqlx</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
     <span class="ident">SqlxError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">sqlx::error::Error</span>),
 
     <span class="doccomment">/// Error for failed to create migrations plan from cyclic dependency</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Failed to create migrations plan due to migration cyclic dependency&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Failed to create migrations plan due to  cyclic dependency&quot;</span>)]</span>
     <span class="ident">FailedToCreateMigrationPlan</span>,
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="sqlx_migrator" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (ebbcbfc23 2022-05-27)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="sqlx_migrator" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (a6b8c6954 2022-06-03)" ></div>
 </body></html>
