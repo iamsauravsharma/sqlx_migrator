@@ -40,9 +40,9 @@ where
             "{:^first_width$} | {:^second_width$}",
             migration.name(),
             if applied_migrations.contains(&migration) {
-                "✅"
+                "\u{2713}"
             } else {
-                "❌"
+                "\u{2717}"
             }
         );
     }
