@@ -1,1 +1,1 @@
-initSidebarItems({"mod":[["migrator","Postgres migrator module"]]});
+window.SIDEBAR_ITEMS = {"mod":[["migrator","Postgres migrator module"]]};

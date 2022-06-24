@@ -1,1 +1,1 @@
-initSidebarItems({"trait":[["Operation","Trait for operation"]]});
+window.SIDEBAR_ITEMS = {"trait":[["Operation","Trait for operation"]]};

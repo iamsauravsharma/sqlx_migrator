@@ -1,1 +1,1 @@
-initSidebarItems({"mod":[["migrator","Sqlite migrator module"]]});
+window.SIDEBAR_ITEMS = {"mod":[["migrator","Sqlite migrator module"]]};

@@ -1,1 +1,1 @@
-initSidebarItems({"trait":[["Migration","Trait for migration"]]});
+window.SIDEBAR_ITEMS = {"trait":[["Migration","Trait for migration"]]};

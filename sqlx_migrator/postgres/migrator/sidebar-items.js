@@ -1,1 +1,1 @@
-initSidebarItems({"struct":[["Migrator","Migrator struct which store migrations graph and information related to postgres migrations"]]});
+window.SIDEBAR_ITEMS = {"struct":[["Migrator","Migrator struct which store migrations graph and information related to postgres migrations"]]};
