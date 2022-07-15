@@ -46,7 +46,7 @@ impl MigratorTrait for Migrator {
             r#"
 CREATE TABLE IF NOT EXISTS _sqlx_migrator_migrations (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    migration_name TEXT UNIQUE NOT NULL,
+    migration_full_name TEXT UNIQUE NOT NULL,
     applied_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 )
             "#,
@@ -58,15 +58,15 @@ CREATE TABLE IF NOT EXISTS _sqlx_migrator_migrations (
 
     async fn add_migration_to_db_table<'t>(
         &self,
-        migration_name: &str,
+        migration_full_name: &str,
         transaction: &mut Transaction<'t, Self::Database>,
     ) -> Result<(), Error> {
         sqlx::query(
             r#"
-INSERT INTO _sqlx_migrator_migrations(migration_name) VALUES ($1)
+INSERT INTO _sqlx_migrator_migrations(migration_full_name) VALUES ($1)
             "#,
         )
-        .bind(migration_name)
+        .bind(migration_full_name)
         .execute(transaction)
         .await?;
         Ok(())
@@ -74,15 +74,15 @@ INSERT INTO _sqlx_migrator_migrations(migration_name) VALUES ($1)
 
     async fn delete_migration_from_db_table<'t>(
         &self,
-        migration_name: &str,
+        migration_full_name: &str,
         transaction: &mut Transaction<'t, Self::Database>,
     ) -> Result<(), Error> {
         sqlx::query(
             r#"
-DELETE FROM _sqlx_migrator_migrations WHERE migration_name = $1
+DELETE FROM _sqlx_migrator_migrations WHERE migration_full_name = $1
             "#,
         )
-        .bind(migration_name)
+        .bind(migration_full_name)
         .execute(transaction)
         .await?;
         Ok(())
@@ -90,13 +90,13 @@ DELETE FROM _sqlx_migrator_migrations WHERE migration_name = $1
 
     async fn fetch_applied_migration_from_db(&self) -> Result<Vec<String>, Error> {
         let mut applied_migrations = Vec::new();
-        let rows = sqlx::query("SELECT migration_name FROM _sqlx_migrator_migrations")
+        let rows = sqlx::query("SELECT migration_full_name FROM _sqlx_migrator_migrations")
             .fetch_all(self.pool())
             .await?;
 
         for row in rows {
-            let migration_name = row.try_get("migration_name")?;
-            applied_migrations.push(migration_name);
+            let migration_full_name = row.try_get("migration_full_name")?;
+            applied_migrations.push(migration_full_name);
         }
         Ok(applied_migrations)
     }

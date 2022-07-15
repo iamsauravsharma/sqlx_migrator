@@ -31,18 +31,18 @@ pub trait Migrator: Send + Sync {
     /// Add migration to migration table
     async fn add_migration_to_db_table<'t>(
         &self,
-        migration_name: &str,
+        migration_full_name: &str,
         transaction: &mut Transaction<'t, Self::Database>,
     ) -> Result<(), Error>;
 
     /// Delete migration from table
     async fn delete_migration_from_db_table<'t>(
         &self,
-        migration_name: &str,
+        migration_full_name: &str,
         transaction: &mut Transaction<'t, Self::Database>,
     ) -> Result<(), Error>;
 
-    /// List all applied migrations from database in string format (name of
+    /// List all applied migrations from database in string format (full name of
     /// migration)
     async fn fetch_applied_migration_from_db(&self) -> Result<Vec<String>, Error>;
 
@@ -71,7 +71,7 @@ pub trait Migrator: Send + Sync {
 
         let mut applied_migrations = Vec::new();
         for migration in self.migrations() {
-            if applied_migration_list.contains(&migration.name().to_owned()) {
+            if applied_migration_list.contains(&migration.full_name().to_owned()) {
                 applied_migrations.push(migration);
             }
         }
@@ -146,14 +146,14 @@ pub trait Migrator: Send + Sync {
         migration: &Box<dyn Migration<Database = Self::Database>>,
     ) -> Result<(), Error> {
         if cfg!(feature = "tracing") {
-            tracing::info!("Applying migration {}", migration.name());
+            tracing::info!("Applying migration {}", migration.full_name());
         }
         let mut transaction = self.pool().begin().await?;
         for operation in migration.operations() {
             operation.up(&mut transaction).await?;
         }
 
-        self.add_migration_to_db_table(migration.name(), &mut transaction)
+        self.add_migration_to_db_table(&migration.full_name(), &mut transaction)
             .await?;
         transaction.commit().await?;
         Ok(())
@@ -202,7 +202,7 @@ pub trait Migrator: Send + Sync {
         migration: &Box<dyn Migration<Database = Self::Database>>,
     ) -> Result<(), Error> {
         if cfg!(feature = "tracing") {
-            tracing::info!("Reverting migration {}", migration.name());
+            tracing::info!("Reverting migration {}", migration.full_name());
         }
         let mut transaction = self.pool().begin().await?;
         let mut operations = migration.operations();
@@ -210,7 +210,7 @@ pub trait Migrator: Send + Sync {
         for operation in operations {
             operation.down(&mut transaction).await?;
         }
-        self.delete_migration_from_db_table(migration.name(), &mut transaction)
+        self.delete_migration_from_db_table(&migration.full_name(), &mut transaction)
             .await?;
         transaction.commit().await?;
         Ok(())

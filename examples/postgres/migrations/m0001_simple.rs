@@ -30,6 +30,10 @@ pub(crate) struct M0001Migration;
 impl Migration for M0001Migration {
     type Database = sqlx::Postgres;
 
+    fn app(&self) -> &str {
+        "main"
+    }
+
     fn name(&self) -> &str {
         "m0001_simple"
     }

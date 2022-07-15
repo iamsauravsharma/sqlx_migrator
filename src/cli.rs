@@ -38,7 +38,7 @@ where
     for migration in migrator.generate_full_migration_plan()? {
         println!(
             "{:^first_width$} | {:^second_width$}",
-            migration.name(),
+            migration.full_name(),
             if applied_migrations.contains(&migration) {
                 "\u{2713}"
             } else {
