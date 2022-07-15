@@ -71,7 +71,7 @@ pub trait Migrator: Send + Sync {
 
         let mut applied_migrations = Vec::new();
         for migration in self.migrations() {
-            if applied_migration_list.contains(&migration.full_name().to_owned()) {
+            if applied_migration_list.contains(&migration.full_name()) {
                 applied_migrations.push(migration);
             }
         }
