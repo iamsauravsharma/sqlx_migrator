@@ -70,7 +70,7 @@ where
     DB: sqlx::Database,
 {
     let revert_plan = migrator.revert_all_plan().await?;
-    if let Some(latest_migration) = revert_plan.get(0) {
+    if let Some(latest_migration) = revert_plan.first() {
         migrator.revert_migration(latest_migration).await?;
     }
     Ok(())
