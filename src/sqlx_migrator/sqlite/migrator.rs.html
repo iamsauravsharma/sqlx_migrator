@@ -2,7 +2,7 @@
         </a><h2 class="location"></h2>
     </nav>
     <nav class="sidebar"><a class="sidebar-logo" href="../../../sqlx_migrator/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div>
-        </a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../sqlx_migrator/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><button type="button" id="help-button" title="help">?</button><div id="settings-menu" tabindex="-1">
+        </a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../sqlx_migrator/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1">
                                 <a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div>
                         </div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
@@ -155,7 +155,7 @@
             <span class="string">r#&quot;
 CREATE TABLE IF NOT EXISTS _sqlx_migrator_migrations (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    migration_name TEXT UNIQUE NOT NULL,
+    migration_full_name TEXT UNIQUE NOT NULL,
     applied_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 )
             &quot;#</span>,
@@ -167,15 +167,15 @@ CREATE TABLE IF NOT EXISTS _sqlx_migrator_migrations (
 
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">add_migration_to_db_table</span><span class="op">&lt;</span><span class="lifetime">&#39;t</span><span class="op">&gt;</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">migration_name</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
+        <span class="ident">migration_full_name</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">transaction</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Transaction</span><span class="op">&lt;</span><span class="lifetime">&#39;t</span>, <span class="ident"><span class="self">Self</span>::Database</span><span class="op">&gt;</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">Error</span><span class="op">&gt;</span> {
         <span class="ident">sqlx::query</span>(
             <span class="string">r#&quot;
-INSERT INTO _sqlx_migrator_migrations(migration_name) VALUES ($1)
+INSERT INTO _sqlx_migrator_migrations(migration_full_name) VALUES ($1)
             &quot;#</span>,
         )
-        .<span class="ident">bind</span>(<span class="ident">migration_name</span>)
+        .<span class="ident">bind</span>(<span class="ident">migration_full_name</span>)
         .<span class="ident">execute</span>(<span class="ident">transaction</span>)
         .<span class="kw">await</span><span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
@@ -183,15 +183,15 @@ INSERT INTO _sqlx_migrator_migrations(migration_name) VALUES ($1)
 
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">delete_migration_from_db_table</span><span class="op">&lt;</span><span class="lifetime">&#39;t</span><span class="op">&gt;</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">migration_name</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
+        <span class="ident">migration_full_name</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">transaction</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Transaction</span><span class="op">&lt;</span><span class="lifetime">&#39;t</span>, <span class="ident"><span class="self">Self</span>::Database</span><span class="op">&gt;</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">Error</span><span class="op">&gt;</span> {
         <span class="ident">sqlx::query</span>(
             <span class="string">r#&quot;
-DELETE FROM _sqlx_migrator_migrations WHERE migration_name = $1
+DELETE FROM _sqlx_migrator_migrations WHERE migration_full_name = $1
             &quot;#</span>,
         )
-        .<span class="ident">bind</span>(<span class="ident">migration_name</span>)
+        .<span class="ident">bind</span>(<span class="ident">migration_full_name</span>)
         .<span class="ident">execute</span>(<span class="ident">transaction</span>)
         .<span class="kw">await</span><span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
@@ -199,17 +199,17 @@ DELETE FROM _sqlx_migrator_migrations WHERE migration_name = $1
 
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">fetch_applied_migration_from_db</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>, <span class="ident">Error</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">applied_migrations</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
-        <span class="kw">let</span> <span class="ident">rows</span> <span class="op">=</span> <span class="ident">sqlx::query</span>(<span class="string">&quot;SELECT migration_name FROM _sqlx_migrator_migrations&quot;</span>)
+        <span class="kw">let</span> <span class="ident">rows</span> <span class="op">=</span> <span class="ident">sqlx::query</span>(<span class="string">&quot;SELECT migration_full_name FROM _sqlx_migrator_migrations&quot;</span>)
             .<span class="ident">fetch_all</span>(<span class="self">self</span>.<span class="ident">pool</span>())
             .<span class="kw">await</span><span class="question-mark">?</span>;
 
         <span class="kw">for</span> <span class="ident">row</span> <span class="kw">in</span> <span class="ident">rows</span> {
-            <span class="kw">let</span> <span class="ident">migration_name</span> <span class="op">=</span> <span class="ident">row</span>.<span class="ident">try_get</span>(<span class="string">&quot;migration_name&quot;</span>)<span class="question-mark">?</span>;
-            <span class="ident">applied_migrations</span>.<span class="ident">push</span>(<span class="ident">migration_name</span>);
+            <span class="kw">let</span> <span class="ident">migration_full_name</span> <span class="op">=</span> <span class="ident">row</span>.<span class="ident">try_get</span>(<span class="string">&quot;migration_full_name&quot;</span>)<span class="question-mark">?</span>;
+            <span class="ident">applied_migrations</span>.<span class="ident">push</span>(<span class="ident">migration_full_name</span>);
         }
         <span class="prelude-val">Ok</span>(<span class="ident">applied_migrations</span>)
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="sqlx_migrator" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (43347397f 2022-06-23)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="sqlx_migrator" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (c2f428d2f 2022-07-14)" ></div>
 </body></html>
