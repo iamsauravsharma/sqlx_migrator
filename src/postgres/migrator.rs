@@ -45,7 +45,7 @@ impl MigratorTrait for Migrator {
         sqlx::query(
             r#"
 CREATE TABLE IF NOT EXISTS _sqlx_migrator_migrations (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id SERIAL PRIMARY KEY,
     migration_full_name TEXT UNIQUE NOT NULL,
     applied_time TIMESTAMPTZ NOT NULL DEFAULT now()
 )
