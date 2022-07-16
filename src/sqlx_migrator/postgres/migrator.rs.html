@@ -155,7 +155,7 @@
         <span class="ident">sqlx::query</span>(
             <span class="string">r#&quot;
 CREATE TABLE IF NOT EXISTS _sqlx_migrator_migrations (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id SERIAL PRIMARY KEY,
     migration_full_name TEXT UNIQUE NOT NULL,
     applied_time TIMESTAMPTZ NOT NULL DEFAULT now()
 )
@@ -213,5 +213,5 @@ DELETE FROM _sqlx_migrator_migrations WHERE migration_full_name = $1
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="sqlx_migrator" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (c2f428d2f 2022-07-14)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="sqlx_migrator" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (23e21bdd2 2022-07-15)" ></div>
 </body></html>
