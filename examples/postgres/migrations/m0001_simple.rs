@@ -38,10 +38,6 @@ impl Migration for M0001Migration {
         "m0001_simple"
     }
 
-    fn parents(&self) -> Vec<Box<dyn Migration<Database = Self::Database>>> {
-        vec![]
-    }
-
     fn operations(&self) -> Vec<Box<dyn Operation<Database = Self::Database>>> {
         vec![Box::new(M0001Operation)]
     }

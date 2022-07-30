@@ -17,10 +17,14 @@ pub trait Migration: Send + Sync {
 
     /// Parents of migration (migrations that should be applied before this
     /// migration)
-    fn parents(&self) -> Vec<Box<dyn Migration<Database = Self::Database>>>;
+    fn parents(&self) -> Vec<Box<dyn Migration<Database = Self::Database>>> {
+        vec![]
+    }
 
     /// Operation performed for migration (create, drop, etc.)
-    fn operations(&self) -> Vec<Box<dyn Operation<Database = Self::Database>>>;
+    fn operations(&self) -> Vec<Box<dyn Operation<Database = Self::Database>>> {
+        vec![]
+    }
 
     /// Full name of migration. Determined from app and name combination.
     /// Default value is {app}/{name}.
