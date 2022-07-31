@@ -134,7 +134,7 @@ pub trait Migrator: Send + Sync {
                 if let Some(before_migrations) = run_before_parents_hashmap.get(migration) {
                     all_run_before_parents_added = before_migrations
                         .iter()
-                        .all(|migration| migration_plan.contains(migration))
+                        .all(|migration| migration_plan.contains(migration));
                 }
 
                 if all_parents_applied
