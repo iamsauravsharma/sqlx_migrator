@@ -8,7 +8,7 @@ pub enum Error {
     #[error(transparent)]
     SqlxError(#[from] sqlx::error::Error),
 
-    /// Error for failed to create migrations plan from cyclic dependency
-    #[error("Failed to create migrations plan due to cyclic dependency")]
+    /// Error for failed to create migrations plan
+    #[error("Failed to create migrations plan")]
     FailedToCreateMigrationPlan,
 }

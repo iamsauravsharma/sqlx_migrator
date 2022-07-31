@@ -26,6 +26,13 @@ pub trait Migration: Send + Sync {
         vec![]
     }
 
+    /// Replace certain migrations. If any one of listed migration is applied
+    /// than migration will not be applied else migration will apply instead of
+    /// applying those migration.
+    fn replaces(&self) -> Vec<Box<dyn Migration<Database = Self::Database>>> {
+        vec![]
+    }
+
     /// Full name of migration. Determined from app and name combination.
     /// Default value is {app}/{name}.
     fn full_name(&self) -> String {

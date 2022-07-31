@@ -66,11 +66,10 @@ pub trait Migrator: Send + Sync {
 
     /// Add single migration to migrator object
     fn add_migration(&mut self, migration: Box<dyn Migration<Database = Self::Database>>) {
-        let parents = migration.parents();
-        self.migrations_mut().insert(migration);
-        for parent in parents {
+        for parent in migration.parents() {
             self.add_migration(parent);
         }
+        self.migrations_mut().insert(migration);
     }
 
     /// List all applied migrations. Returns a vector of migration
@@ -80,12 +79,15 @@ pub trait Migrator: Send + Sync {
         }
         let applied_migration_list = self.fetch_applied_migration_from_db().await?;
 
+        // convert applied migration string name to vector of migration implemented
+        // objects
         let mut applied_migrations = Vec::new();
         for migration in self.migrations() {
             if applied_migration_list.contains(&migration.full_name()) {
                 applied_migrations.push(migration);
             }
         }
+
         Ok(applied_migrations)
     }
 
@@ -96,38 +98,75 @@ pub trait Migrator: Send + Sync {
         plan_type: PlanType,
     ) -> MigrationVecResult<Self::Database> {
         let applied_migrations = self.list_applied_migrations().await?;
+
         if cfg!(feature = "tracing") {
             tracing::info!("Generating {:?} migration plan", plan_type);
         }
+
         let mut migration_plan = Vec::new();
+
+        // Create migration plan until migration plan length is equal to hashmap length
         while migration_plan.len() != self.migrations().len() {
             let old_migration_plan_length = migration_plan.len();
             for migration in self.migrations() {
-                if migration
+                // Check if all parents are applied or not
+                let all_parents_applied = migration
                     .parents()
                     .iter()
-                    .all(|migration| migration_plan.contains(&migration))
-                    && !migration_plan.contains(&migration)
-                {
+                    .all(|migration| migration_plan.contains(&migration));
+
+                if all_parents_applied && !migration_plan.contains(&migration) {
                     migration_plan.push(migration);
                 }
             }
+
+            // If old migration plan length is equal to current length than no new migration
+            // was added. Next loop also will not add migration so return error
             if old_migration_plan_length == migration_plan.len() {
                 return Err(Error::FailedToCreateMigrationPlan);
             }
         }
+
+        // Handle replaces condition
+        let mut removed_migration_name = Vec::new();
+
+        // List which migration needs to be removed from plan
+        for migration in &migration_plan {
+            if !migration.replaces().is_empty() {
+                // Check if any replaces migration are applied for not
+                let replaces_applied = migration
+                    .replaces()
+                    .iter()
+                    .any(|migration| applied_migrations.contains(&migration));
+
+                if replaces_applied {
+                    removed_migration_name.push(migration.full_name());
+                } else {
+                    for replaced_migration in migration.replaces() {
+                        removed_migration_name.push(replaced_migration.full_name());
+                    }
+                }
+            }
+        }
+
+        // Retain only migration which are not in removed migration name
+        migration_plan.retain(|migration| !removed_migration_name.contains(&migration.full_name()));
+
+        // Return migration according to plan type
         match plan_type {
             PlanType::Full => (),
-            PlanType::Apply => migration_plan.retain(|plan| !applied_migrations.contains(plan)),
+            PlanType::Apply => {
+                migration_plan.retain(|migration| !applied_migrations.contains(migration))
+            }
             PlanType::Revert => {
-                migration_plan.retain(|plan| applied_migrations.contains(plan));
+                migration_plan.retain(|migration| applied_migrations.contains(migration));
                 migration_plan.reverse();
             }
         };
         Ok(migration_plan)
     }
 
-    /// Apply missing migration plan
+    /// Apply missing migration
     ///
     /// # Errors
     /// If failed to apply migration
@@ -142,7 +181,7 @@ pub trait Migrator: Send + Sync {
         Ok(())
     }
 
-    /// Apply certain migration to database and add it to applied migration
+    /// Apply given migration and add it to applied migration table
     #[allow(clippy::borrowed_box)]
     async fn apply_migration(
         &self,
@@ -177,7 +216,7 @@ pub trait Migrator: Send + Sync {
         Ok(())
     }
 
-    /// Revert migration
+    /// Revert provided migration and remove migration from table
     #[allow(clippy::borrowed_box)]
     async fn revert_migration(
         &self,
@@ -188,10 +227,13 @@ pub trait Migrator: Send + Sync {
         }
         let mut transaction = self.pool().begin().await?;
         let mut operations = migration.operations();
+
+        // Revert operation since last applied operation need to be reversed first
         operations.reverse();
         for operation in operations {
             operation.down(&mut transaction).await?;
         }
+
         self.delete_migration_from_db_table(&migration.full_name(), &mut transaction)
             .await?;
         transaction.commit().await?;
