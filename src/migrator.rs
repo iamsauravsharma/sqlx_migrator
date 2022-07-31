@@ -130,14 +130,12 @@ pub trait Migrator: Send + Sync {
                     .iter()
                     .all(|migration| migration_plan.contains(&migration));
 
-                let all_run_before_parents_added = match run_before_parents_hashmap.get(migration) {
-                    None => true,
-                    Some(before_migrations) => {
-                        before_migrations
-                            .iter()
-                            .all(|migration| migration_plan.contains(migration))
-                    }
-                };
+                let mut all_run_before_parents_added = true;
+                if let Some(before_migrations) = run_before_parents_hashmap.get(migration) {
+                    all_run_before_parents_added = before_migrations
+                        .iter()
+                        .all(|migration| migration_plan.contains(migration))
+                }
 
                 if all_parents_applied
                     && all_run_before_parents_added

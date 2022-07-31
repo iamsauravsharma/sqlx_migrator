@@ -34,8 +34,7 @@ pub trait Migration: Send + Sync {
     }
 
     /// Run before certain migration. This can be helpful in condition where
-    /// other library migration need to be applied after this
-    /// migration
+    /// other library migration need to be applied after this migration
     fn run_before(&self) -> Vec<Box<dyn Migration<Database = Self::Database>>> {
         vec![]
     }
