@@ -9,6 +9,17 @@ use crate::migration::Migration;
 
 type MigrationVecResult<'a, DB> = Result<Vec<&'a Box<dyn Migration<Database = DB>>>, Error>;
 
+/// Type of plan used to generate migrations
+#[derive(Debug)]
+pub enum PlanType {
+    /// Full plan. Plan containing all migrations according to order
+    Full,
+    /// Apply plan. Plan containing migrations which can be applied
+    Apply,
+    /// Revert plan. Plan containing migrations which can be reverted
+    Revert,
+}
+
 #[async_trait::async_trait]
 /// Migrator trait
 pub trait Migrator: Send + Sync {
@@ -78,11 +89,15 @@ pub trait Migrator: Send + Sync {
         Ok(applied_migrations)
     }
 
-    /// Generate full migration plan for all migrations. Returns a vector of
+    /// Generate migration plan for according to plan type. Returns a vector of
     /// migration
-    fn generate_full_migration_plan(&self) -> MigrationVecResult<Self::Database> {
+    async fn generate_migration_plan(
+        &self,
+        plan_type: PlanType,
+    ) -> MigrationVecResult<Self::Database> {
+        let applied_migrations = self.list_applied_migrations().await?;
         if cfg!(feature = "tracing") {
-            tracing::info!("Generating full migration plan");
+            tracing::info!("Generating {:?} migration plan", plan_type);
         }
         let mut migration_plan = Vec::new();
         while migration_plan.len() != self.migrations().len() {
@@ -101,27 +116,15 @@ pub trait Migrator: Send + Sync {
                 return Err(Error::FailedToCreateMigrationPlan);
             }
         }
-        Ok(migration_plan)
-    }
-
-    /// Generate apply all migration plan. Returns a vector of migration
-    /// operation to be applied
-    ///
-    /// # Errors
-    /// If failed to generate migration plan or list applied migration
-    async fn apply_all_plan(&self) -> MigrationVecResult<Self::Database> {
-        let applied_migrations = self.list_applied_migrations().await?;
-        if cfg!(feature = "tracing") {
-            tracing::info!("Creating apply all migration plan");
-        }
-        let full_plan = self.generate_full_migration_plan()?;
-        let mut apply_all_plan = Vec::new();
-        for plan in full_plan {
-            if !applied_migrations.contains(&plan) {
-                apply_all_plan.push(plan);
+        match plan_type {
+            PlanType::Full => (),
+            PlanType::Apply => migration_plan.retain(|plan| !applied_migrations.contains(plan)),
+            PlanType::Revert => {
+                migration_plan.retain(|plan| applied_migrations.contains(plan));
+                migration_plan.reverse();
             }
-        }
-        Ok(apply_all_plan)
+        };
+        Ok(migration_plan)
     }
 
     /// Apply missing migration plan
@@ -133,7 +136,7 @@ pub trait Migrator: Send + Sync {
             tracing::info!("Applying all migration");
         }
         self.ensure_migration_table_exists().await?;
-        for migration in self.apply_all_plan().await? {
+        for migration in self.generate_migration_plan(PlanType::Apply).await? {
             self.apply_migration(migration).await?;
         }
         Ok(())
@@ -159,27 +162,6 @@ pub trait Migrator: Send + Sync {
         Ok(())
     }
 
-    /// Create revert all plan for all migrations. Returns a vector of migration
-    /// operation to be reverted
-    ///
-    /// # Errors
-    /// If failed to create revert plan or list applied migration
-    async fn revert_all_plan(&self) -> MigrationVecResult<Self::Database> {
-        let applied_migrations = self.list_applied_migrations().await?;
-        if cfg!(feature = "tracing") {
-            tracing::info!("Creating revert all migration plan");
-        }
-        let full_plan = self.generate_full_migration_plan()?;
-        let mut revert_all_plan = Vec::new();
-        for plan in full_plan {
-            if applied_migrations.contains(&plan) {
-                revert_all_plan.push(plan);
-            }
-        }
-        revert_all_plan.reverse();
-        Ok(revert_all_plan)
-    }
-
     /// Revert all applied migration from database
     ///
     /// # Errors
@@ -189,7 +171,7 @@ pub trait Migrator: Send + Sync {
             tracing::info!("Reverting all migration");
         }
         self.ensure_migration_table_exists().await?;
-        for migration in self.revert_all_plan().await? {
+        for migration in self.generate_migration_plan(PlanType::Revert).await? {
             self.revert_migration(migration).await?;
         }
         Ok(())

@@ -2,7 +2,7 @@
 use clap::{Parser, Subcommand};
 
 use crate::error::Error;
-use crate::migrator::Migrator;
+use crate::migrator::{Migrator, PlanType};
 
 #[derive(Parser, Debug)]
 struct Args {
@@ -35,7 +35,7 @@ where
         "Migration", "Status"
     );
     println!("{:^full_width$}", "-".repeat(full_width));
-    for migration in migrator.generate_full_migration_plan()? {
+    for migration in migrator.generate_migration_plan(PlanType::Full).await? {
         println!(
             "{:^first_width$} | {:^second_width$}",
             migration.full_name(),
@@ -69,7 +69,7 @@ async fn revert_latest<DB>(migrator: Box<dyn Migrator<Database = DB>>) -> Result
 where
     DB: sqlx::Database,
 {
-    let revert_plan = migrator.revert_all_plan().await?;
+    let revert_plan = migrator.generate_migration_plan(PlanType::Revert).await?;
     if let Some(latest_migration) = revert_plan.first() {
         migrator.revert_migration(latest_migration).await?;
     }
