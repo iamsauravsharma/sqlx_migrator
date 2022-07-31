@@ -65,6 +65,11 @@
 <span id="65">65</span>
 <span id="66">66</span>
 <span id="67">67</span>
+<span id="68">68</span>
+<span id="69">69</span>
+<span id="70">70</span>
+<span id="71">71</span>
+<span id="72">72</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Module defining migration trait</span>
 <span class="kw">use</span> <span class="ident">std::hash::Hash</span>;
 
@@ -104,6 +109,11 @@
     <span class="doccomment">/// other library migration need to be applied after this migration</span>
     <span class="kw">fn</span> <span class="ident">run_before</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Migration</span><span class="op">&lt;</span><span class="ident">Database</span> <span class="op">=</span> <span class="ident"><span class="self">Self</span>::Database</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span> {
         <span class="macro">vec!</span>[]
+    }
+
+    <span class="doccomment">/// Whether migration is atomic or not. By default it is true</span>
+    <span class="kw">fn</span> <span class="ident">is_atomic</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
+        <span class="bool-val">true</span>
     }
 
     <span class="doccomment">/// Full name of migration. Determined from app and name combination.</span>
