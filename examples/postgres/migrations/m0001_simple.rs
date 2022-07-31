@@ -1,4 +1,3 @@
-use sqlx::Transaction;
 use sqlx_migrator::error::Error;
 use sqlx_migrator::migration::Migration;
 use sqlx_migrator::operation::Operation;
@@ -9,17 +8,21 @@ pub(crate) struct M0001Operation;
 impl Operation for M0001Operation {
     type Database = sqlx::Postgres;
 
-    async fn up(&self, transaction: &mut Transaction<Self::Database>) -> Result<(), Error> {
+    async fn up(
+        &self,
+        connection: &mut <Self::Database as sqlx::Database>::Connection,
+    ) -> Result<(), Error> {
         sqlx::query("CREATE TABLE sample (id INTEGER PRIMARY KEY, name TEXT)")
-            .execute(transaction)
+            .execute(connection)
             .await?;
         Ok(())
     }
 
-    async fn down(&self, transaction: &mut Transaction<Self::Database>) -> Result<(), Error> {
-        sqlx::query("DROP TABLE sample")
-            .execute(transaction)
-            .await?;
+    async fn down(
+        &self,
+        connection: &mut <Self::Database as sqlx::Database>::Connection,
+    ) -> Result<(), Error> {
+        sqlx::query("DROP TABLE sample").execute(connection).await?;
         Ok(())
     }
 }

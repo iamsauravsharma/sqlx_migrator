@@ -1,7 +1,7 @@
 //! Sqlite migrator module
 use std::collections::HashSet;
 
-use sqlx::{Pool, Row, Sqlite, Transaction};
+use sqlx::{Pool, Row, Sqlite};
 
 use crate::error::Error;
 use crate::migration::Migration;
@@ -56,10 +56,10 @@ CREATE TABLE IF NOT EXISTS _sqlx_migrator_migrations (
         Ok(())
     }
 
-    async fn add_migration_to_db_table<'t>(
+    async fn add_migration_to_db_table(
         &self,
         migration_full_name: &str,
-        transaction: &mut Transaction<'t, Self::Database>,
+        connection: &mut <Self::Database as sqlx::Database>::Connection,
     ) -> Result<(), Error> {
         sqlx::query(
             r#"
@@ -67,15 +67,15 @@ INSERT INTO _sqlx_migrator_migrations(migration_full_name) VALUES ($1)
             "#,
         )
         .bind(migration_full_name)
-        .execute(transaction)
+        .execute(connection)
         .await?;
         Ok(())
     }
 
-    async fn delete_migration_from_db_table<'t>(
+    async fn delete_migration_from_db_table(
         &self,
         migration_full_name: &str,
-        transaction: &mut Transaction<'t, Self::Database>,
+        connection: &mut <Self::Database as sqlx::Database>::Connection,
     ) -> Result<(), Error> {
         sqlx::query(
             r#"
@@ -83,7 +83,7 @@ DELETE FROM _sqlx_migrator_migrations WHERE migration_full_name = $1
             "#,
         )
         .bind(migration_full_name)
-        .execute(transaction)
+        .execute(connection)
         .await?;
         Ok(())
     }

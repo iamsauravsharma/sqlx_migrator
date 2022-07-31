@@ -2,7 +2,7 @@
 
 use std::collections::{HashMap, HashSet};
 
-use sqlx::{Pool, Transaction};
+use sqlx::Pool;
 
 use crate::error::Error;
 use crate::migration::Migration;
@@ -40,17 +40,17 @@ pub trait Migrator: Send + Sync {
     async fn ensure_migration_table_exists(&self) -> Result<(), Error>;
 
     /// Add migration to migration table
-    async fn add_migration_to_db_table<'t>(
+    async fn add_migration_to_db_table(
         &self,
         migration_full_name: &str,
-        transaction: &mut Transaction<'t, Self::Database>,
+        connection: &mut <Self::Database as sqlx::Database>::Connection,
     ) -> Result<(), Error>;
 
     /// Delete migration from table
-    async fn delete_migration_from_db_table<'t>(
+    async fn delete_migration_from_db_table(
         &self,
         migration_full_name: &str,
-        transaction: &mut Transaction<'t, Self::Database>,
+        connection: &mut <Self::Database as sqlx::Database>::Connection,
     ) -> Result<(), Error>;
 
     /// List all applied migrations from database in string format (full name of
@@ -215,14 +215,22 @@ pub trait Migrator: Send + Sync {
         if cfg!(feature = "tracing") {
             tracing::info!("Applying migration {}", migration.full_name());
         }
-        let mut transaction = self.pool().begin().await?;
-        for operation in migration.operations() {
-            operation.up(&mut transaction).await?;
+        if migration.is_atomic() {
+            let mut transaction = self.pool().begin().await?;
+            for operation in migration.operations() {
+                operation.up(&mut transaction).await?;
+            }
+            self.add_migration_to_db_table(&migration.full_name(), &mut transaction)
+                .await?;
+            transaction.commit().await?;
+        } else {
+            let mut connection = self.pool().acquire().await?;
+            for operation in migration.operations() {
+                operation.up(&mut connection).await?;
+            }
+            self.add_migration_to_db_table(&migration.full_name(), &mut connection)
+                .await?;
         }
-
-        self.add_migration_to_db_table(&migration.full_name(), &mut transaction)
-            .await?;
-        transaction.commit().await?;
         Ok(())
     }
 
@@ -250,18 +258,27 @@ pub trait Migrator: Send + Sync {
         if cfg!(feature = "tracing") {
             tracing::info!("Reverting migration {}", migration.full_name());
         }
-        let mut transaction = self.pool().begin().await?;
+
+        // Reverse operation since last applied operation need to be reverted first
         let mut operations = migration.operations();
-
-        // Revert operation since last applied operation need to be reversed first
         operations.reverse();
-        for operation in operations {
-            operation.down(&mut transaction).await?;
-        }
 
-        self.delete_migration_from_db_table(&migration.full_name(), &mut transaction)
-            .await?;
-        transaction.commit().await?;
+        if migration.is_atomic() {
+            let mut transaction = self.pool().begin().await?;
+            for operation in operations {
+                operation.down(&mut transaction).await?;
+            }
+            self.delete_migration_from_db_table(&migration.full_name(), &mut transaction)
+                .await?;
+            transaction.commit().await?;
+        } else {
+            let mut connection = self.pool().acquire().await?;
+            for operation in operations {
+                operation.down(&mut connection).await?;
+            }
+            self.delete_migration_from_db_table(&migration.full_name(), &mut connection)
+                .await?;
+        }
         Ok(())
     }
 }

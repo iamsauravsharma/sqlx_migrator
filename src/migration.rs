@@ -39,6 +39,11 @@ pub trait Migration: Send + Sync {
         vec![]
     }
 
+    /// Whether migration is atomic or not. By default it is true
+    fn is_atomic(&self) -> bool {
+        true
+    }
+
     /// Full name of migration. Determined from app and name combination.
     /// Default value is {app}/{name}.
     fn full_name(&self) -> String {
