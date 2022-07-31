@@ -1,12 +1,13 @@
 use sqlx_migrator::error::Error;
 use sqlx_migrator::migration::Migration;
 use sqlx_migrator::operation::Operation;
+use sqlx_migrator::sqlx::Sqlite;
 
 pub(crate) struct M0001Operation;
 
 #[async_trait::async_trait]
 impl Operation for M0001Operation {
-    type Database = sqlx::Sqlite;
+    type Database = Sqlite;
 
     async fn up(
         &self,
@@ -31,7 +32,7 @@ pub(crate) struct M0001Migration;
 
 #[async_trait::async_trait]
 impl Migration for M0001Migration {
-    type Database = sqlx::Sqlite;
+    type Database = Sqlite;
 
     fn app(&self) -> &str {
         "main"

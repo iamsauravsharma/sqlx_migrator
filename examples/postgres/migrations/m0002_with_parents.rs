@@ -1,12 +1,13 @@
 use sqlx_migrator::error::Error;
 use sqlx_migrator::migration::Migration;
 use sqlx_migrator::operation::Operation;
+use sqlx_migrator::sqlx::Postgres;
 
 pub(crate) struct M0002Operation;
 
 #[async_trait::async_trait]
 impl Operation for M0002Operation {
-    type Database = sqlx::Postgres;
+    type Database = Postgres;
 
     async fn up(
         &self,
@@ -33,7 +34,7 @@ pub(crate) struct M0002Migration;
 
 #[async_trait::async_trait]
 impl Migration for M0002Migration {
-    type Database = sqlx::Postgres;
+    type Database = Postgres;
 
     fn app(&self) -> &str {
         "main"
