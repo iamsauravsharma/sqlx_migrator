@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"trait":[["Migrator","Migrator trait"]]};
+window.SIDEBAR_ITEMS = {"enum":[["PlanType","Type of plan used to generate migrations"]],"trait":[["Migrator","Migrator trait"]]};
