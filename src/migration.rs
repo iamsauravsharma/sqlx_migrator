@@ -33,6 +33,13 @@ pub trait Migration: Send + Sync {
         vec![]
     }
 
+    /// Run before certain migration. This can be helpful in condition where
+    /// other library migration need to be applied after this
+    /// migration
+    fn run_before(&self) -> Vec<Box<dyn Migration<Database = Self::Database>>> {
+        vec![]
+    }
+
     /// Full name of migration. Determined from app and name combination.
     /// Default value is {app}/{name}.
     fn full_name(&self) -> String {

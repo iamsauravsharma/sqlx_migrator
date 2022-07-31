@@ -1,6 +1,6 @@
 //! migrator module
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use sqlx::{Pool, Transaction};
 
@@ -105,7 +105,22 @@ pub trait Migrator: Send + Sync {
 
         let mut migration_plan = Vec::new();
 
-        // Create migration plan until migration plan length is equal to hashmap length
+        // Hashmap which contains key as migration name and value as list of migration
+        // which needs to applied earlier than key according to before method of value
+        // migration
+        let mut run_before_parents_hashmap = HashMap::new();
+
+        for migration in self.migrations() {
+            for run_before_migration in migration.run_before() {
+                run_before_parents_hashmap
+                    .entry(run_before_migration)
+                    .or_insert(Vec::new())
+                    .push(migration);
+            }
+        }
+
+        // Create migration plan until migration plan length is equal to hashmap
+        // length
         while migration_plan.len() != self.migrations().len() {
             let old_migration_plan_length = migration_plan.len();
             for migration in self.migrations() {
@@ -115,7 +130,19 @@ pub trait Migrator: Send + Sync {
                     .iter()
                     .all(|migration| migration_plan.contains(&migration));
 
-                if all_parents_applied && !migration_plan.contains(&migration) {
+                let all_run_before_parents_added = match run_before_parents_hashmap.get(migration) {
+                    None => true,
+                    Some(before_migrations) => {
+                        before_migrations
+                            .iter()
+                            .all(|migration| migration_plan.contains(migration))
+                    }
+                };
+
+                if all_parents_applied
+                    && all_run_before_parents_added
+                    && !migration_plan.contains(&migration)
+                {
                     migration_plan.push(migration);
                 }
             }
@@ -156,7 +183,7 @@ pub trait Migrator: Send + Sync {
         match plan_type {
             PlanType::Full => (),
             PlanType::Apply => {
-                migration_plan.retain(|migration| !applied_migrations.contains(migration))
+                migration_plan.retain(|migration| !applied_migrations.contains(migration));
             }
             PlanType::Revert => {
                 migration_plan.retain(|migration| applied_migrations.contains(migration));
