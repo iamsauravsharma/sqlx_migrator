@@ -198,6 +198,48 @@
 <span id="198">198</span>
 <span id="199">199</span>
 <span id="200">200</span>
+<span id="201">201</span>
+<span id="202">202</span>
+<span id="203">203</span>
+<span id="204">204</span>
+<span id="205">205</span>
+<span id="206">206</span>
+<span id="207">207</span>
+<span id="208">208</span>
+<span id="209">209</span>
+<span id="210">210</span>
+<span id="211">211</span>
+<span id="212">212</span>
+<span id="213">213</span>
+<span id="214">214</span>
+<span id="215">215</span>
+<span id="216">216</span>
+<span id="217">217</span>
+<span id="218">218</span>
+<span id="219">219</span>
+<span id="220">220</span>
+<span id="221">221</span>
+<span id="222">222</span>
+<span id="223">223</span>
+<span id="224">224</span>
+<span id="225">225</span>
+<span id="226">226</span>
+<span id="227">227</span>
+<span id="228">228</span>
+<span id="229">229</span>
+<span id="230">230</span>
+<span id="231">231</span>
+<span id="232">232</span>
+<span id="233">233</span>
+<span id="234">234</span>
+<span id="235">235</span>
+<span id="236">236</span>
+<span id="237">237</span>
+<span id="238">238</span>
+<span id="239">239</span>
+<span id="240">240</span>
+<span id="241">241</span>
+<span id="242">242</span>
 </pre><pre class="rust"><code><span class="doccomment">//! migrator module</span>
 
 <span class="kw">use</span> <span class="ident">std::collections::HashSet</span>;
@@ -266,11 +308,10 @@
 
     <span class="doccomment">/// Add single migration to migrator object</span>
     <span class="kw">fn</span> <span class="ident">add_migration</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">migration</span>: <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Migration</span><span class="op">&lt;</span><span class="ident">Database</span> <span class="op">=</span> <span class="ident"><span class="self">Self</span>::Database</span><span class="op">&gt;</span><span class="op">&gt;</span>) {
-        <span class="kw">let</span> <span class="ident">parents</span> <span class="op">=</span> <span class="ident">migration</span>.<span class="ident">parents</span>();
-        <span class="self">self</span>.<span class="ident">migrations_mut</span>().<span class="ident">insert</span>(<span class="ident">migration</span>);
-        <span class="kw">for</span> <span class="ident">parent</span> <span class="kw">in</span> <span class="ident">parents</span> {
+        <span class="kw">for</span> <span class="ident">parent</span> <span class="kw">in</span> <span class="ident">migration</span>.<span class="ident">parents</span>() {
             <span class="self">self</span>.<span class="ident">add_migration</span>(<span class="ident">parent</span>);
         }
+        <span class="self">self</span>.<span class="ident">migrations_mut</span>().<span class="ident">insert</span>(<span class="ident">migration</span>);
     }
 
     <span class="doccomment">/// List all applied migrations. Returns a vector of migration</span>
@@ -280,12 +321,15 @@
         }
         <span class="kw">let</span> <span class="ident">applied_migration_list</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">fetch_applied_migration_from_db</span>().<span class="kw">await</span><span class="question-mark">?</span>;
 
+        <span class="comment">// convert applied migration string name to vector of migration implemented</span>
+        <span class="comment">// objects</span>
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">applied_migrations</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
         <span class="kw">for</span> <span class="ident">migration</span> <span class="kw">in</span> <span class="self">self</span>.<span class="ident">migrations</span>() {
             <span class="kw">if</span> <span class="ident">applied_migration_list</span>.<span class="ident">contains</span>(<span class="kw-2">&amp;</span><span class="ident">migration</span>.<span class="ident">full_name</span>()) {
                 <span class="ident">applied_migrations</span>.<span class="ident">push</span>(<span class="ident">migration</span>);
             }
         }
+
         <span class="prelude-val">Ok</span>(<span class="ident">applied_migrations</span>)
     }
 
@@ -296,38 +340,75 @@
         <span class="ident">plan_type</span>: <span class="ident">PlanType</span>,
     ) -&gt; <span class="ident">MigrationVecResult</span><span class="op">&lt;</span><span class="ident"><span class="self">Self</span>::Database</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">applied_migrations</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">list_applied_migrations</span>().<span class="kw">await</span><span class="question-mark">?</span>;
+
         <span class="kw">if</span> <span class="macro">cfg!</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;tracing&quot;</span>) {
             <span class="macro">tracing::info!</span>(<span class="string">&quot;Generating {:?} migration plan&quot;</span>, <span class="ident">plan_type</span>);
         }
+
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">migration_plan</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
+
+        <span class="comment">// Create migration plan until migration plan length is equal to hashmap length</span>
         <span class="kw">while</span> <span class="ident">migration_plan</span>.<span class="ident">len</span>() <span class="op">!</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">migrations</span>().<span class="ident">len</span>() {
             <span class="kw">let</span> <span class="ident">old_migration_plan_length</span> <span class="op">=</span> <span class="ident">migration_plan</span>.<span class="ident">len</span>();
             <span class="kw">for</span> <span class="ident">migration</span> <span class="kw">in</span> <span class="self">self</span>.<span class="ident">migrations</span>() {
-                <span class="kw">if</span> <span class="ident">migration</span>
+                <span class="comment">// Check if all parents are applied or not</span>
+                <span class="kw">let</span> <span class="ident">all_parents_applied</span> <span class="op">=</span> <span class="ident">migration</span>
                     .<span class="ident">parents</span>()
                     .<span class="ident">iter</span>()
-                    .<span class="ident">all</span>(<span class="op">|</span><span class="ident">migration</span><span class="op">|</span> <span class="ident">migration_plan</span>.<span class="ident">contains</span>(<span class="kw-2">&amp;</span><span class="ident">migration</span>))
-                    <span class="op">&amp;&amp;</span> <span class="op">!</span><span class="ident">migration_plan</span>.<span class="ident">contains</span>(<span class="kw-2">&amp;</span><span class="ident">migration</span>)
-                {
+                    .<span class="ident">all</span>(<span class="op">|</span><span class="ident">migration</span><span class="op">|</span> <span class="ident">migration_plan</span>.<span class="ident">contains</span>(<span class="kw-2">&amp;</span><span class="ident">migration</span>));
+
+                <span class="kw">if</span> <span class="ident">all_parents_applied</span> <span class="op">&amp;&amp;</span> <span class="op">!</span><span class="ident">migration_plan</span>.<span class="ident">contains</span>(<span class="kw-2">&amp;</span><span class="ident">migration</span>) {
                     <span class="ident">migration_plan</span>.<span class="ident">push</span>(<span class="ident">migration</span>);
                 }
             }
+
+            <span class="comment">// If old migration plan length is equal to current length than no new migration</span>
+            <span class="comment">// was added. Next loop also will not add migration so return error</span>
             <span class="kw">if</span> <span class="ident">old_migration_plan_length</span> <span class="op">==</span> <span class="ident">migration_plan</span>.<span class="ident">len</span>() {
                 <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">Error::FailedToCreateMigrationPlan</span>);
             }
         }
+
+        <span class="comment">// Handle replaces condition</span>
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">removed_migration_name</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
+
+        <span class="comment">// List which migration needs to be removed from plan</span>
+        <span class="kw">for</span> <span class="ident">migration</span> <span class="kw">in</span> <span class="kw-2">&amp;</span><span class="ident">migration_plan</span> {
+            <span class="kw">if</span> <span class="op">!</span><span class="ident">migration</span>.<span class="ident">replaces</span>().<span class="ident">is_empty</span>() {
+                <span class="comment">// Check if any replaces migration are applied for not</span>
+                <span class="kw">let</span> <span class="ident">replaces_applied</span> <span class="op">=</span> <span class="ident">migration</span>
+                    .<span class="ident">replaces</span>()
+                    .<span class="ident">iter</span>()
+                    .<span class="ident">any</span>(<span class="op">|</span><span class="ident">migration</span><span class="op">|</span> <span class="ident">applied_migrations</span>.<span class="ident">contains</span>(<span class="kw-2">&amp;</span><span class="ident">migration</span>));
+
+                <span class="kw">if</span> <span class="ident">replaces_applied</span> {
+                    <span class="ident">removed_migration_name</span>.<span class="ident">push</span>(<span class="ident">migration</span>.<span class="ident">full_name</span>());
+                } <span class="kw">else</span> {
+                    <span class="kw">for</span> <span class="ident">replaced_migration</span> <span class="kw">in</span> <span class="ident">migration</span>.<span class="ident">replaces</span>() {
+                        <span class="ident">removed_migration_name</span>.<span class="ident">push</span>(<span class="ident">replaced_migration</span>.<span class="ident">full_name</span>());
+                    }
+                }
+            }
+        }
+
+        <span class="comment">// Retain only migration which are not in removed migration name</span>
+        <span class="ident">migration_plan</span>.<span class="ident">retain</span>(<span class="op">|</span><span class="ident">migration</span><span class="op">|</span> <span class="op">!</span><span class="ident">removed_migration_name</span>.<span class="ident">contains</span>(<span class="kw-2">&amp;</span><span class="ident">migration</span>.<span class="ident">full_name</span>()));
+
+        <span class="comment">// Return migration according to plan type</span>
         <span class="kw">match</span> <span class="ident">plan_type</span> {
             <span class="ident">PlanType::Full</span> =&gt; (),
-            <span class="ident">PlanType::Apply</span> =&gt; <span class="ident">migration_plan</span>.<span class="ident">retain</span>(<span class="op">|</span><span class="ident">plan</span><span class="op">|</span> <span class="op">!</span><span class="ident">applied_migrations</span>.<span class="ident">contains</span>(<span class="ident">plan</span>)),
+            <span class="ident">PlanType::Apply</span> =&gt; {
+                <span class="ident">migration_plan</span>.<span class="ident">retain</span>(<span class="op">|</span><span class="ident">migration</span><span class="op">|</span> <span class="op">!</span><span class="ident">applied_migrations</span>.<span class="ident">contains</span>(<span class="ident">migration</span>))
+            }
             <span class="ident">PlanType::Revert</span> =&gt; {
-                <span class="ident">migration_plan</span>.<span class="ident">retain</span>(<span class="op">|</span><span class="ident">plan</span><span class="op">|</span> <span class="ident">applied_migrations</span>.<span class="ident">contains</span>(<span class="ident">plan</span>));
+                <span class="ident">migration_plan</span>.<span class="ident">retain</span>(<span class="op">|</span><span class="ident">migration</span><span class="op">|</span> <span class="ident">applied_migrations</span>.<span class="ident">contains</span>(<span class="ident">migration</span>));
                 <span class="ident">migration_plan</span>.<span class="ident">reverse</span>();
             }
         };
         <span class="prelude-val">Ok</span>(<span class="ident">migration_plan</span>)
     }
 
-    <span class="doccomment">/// Apply missing migration plan</span>
+    <span class="doccomment">/// Apply missing migration</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Errors</span>
     <span class="doccomment">/// If failed to apply migration</span>
@@ -342,7 +423,7 @@
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="doccomment">/// Apply certain migration to database and add it to applied migration</span>
+    <span class="doccomment">/// Apply given migration and add it to applied migration table</span>
     <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::borrowed_box</span>)]</span>
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">apply_migration</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
@@ -377,7 +458,7 @@
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="doccomment">/// Revert migration</span>
+    <span class="doccomment">/// Revert provided migration and remove migration from table</span>
     <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::borrowed_box</span>)]</span>
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">revert_migration</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
@@ -388,10 +469,13 @@
         }
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">transaction</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">pool</span>().<span class="ident">begin</span>().<span class="kw">await</span><span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">operations</span> <span class="op">=</span> <span class="ident">migration</span>.<span class="ident">operations</span>();
+
+        <span class="comment">// Revert operation since last applied operation need to be reversed first</span>
         <span class="ident">operations</span>.<span class="ident">reverse</span>();
         <span class="kw">for</span> <span class="ident">operation</span> <span class="kw">in</span> <span class="ident">operations</span> {
             <span class="ident">operation</span>.<span class="ident">down</span>(<span class="kw-2">&amp;mut</span> <span class="ident">transaction</span>).<span class="kw">await</span><span class="question-mark">?</span>;
         }
+
         <span class="self">self</span>.<span class="ident">delete_migration_from_db_table</span>(<span class="kw-2">&amp;</span><span class="ident">migration</span>.<span class="ident">full_name</span>(), <span class="kw-2">&amp;mut</span> <span class="ident">transaction</span>)
             .<span class="kw">await</span><span class="question-mark">?</span>;
         <span class="ident">transaction</span>.<span class="ident">commit</span>().<span class="kw">await</span><span class="question-mark">?</span>;

@@ -52,6 +52,13 @@
 <span id="52">52</span>
 <span id="53">53</span>
 <span id="54">54</span>
+<span id="55">55</span>
+<span id="56">56</span>
+<span id="57">57</span>
+<span id="58">58</span>
+<span id="59">59</span>
+<span id="60">60</span>
+<span id="61">61</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Module defining migration trait</span>
 <span class="kw">use</span> <span class="ident">std::hash::Hash</span>;
 
@@ -77,6 +84,13 @@
 
     <span class="doccomment">/// Operation performed for migration (create, drop, etc.)</span>
     <span class="kw">fn</span> <span class="ident">operations</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Operation</span><span class="op">&lt;</span><span class="ident">Database</span> <span class="op">=</span> <span class="ident"><span class="self">Self</span>::Database</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span> {
+        <span class="macro">vec!</span>[]
+    }
+
+    <span class="doccomment">/// Replace certain migrations. If any one of listed migration is applied</span>
+    <span class="doccomment">/// than migration will not be applied else migration will apply instead of</span>
+    <span class="doccomment">/// applying those migration.</span>
+    <span class="kw">fn</span> <span class="ident">replaces</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Migration</span><span class="op">&lt;</span><span class="ident">Database</span> <span class="op">=</span> <span class="ident"><span class="self">Self</span>::Database</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span> {
         <span class="macro">vec!</span>[]
     }
 
