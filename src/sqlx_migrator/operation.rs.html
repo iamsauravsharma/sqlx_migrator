@@ -18,7 +18,78 @@
 <span id="18">18</span>
 <span id="19">19</span>
 <span id="20">20</span>
+<span id="21">21</span>
+<span id="22">22</span>
+<span id="23">23</span>
+<span id="24">24</span>
+<span id="25">25</span>
+<span id="26">26</span>
+<span id="27">27</span>
+<span id="28">28</span>
+<span id="29">29</span>
+<span id="30">30</span>
+<span id="31">31</span>
+<span id="32">32</span>
+<span id="33">33</span>
+<span id="34">34</span>
+<span id="35">35</span>
+<span id="36">36</span>
+<span id="37">37</span>
+<span id="38">38</span>
+<span id="39">39</span>
+<span id="40">40</span>
+<span id="41">41</span>
+<span id="42">42</span>
+<span id="43">43</span>
+<span id="44">44</span>
+<span id="45">45</span>
+<span id="46">46</span>
+<span id="47">47</span>
+<span id="48">48</span>
+<span id="49">49</span>
+<span id="50">50</span>
+<span id="51">51</span>
+<span id="52">52</span>
+<span id="53">53</span>
+<span id="54">54</span>
+<span id="55">55</span>
+<span id="56">56</span>
+<span id="57">57</span>
+<span id="58">58</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Operation module</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! To create own operation implement trait for type</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! ### Example</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! ```rust,no_run</span>
+<span class="doccomment">//! use sqlx_migrator::error::Error;</span>
+<span class="doccomment">//! use sqlx_migrator::operation::Operation;</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! struct ExampleOperation;</span>
+<span class="doccomment">//! #[async_trait::async_trait]</span>
+<span class="doccomment">//! impl Operation for ExampleOperation {</span>
+<span class="doccomment">//!     type Database = sqlx_migrator::sqlx::Sqlite;</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//!     async fn up(</span>
+<span class="doccomment">//!         &amp;self,</span>
+<span class="doccomment">//!         connection: &amp;mut &lt;Self::Database as sqlx::Database&gt;::Connection,</span>
+<span class="doccomment">//!     ) -&gt; Result&lt;(), Error&gt; {</span>
+<span class="doccomment">//!         // Do some operations</span>
+<span class="doccomment">//!         Ok(())</span>
+<span class="doccomment">//!     }</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//!     // By default operation is irreversible and cannot be reversed if you want to support</span>
+<span class="doccomment">//!     // reverse of migration than add down function as well</span>
+<span class="doccomment">//!     async fn down(</span>
+<span class="doccomment">//!         &amp;self,</span>
+<span class="doccomment">//!         connection: &amp;mut &lt;Self::Database as sqlx::Database&gt;::Connection,</span>
+<span class="doccomment">//!     ) -&gt; Result&lt;(), Error&gt; {</span>
+<span class="doccomment">//!         // Do some operations</span>
+<span class="doccomment">//!         Ok(())</span>
+<span class="doccomment">//!     }</span>
+<span class="doccomment">//! }</span>
+<span class="doccomment">//! ```</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error::Error</span>;
 
@@ -32,11 +103,16 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">connection</span>: <span class="kw-2">&amp;mut</span> <span class="op">&lt;</span><span class="ident"><span class="self">Self</span>::Database</span> <span class="kw">as</span> <span class="ident">sqlx::Database</span><span class="op">&gt;</span><span class="ident">::Connection</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">Error</span><span class="op">&gt;</span>;
-    <span class="doccomment">/// Down command to be executed during migration rollback</span>
+    <span class="doccomment">/// Down command to be executed during migration rollback. If it is not</span>
+    <span class="doccomment">/// implemented than operation is irreversible operation.</span>
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">down</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">connection</span>: <span class="kw-2">&amp;mut</span> <span class="op">&lt;</span><span class="ident"><span class="self">Self</span>::Database</span> <span class="kw">as</span> <span class="ident">sqlx::Database</span><span class="op">&gt;</span><span class="ident">::Connection</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">Error</span><span class="op">&gt;</span>;
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">Error</span><span class="op">&gt;</span> {
+        <span class="comment">// use connection from parameter for default implementation</span>
+        <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="ident">connection</span>;
+        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">Error::IrreversibleOperation</span>);
+    }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="sqlx_migrator" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (0f4bcadb4 2022-07-30)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="sqlx_migrator" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (f9cba6374 2022-07-31)" ></div></body></html>

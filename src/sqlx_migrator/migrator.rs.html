@@ -282,7 +282,23 @@
 <span id="282">282</span>
 <span id="283">283</span>
 <span id="284">284</span>
+<span id="285">285</span>
+<span id="286">286</span>
+<span id="287">287</span>
+<span id="288">288</span>
+<span id="289">289</span>
+<span id="290">290</span>
+<span id="291">291</span>
+<span id="292">292</span>
 </pre><pre class="rust"><code><span class="doccomment">//! migrator module</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! It contains common enum and trait for implementing migrator for sqlx</span>
+<span class="doccomment">//! supported database</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! For support only some required trait methods need to be implemented. It is</span>
+<span class="doccomment">//! best if you do not override provided methods as such method are database</span>
+<span class="doccomment">//! agnostic and perform some complex tasks its rarely needs to be custom</span>
+<span class="doccomment">//! implemented</span>
 
 <span class="kw">use</span> <span class="ident">std::collections</span>::{<span class="ident">HashMap</span>, <span class="ident">HashSet</span>};
 
@@ -430,7 +446,7 @@
             }
 
             <span class="comment">// If old migration plan length is equal to current length than no new migration</span>
-            <span class="comment">// was added. Next loop also will not add migration so return error</span>
+            <span class="comment">// was added. Next loop also will not add migration so return error.</span>
             <span class="kw">if</span> <span class="ident">old_migration_plan_length</span> <span class="op">==</span> <span class="ident">migration_plan</span>.<span class="ident">len</span>() {
                 <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">Error::FailedToCreateMigrationPlan</span>);
             }
@@ -567,4 +583,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="sqlx_migrator" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (0f4bcadb4 2022-07-30)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="sqlx_migrator" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (f9cba6374 2022-07-31)" ></div></body></html>
