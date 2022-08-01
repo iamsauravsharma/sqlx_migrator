@@ -11,4 +11,8 @@ pub enum Error {
     /// Error for failed to create migrations plan
     #[error("Failed to create migrations plan")]
     FailedToCreateMigrationPlan,
+
+    /// Error for irreversible operation
+    #[error("Operation is irreversible")]
+    IrreversibleOperation,
 }

@@ -1,4 +1,49 @@
 //! Module defining migration trait
+//!
+//! To create own implement migration trait for type
+//!
+//! ### Example
+//!
+//! ```rust,no_run
+//! use sqlx_migrator::error::Error;
+//! use sqlx_migrator::migration::Migration;
+//! use sqlx_migrator::operation::Operation;
+//!
+//! struct ExampleMigration;
+//! #[async_trait::async_trait]
+//! impl Migration for ExampleMigration {
+//!     type Database = sqlx_migrator::sqlx::Sqlite;
+//!
+//!     fn app(&self) -> &str {
+//!         "example"
+//!     }
+//!
+//!     fn name(&self) -> &str {
+//!         "first_migration"
+//!     }
+//!
+//!     fn parents(&self) -> Vec<Box<dyn Migration<Database = Self::Database>>> {
+//!         vec![]
+//!     }
+//!
+//!     fn operations(&self) -> Vec<Box<dyn Operation<Database = Self::Database>>> {
+//!         vec![]
+//!     }
+//!
+//!     fn replaces(&self) -> Vec<Box<dyn Migration<Database = Self::Database>>> {
+//!         vec![]
+//!     }
+//!
+//!     fn run_before(&self) -> Vec<Box<dyn Migration<Database = Self::Database>>> {
+//!         vec![]
+//!     }
+//!
+//!     fn is_atomic(&self) -> bool {
+//!         true
+//!     }
+//! }
+//! ```
+
 use std::hash::Hash;
 
 use crate::operation::Operation;

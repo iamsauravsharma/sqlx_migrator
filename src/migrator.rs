@@ -1,4 +1,12 @@
 //! migrator module
+//!
+//! It contains common enum and trait for implementing migrator for sqlx
+//! supported database
+//!
+//! For support only some required trait methods need to be implemented. It is
+//! best if you do not override provided methods as such method are database
+//! agnostic and perform some complex tasks its rarely needs to be custom
+//! implemented
 
 use std::collections::{HashMap, HashSet};
 
@@ -146,7 +154,7 @@ pub trait Migrator: Send + Sync {
             }
 
             // If old migration plan length is equal to current length than no new migration
-            // was added. Next loop also will not add migration so return error
+            // was added. Next loop also will not add migration so return error.
             if old_migration_plan_length == migration_plan.len() {
                 return Err(Error::FailedToCreateMigrationPlan);
             }
