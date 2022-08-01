@@ -88,12 +88,6 @@ pub trait Migration: Send + Sync {
     fn is_atomic(&self) -> bool {
         true
     }
-
-    /// Full name of migration. Determined from app and name combination.
-    /// Default value is {app}/{name}.
-    fn full_name(&self) -> String {
-        format!("{}/{}", self.app(), self.name())
-    }
 }
 
 impl<DB> PartialEq for dyn Migration<Database = DB>
@@ -101,7 +95,7 @@ where
     DB: sqlx::Database,
 {
     fn eq(&self, other: &Self) -> bool {
-        self.full_name() == other.full_name()
+        self.app() == other.app() && self.name() == other.name()
     }
 }
 
@@ -112,6 +106,16 @@ where
     DB: sqlx::Database,
 {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.full_name().hash(state);
+        self.app().hash(state);
+        self.name().hash(state);
+    }
+}
+
+impl<DB> PartialEq<(String, String)> for &Box<dyn Migration<Database = DB>>
+where
+    DB: sqlx::Database,
+{
+    fn eq(&self, other: &(String, String)) -> bool {
+        self.app() == other.0 && self.name() == other.1
     }
 }

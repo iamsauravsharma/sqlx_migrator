@@ -26,24 +26,29 @@ async fn list_all_migrations<DB>(migrator: Box<dyn Migrator<Database = DB>>) -> 
 where
     DB: sqlx::Database,
 {
-    let applied_migrations = migrator.list_applied_migrations().await?;
-    let first_width = 30;
-    let second_width = 10;
-    let full_width = first_width + second_width + 3;
+    let applied_migrations = migrator.fetch_applied_migration_from_db().await?;
+    let first_width = 10;
+    let second_width = 30;
+    let third_width = 10;
+    let full_width = first_width + second_width + third_width + 6;
     println!(
-        "{:^first_width$} | {:^second_width$}",
-        "Migration", "Status"
+        "{:^first_width$} | {:^second_width$} | {:^third_width$}",
+        "App", "Name", "Status"
     );
     println!("{:^full_width$}", "-".repeat(full_width));
     for migration in migrator.generate_migration_plan(PlanType::Full).await? {
         println!(
-            "{:^first_width$} | {:^second_width$}",
-            migration.full_name(),
-            if applied_migrations.contains(&migration) {
+            "{:^first_width$} | {:^second_width$} | {:^third_width$}",
+            migration.app(),
+            migration.name(),
+            if applied_migrations
+                .iter()
+                .any(|applied_migration| applied_migration == migration)
+            {
                 "\u{2713}"
             } else {
                 "\u{2717}"
-            }
+            },
         );
     }
     Ok(())

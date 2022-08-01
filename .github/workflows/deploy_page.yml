@@ -28,7 +28,7 @@ jobs:
           cargo make rustdoc --env FEATURES_FLAG=$FEATURES_FLAG VERBOSE_FLAG=$VERBOSE_FLAG TARGET_TRIPLE_FLAG=$TARGET_TRIPLE_FLAG
       - name: Generate index page
         run: |
-          echo "<meta http-equiv=refresh content=0;url=sqlx_migrator/index.html>" > target/doc/index.html          
+          echo "<meta http-equiv=refresh content=0;url=sqlx_migrator/index.html>" > target/doc/index.html
       - name: Install SSH Client
         uses: webfactory/ssh-agent@v0.4.1
         with:

@@ -17,6 +17,27 @@ use crate::migration::Migration;
 
 type MigrationVecResult<'a, DB> = Result<Vec<&'a Box<dyn Migration<Database = DB>>>, Error>;
 
+/// Migration struct created from sql table. struct contains 4 fields which maps
+/// to `id`, `app`, `name`, `applied_time` sql fields
+#[derive(sqlx::FromRow)]
+pub struct SqlMigratorMigration {
+    #[allow(dead_code)]
+    id: i32,
+    app: String,
+    name: String,
+    #[allow(dead_code)]
+    applied_time: chrono::DateTime<chrono::Utc>,
+}
+
+impl<T> PartialEq<Box<dyn Migration<Database = T>>> for SqlMigratorMigration
+where
+    T: sqlx::Database,
+{
+    fn eq(&self, other: &Box<dyn Migration<Database = T>>) -> bool {
+        self.app == other.app() && self.name == other.name()
+    }
+}
+
 /// Type of plan used to generate migrations
 #[derive(Debug)]
 pub enum PlanType {
@@ -48,22 +69,24 @@ pub trait Migrator: Send + Sync {
     async fn ensure_migration_table_exists(&self) -> Result<(), Error>;
 
     /// Add migration to migration table
+    #[allow(clippy::borrowed_box)]
     async fn add_migration_to_db_table(
         &self,
-        migration_full_name: &str,
+        migration: &Box<dyn Migration<Database = Self::Database>>,
         connection: &mut <Self::Database as sqlx::Database>::Connection,
     ) -> Result<(), Error>;
 
     /// Delete migration from table
+    #[allow(clippy::borrowed_box)]
     async fn delete_migration_from_db_table(
         &self,
-        migration_full_name: &str,
+        migration: &Box<dyn Migration<Database = Self::Database>>,
         connection: &mut <Self::Database as sqlx::Database>::Connection,
     ) -> Result<(), Error>;
 
     /// List all applied migrations from database in string format (full name of
     /// migration)
-    async fn fetch_applied_migration_from_db(&self) -> Result<Vec<String>, Error>;
+    async fn fetch_applied_migration_from_db(&self) -> Result<Vec<SqlMigratorMigration>, Error>;
 
     /// Add vector of migrations to Migrator object
     fn add_migrations(&mut self, migrations: Vec<Box<dyn Migration<Database = Self::Database>>>) {
@@ -91,7 +114,10 @@ pub trait Migrator: Send + Sync {
         // objects
         let mut applied_migrations = Vec::new();
         for migration in self.migrations() {
-            if applied_migration_list.contains(&migration.full_name()) {
+            if applied_migration_list
+                .iter()
+                .any(|sqlx_migration| sqlx_migration == migration)
+            {
                 applied_migrations.push(migration);
             }
         }
@@ -161,7 +187,7 @@ pub trait Migrator: Send + Sync {
         }
 
         // Handle replaces condition
-        let mut removed_migration_name = Vec::new();
+        let mut removed_migration_info = Vec::new();
 
         // List which migration needs to be removed from plan
         for migration in &migration_plan {
@@ -173,17 +199,22 @@ pub trait Migrator: Send + Sync {
                     .any(|migration| applied_migrations.contains(&migration));
 
                 if replaces_applied {
-                    removed_migration_name.push(migration.full_name());
+                    removed_migration_info
+                        .push((migration.app().to_string(), migration.name().to_string()));
                 } else {
                     for replaced_migration in migration.replaces() {
-                        removed_migration_name.push(replaced_migration.full_name());
+                        removed_migration_info.push((
+                            replaced_migration.app().to_string(),
+                            replaced_migration.name().to_string(),
+                        ));
                     }
                 }
             }
         }
 
         // Retain only migration which are not in removed migration name
-        migration_plan.retain(|migration| !removed_migration_name.contains(&migration.full_name()));
+        migration_plan
+            .retain(|migration| !removed_migration_info.iter().any(|info| migration == info));
 
         // Return migration according to plan type
         match plan_type {
@@ -221,14 +252,18 @@ pub trait Migrator: Send + Sync {
         migration: &Box<dyn Migration<Database = Self::Database>>,
     ) -> Result<(), Error> {
         if cfg!(feature = "tracing") {
-            tracing::info!("Applying migration {}", migration.full_name());
+            tracing::info!(
+                "Applying {} migration {}",
+                migration.app(),
+                migration.name()
+            );
         }
         if migration.is_atomic() {
             let mut transaction = self.pool().begin().await?;
             for operation in migration.operations() {
                 operation.up(&mut transaction).await?;
             }
-            self.add_migration_to_db_table(&migration.full_name(), &mut transaction)
+            self.add_migration_to_db_table(migration, &mut transaction)
                 .await?;
             transaction.commit().await?;
         } else {
@@ -236,7 +271,7 @@ pub trait Migrator: Send + Sync {
             for operation in migration.operations() {
                 operation.up(&mut connection).await?;
             }
-            self.add_migration_to_db_table(&migration.full_name(), &mut connection)
+            self.add_migration_to_db_table(migration, &mut connection)
                 .await?;
         }
         Ok(())
@@ -264,7 +299,11 @@ pub trait Migrator: Send + Sync {
         migration: &Box<dyn Migration<Database = Self::Database>>,
     ) -> Result<(), Error> {
         if cfg!(feature = "tracing") {
-            tracing::info!("Reverting migration {}", migration.full_name());
+            tracing::info!(
+                "Reverting {} migration {}",
+                migration.app(),
+                migration.name()
+            );
         }
 
         // Reverse operation since last applied operation need to be reverted first
@@ -276,7 +315,7 @@ pub trait Migrator: Send + Sync {
             for operation in operations {
                 operation.down(&mut transaction).await?;
             }
-            self.delete_migration_from_db_table(&migration.full_name(), &mut transaction)
+            self.delete_migration_from_db_table(migration, &mut transaction)
                 .await?;
             transaction.commit().await?;
         } else {
@@ -284,7 +323,7 @@ pub trait Migrator: Send + Sync {
             for operation in operations {
                 operation.down(&mut connection).await?;
             }
-            self.delete_migration_from_db_table(&migration.full_name(), &mut connection)
+            self.delete_migration_from_db_table(migration, &mut connection)
                 .await?;
         }
         Ok(())

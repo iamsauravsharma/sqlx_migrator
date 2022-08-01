@@ -1,11 +1,11 @@
 //! Postgres migrator module
 use std::collections::HashSet;
 
-use sqlx::{Pool, Postgres, Row};
+use sqlx::{Pool, Postgres};
 
 use crate::error::Error;
 use crate::migration::Migration;
-use crate::migrator::Migrator as MigratorTrait;
+use crate::migrator::{Migrator as MigratorTrait, SqlMigratorMigration};
 
 /// Migrator struct which store migrations graph and information related to
 /// postgres migrations
@@ -46,8 +46,10 @@ impl MigratorTrait for Migrator {
             r#"
 CREATE TABLE IF NOT EXISTS _sqlx_migrator_migrations (
     id SERIAL PRIMARY KEY,
-    migration_full_name TEXT UNIQUE NOT NULL,
-    applied_time TIMESTAMPTZ NOT NULL DEFAULT now()
+    app TEXT NOT NULL,
+    name TExT NOT NULL,
+    applied_time TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE (app, name)
 )
             "#,
         )
@@ -58,47 +60,43 @@ CREATE TABLE IF NOT EXISTS _sqlx_migrator_migrations (
 
     async fn add_migration_to_db_table(
         &self,
-        migration_full_name: &str,
+        migration: &Box<dyn Migration<Database = Self::Database>>,
         connection: &mut <Self::Database as sqlx::Database>::Connection,
     ) -> Result<(), Error> {
         sqlx::query(
             r#"
-INSERT INTO _sqlx_migrator_migrations(migration_full_name) VALUES ($1)
+INSERT INTO _sqlx_migrator_migrations(app, name) VALUES ($1, $2)
             "#,
         )
-        .bind(migration_full_name)
+        .bind(migration.app())
+        .bind(migration.name())
         .execute(connection)
         .await?;
-
         Ok(())
     }
 
     async fn delete_migration_from_db_table(
         &self,
-        migration_full_name: &str,
+        migration: &Box<dyn Migration<Database = Self::Database>>,
         connection: &mut <Self::Database as sqlx::Database>::Connection,
     ) -> Result<(), Error> {
         sqlx::query(
             r#"
-DELETE FROM _sqlx_migrator_migrations WHERE migration_full_name = $1
+DELETE FROM _sqlx_migrator_migrations WHERE app = $1 AND name = $2
             "#,
         )
-        .bind(migration_full_name)
+        .bind(migration.app())
+        .bind(migration.name())
         .execute(connection)
         .await?;
         Ok(())
     }
 
-    async fn fetch_applied_migration_from_db(&self) -> Result<Vec<String>, Error> {
-        let mut applied_migrations = Vec::new();
-        let rows = sqlx::query("SELECT migration_full_name FROM _sqlx_migrator_migrations")
-            .fetch_all(self.pool())
-            .await?;
-
-        for row in rows {
-            let migration_full_name = row.try_get("migration_full_name")?;
-            applied_migrations.push(migration_full_name);
-        }
-        Ok(applied_migrations)
+    async fn fetch_applied_migration_from_db(&self) -> Result<Vec<SqlMigratorMigration>, Error> {
+        let rows =
+            sqlx::query_as("SELECT id, app, name, applied_time FROM _sqlx_migrator_migrations")
+                .fetch_all(self.pool())
+                .await?;
+        Ok(rows)
     }
 }
