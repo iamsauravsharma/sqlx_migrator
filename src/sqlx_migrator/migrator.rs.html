@@ -328,7 +328,6 @@
 <span id="328">328</span>
 <span id="329">329</span>
 <span id="330">330</span>
-<span id="331">331</span>
 </pre><pre class="rust"><code><span class="doccomment">//! migrator module</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! It contains common enum and trait for implementing migrator for sqlx</span>
@@ -439,6 +438,7 @@
         <span class="kw">if</span> <span class="macro">cfg!</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;tracing&quot;</span>) {
             <span class="macro">tracing::info!</span>(<span class="string">&quot;Fetching applied migrations&quot;</span>);
         }
+        <span class="self">self</span>.<span class="ident">ensure_migration_table_exists</span>().<span class="kw">await</span><span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">applied_migration_list</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">fetch_applied_migration_from_db</span>().<span class="kw">await</span><span class="question-mark">?</span>;
 
         <span class="comment">// convert applied migration string name to vector of migration implemented</span>
@@ -569,7 +569,6 @@
         <span class="kw">if</span> <span class="macro">cfg!</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;tracing&quot;</span>) {
             <span class="macro">tracing::info!</span>(<span class="string">&quot;Applying all migration&quot;</span>);
         }
-        <span class="self">self</span>.<span class="ident">ensure_migration_table_exists</span>().<span class="kw">await</span><span class="question-mark">?</span>;
         <span class="kw">for</span> <span class="ident">migration</span> <span class="kw">in</span> <span class="self">self</span>.<span class="ident">generate_migration_plan</span>(<span class="ident">PlanType::Apply</span>).<span class="kw">await</span><span class="question-mark">?</span> {
             <span class="self">self</span>.<span class="ident">apply_migration</span>(<span class="ident">migration</span>).<span class="kw">await</span><span class="question-mark">?</span>;
         }
@@ -616,7 +615,6 @@
         <span class="kw">if</span> <span class="macro">cfg!</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;tracing&quot;</span>) {
             <span class="macro">tracing::info!</span>(<span class="string">&quot;Reverting all migration&quot;</span>);
         }
-        <span class="self">self</span>.<span class="ident">ensure_migration_table_exists</span>().<span class="kw">await</span><span class="question-mark">?</span>;
         <span class="kw">for</span> <span class="ident">migration</span> <span class="kw">in</span> <span class="self">self</span>.<span class="ident">generate_migration_plan</span>(<span class="ident">PlanType::Revert</span>).<span class="kw">await</span><span class="question-mark">?</span> {
             <span class="self">self</span>.<span class="ident">revert_migration</span>(<span class="ident">migration</span>).<span class="kw">await</span><span class="question-mark">?</span>;
         }
@@ -661,4 +659,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="sqlx_migrator" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (f9cba6374 2022-07-31)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="sqlx_migrator" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (fe3342816 2022-08-01)" ></div></body></html>
