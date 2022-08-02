@@ -15,4 +15,8 @@ pub enum Error {
     /// Error for irreversible operation
     #[error("Operation is irreversible")]
     IrreversibleOperation,
+
+    /// Error for pending migration present
+    #[error("Pending migration present")]
+    PendingMigration,
 }

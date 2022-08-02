@@ -12,17 +12,31 @@ struct Args {
 
 #[derive(Subcommand, Debug)]
 enum SubCommand {
-    #[clap(about = "List all migrations along with their status")]
+    #[clap(about = "List migrations along with their status")]
     List,
-    #[clap(about = "Apply all migrations")]
-    ApplyAll,
-    #[clap(about = "Revert all migrations")]
-    RevertAll,
-    #[clap(about = "Revert latest migration")]
-    RevertLatest,
+    #[clap(about = "Apply migrations")]
+    Apply(Apply),
+    #[clap(about = "Revert migrations")]
+    Revert(Revert),
 }
 
-async fn list_all_migrations<DB>(migrator: Box<dyn Migrator<Database = DB>>) -> Result<(), Error>
+#[derive(Parser, Debug)]
+struct Apply {
+    #[clap(long = "plan", short = 'p', help = "Show plan")]
+    plan: bool,
+    #[clap(long = "check", short = 'c', help = "Check for pending migration")]
+    check: bool,
+}
+
+#[derive(Parser, Debug)]
+struct Revert {
+    #[clap(long = "plan", short = 'p', help = "Show plan")]
+    plan: bool,
+    #[clap(long = "all", short = 'a', help = "Revert all migration")]
+    all: bool,
+}
+
+async fn list_migrations<DB>(migrator: Box<dyn Migrator<Database = DB>>) -> Result<(), Error>
 where
     DB: sqlx::Database,
 {
@@ -48,35 +62,79 @@ where
                 "\u{2713}"
             } else {
                 "\u{2717}"
-            },
+            }
         );
     }
     Ok(())
 }
 
-async fn apply_all_migrations<DB>(migrator: Box<dyn Migrator<Database = DB>>) -> Result<(), Error>
+async fn apply_migrations<DB>(
+    migrator: Box<dyn Migrator<Database = DB>>,
+    apply: Apply,
+) -> Result<(), Error>
 where
     DB: sqlx::Database,
 {
-    migrator.apply_all().await?;
+    if apply.check
+        && !migrator
+            .generate_migration_plan(PlanType::Apply)
+            .await?
+            .is_empty()
+    {
+        return Err(Error::PendingMigration);
+    }
+    if apply.plan {
+        let first_width = 10;
+        let second_width = 30;
+        let full_width = first_width + second_width + 3;
+        println!("{:^first_width$} | {:^second_width$}", "App", "Name");
+        println!("{:^full_width$}", "-".repeat(full_width));
+        for migration in migrator.generate_migration_plan(PlanType::Apply).await? {
+            println!(
+                "{:^first_width$} | {:^second_width$}",
+                migration.app(),
+                migration.name(),
+            );
+        }
+    } else {
+        migrator.apply_all().await?;
+    }
     Ok(())
 }
 
-async fn revert_all_migrations<DB>(migrator: Box<dyn Migrator<Database = DB>>) -> Result<(), Error>
-where
-    DB: sqlx::Database,
-{
-    migrator.revert_all().await?;
-    Ok(())
-}
-
-async fn revert_latest<DB>(migrator: Box<dyn Migrator<Database = DB>>) -> Result<(), Error>
+async fn revert_migrations<DB>(
+    migrator: Box<dyn Migrator<Database = DB>>,
+    revert: Revert,
+) -> Result<(), Error>
 where
     DB: sqlx::Database,
 {
     let revert_plan = migrator.generate_migration_plan(PlanType::Revert).await?;
-    if let Some(latest_migration) = revert_plan.first() {
-        migrator.revert_migration(latest_migration).await?;
+    let revert_migrations;
+    if revert.all {
+        revert_migrations = revert_plan;
+    } else if let Some(latest_migration) = revert_plan.first() {
+        revert_migrations = vec![latest_migration];
+    } else {
+        revert_migrations = vec![];
+    }
+    if revert.plan {
+        let first_width = 10;
+        let second_width = 30;
+        let full_width = first_width + second_width + 3;
+        println!("{:^first_width$} | {:^second_width$}", "App", "Name");
+        println!("{:^full_width$}", "-".repeat(full_width));
+        for migration in revert_migrations {
+            println!(
+                "{:^first_width$} | {:^second_width$}",
+                migration.app(),
+                migration.name(),
+            );
+        }
+    } else {
+        for migration in revert_migrations {
+            migrator.revert_migration(migration).await?;
+        }
     }
     Ok(())
 }
@@ -92,10 +150,9 @@ where
     let args = Args::parse();
     migrator.ensure_migration_table_exists().await?;
     match args.sub_command {
-        SubCommand::List => list_all_migrations(migrator).await?,
-        SubCommand::ApplyAll => apply_all_migrations(migrator).await?,
-        SubCommand::RevertAll => revert_all_migrations(migrator).await?,
-        SubCommand::RevertLatest => revert_latest(migrator).await?,
+        SubCommand::List => list_migrations(migrator).await?,
+        SubCommand::Apply(apply) => apply_migrations(migrator, apply).await?,
+        SubCommand::Revert(revert) => revert_migrations(migrator, revert).await?,
     }
     Ok(())
 }
