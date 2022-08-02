@@ -108,6 +108,7 @@ pub trait Migrator: Send + Sync {
         if cfg!(feature = "tracing") {
             tracing::info!("Fetching applied migrations");
         }
+        self.ensure_migration_table_exists().await?;
         let applied_migration_list = self.fetch_applied_migration_from_db().await?;
 
         // convert applied migration string name to vector of migration implemented
@@ -238,7 +239,6 @@ pub trait Migrator: Send + Sync {
         if cfg!(feature = "tracing") {
             tracing::info!("Applying all migration");
         }
-        self.ensure_migration_table_exists().await?;
         for migration in self.generate_migration_plan(PlanType::Apply).await? {
             self.apply_migration(migration).await?;
         }
@@ -285,7 +285,6 @@ pub trait Migrator: Send + Sync {
         if cfg!(feature = "tracing") {
             tracing::info!("Reverting all migration");
         }
-        self.ensure_migration_table_exists().await?;
         for migration in self.generate_migration_plan(PlanType::Revert).await? {
             self.revert_migration(migration).await?;
         }

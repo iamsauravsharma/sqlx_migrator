@@ -26,6 +26,12 @@ struct Apply {
     plan: bool,
     #[clap(long = "check", short = 'c', help = "Check for pending migration")]
     check: bool,
+    #[clap(
+        long = "fake",
+        short = 'f',
+        help = "Make migration applied without applying"
+    )]
+    fake: bool,
 }
 
 #[derive(Parser, Debug)]
@@ -34,13 +40,19 @@ struct Revert {
     plan: bool,
     #[clap(long = "all", short = 'a', help = "Revert all migration")]
     all: bool,
+    #[clap(
+        long = "fake",
+        short = 'f',
+        help = "Make migration reverted without reverting"
+    )]
+    fake: bool,
 }
 
 async fn list_migrations<DB>(migrator: Box<dyn Migrator<Database = DB>>) -> Result<(), Error>
 where
     DB: sqlx::Database,
 {
-    let applied_migrations = migrator.fetch_applied_migration_from_db().await?;
+    let applied_migrations = migrator.list_applied_migrations().await?;
     let first_width = 10;
     let second_width = 30;
     let third_width = 10;
@@ -57,7 +69,7 @@ where
             migration.name(),
             if applied_migrations
                 .iter()
-                .any(|applied_migration| applied_migration == migration)
+                .any(|&applied_migration| applied_migration == migration)
             {
                 "\u{2713}"
             } else {
@@ -75,12 +87,8 @@ async fn apply_migrations<DB>(
 where
     DB: sqlx::Database,
 {
-    if apply.check
-        && !migrator
-            .generate_migration_plan(PlanType::Apply)
-            .await?
-            .is_empty()
-    {
+    let migrations = migrator.generate_migration_plan(PlanType::Apply).await?;
+    if apply.check && !migrations.is_empty() {
         return Err(Error::PendingMigration);
     }
     if apply.plan {
@@ -89,12 +97,19 @@ where
         let full_width = first_width + second_width + 3;
         println!("{:^first_width$} | {:^second_width$}", "App", "Name");
         println!("{:^full_width$}", "-".repeat(full_width));
-        for migration in migrator.generate_migration_plan(PlanType::Apply).await? {
+        for migration in migrations {
             println!(
                 "{:^first_width$} | {:^second_width$}",
                 migration.app(),
                 migration.name(),
             );
+        }
+    } else if apply.fake {
+        let mut connection = migrator.pool().acquire().await?;
+        for migration in migrations {
+            migrator
+                .add_migration_to_db_table(migration, &mut connection)
+                .await?;
         }
     } else {
         migrator.apply_all().await?;
@@ -131,6 +146,13 @@ where
                 migration.name(),
             );
         }
+    } else if revert.fake {
+        let mut connection = migrator.pool().acquire().await?;
+        for migration in revert_migrations {
+            migrator
+                .delete_migration_from_db_table(migration, &mut connection)
+                .await?;
+        }
     } else {
         for migration in revert_migrations {
             migrator.revert_migration(migration).await?;
@@ -148,7 +170,6 @@ where
     DB: sqlx::Database,
 {
     let args = Args::parse();
-    migrator.ensure_migration_table_exists().await?;
     match args.sub_command {
         SubCommand::List => list_migrations(migrator).await?,
         SubCommand::Apply(apply) => apply_migrations(migrator, apply).await?,
