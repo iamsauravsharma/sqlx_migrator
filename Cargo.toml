@@ -10,7 +10,10 @@ license = "MIT"
 readme = "README.MD"
 
 [dependencies]
-sqlx = { version = "0.6.0", default-features = false }
+sqlx = { version = "0.6.0", default-features = false, features = [
+    "macros",
+    "chrono",
+] }
 async-trait = "0.1.56"
 tracing = { version = "0.1.36", optional = true }
 thiserror = "1.0.31"
@@ -21,23 +24,17 @@ chrono = "0.4.19"
 tokio = { version = "1.20.1", features = ["rt-multi-thread", "macros"] }
 
 [features]
-default = [
-    "cli",
-    "runtime-tokio-native-tls",
-    "sqlite",
-    "tracing",
-    "sqlx/macros",
-    "sqlx/chrono",
-]
+default = ["cli", "tracing"]
+tracing = ["dep:tracing"]
+postgres = ["sqlx/postgres"]
+sqlite = ["sqlx/sqlite"]
+cli = ["dep:clap"]
 runtime-async-std-native-tls = ["sqlx/runtime-async-std-native-tls"]
 runtime-async-std-rustls = ["sqlx/runtime-async-std-rustls"]
 runtime-actix-native-tls = ["sqlx/runtime-actix-native-tls"]
 runtime-actix-rustls = ["sqlx/runtime-actix-rustls"]
 runtime-tokio-native-tls = ["sqlx/runtime-tokio-native-tls"]
 runtime-tokio-rustls = ["sqlx/runtime-tokio-rustls"]
-postgres = ["sqlx/postgres"]
-sqlite = ["sqlx/sqlite"]
-cli = ["clap"]
 
 [[example]]
 name = "postgres"

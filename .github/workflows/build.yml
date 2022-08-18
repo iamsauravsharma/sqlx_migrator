@@ -25,7 +25,7 @@ jobs:
              rust-version: "nightly"
     runs-on: ${{ matrix.os }}
     env:
-      FEATURES_FLAG: "--all-features"
+      FEATURES_FLAG: "--features postgres,sqlite,runtime-tokio-native-tls"
     defaults:
       run:
         shell: bash
