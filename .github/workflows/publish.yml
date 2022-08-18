@@ -19,4 +19,4 @@ jobs:
         env:
           CARGO_TOKEN: ${{ secrets.CARGO_TOKEN }}
         run: |
-          cargo publish --token $CARGO_TOKEN
+          cargo publish --token $CARGO_TOKEN --features postgres,sqlite,runtime-tokio-native-tls
