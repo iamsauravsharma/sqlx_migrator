@@ -177,184 +177,184 @@
 <span id="177">177</span>
 <span id="178">178</span>
 <span id="179">179</span>
-</pre><pre class="rust"><code><span class="doccomment">//! Module for creating and running cli with help of migrator</span>
-<span class="kw">use</span> <span class="ident">clap</span>::{<span class="ident">Parser</span>, <span class="ident">Subcommand</span>};
+</pre><pre class="rust"><code><span class="doccomment">//! Module for creating and running cli with help of migrator
+</span><span class="kw">use </span>clap::{Parser, Subcommand};
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error::Error</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::migrator</span>::{<span class="ident">Migrator</span>, <span class="ident">PlanType</span>};
+<span class="kw">use </span><span class="kw">crate</span>::error::Error;
+<span class="kw">use </span><span class="kw">crate</span>::migrator::{Migrator, PlanType};
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Parser</span>, <span class="ident">Debug</span>)]</span>
-<span class="kw">struct</span> <span class="ident">Args</span> {
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">subcommand</span>)]</span>
-    <span class="ident">sub_command</span>: <span class="ident">SubCommand</span>,
+<span class="attribute">#[derive(Parser, Debug)]</span>
+<span class="kw">struct </span>Args {
+    <span class="attribute">#[clap(subcommand)]</span>
+    sub_command: SubCommand,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Subcommand</span>, <span class="ident">Debug</span>)]</span>
-<span class="kw">enum</span> <span class="ident">SubCommand</span> {
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">about</span> <span class="op">=</span> <span class="string">&quot;List migrations along with their status&quot;</span>)]</span>
-    <span class="ident">List</span>,
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">about</span> <span class="op">=</span> <span class="string">&quot;Apply migrations&quot;</span>)]</span>
-    <span class="ident">Apply</span>(<span class="ident">Apply</span>),
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">about</span> <span class="op">=</span> <span class="string">&quot;Revert migrations&quot;</span>)]</span>
-    <span class="ident">Revert</span>(<span class="ident">Revert</span>),
+<span class="attribute">#[derive(Subcommand, Debug)]</span>
+<span class="kw">enum </span>SubCommand {
+    <span class="attribute">#[clap(about = <span class="string">&quot;List migrations along with their status&quot;</span>)]</span>
+    List,
+    <span class="attribute">#[clap(about = <span class="string">&quot;Apply migrations&quot;</span>)]</span>
+    Apply(Apply),
+    <span class="attribute">#[clap(about = <span class="string">&quot;Revert migrations&quot;</span>)]</span>
+    Revert(Revert),
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Parser</span>, <span class="ident">Debug</span>)]</span>
-<span class="kw">struct</span> <span class="ident">Apply</span> {
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">long</span> <span class="op">=</span> <span class="string">&quot;plan&quot;</span>, <span class="ident">short</span> <span class="op">=</span> <span class="string">&#39;p&#39;</span>, <span class="ident">help</span> <span class="op">=</span> <span class="string">&quot;Show plan&quot;</span>)]</span>
-    <span class="ident">plan</span>: <span class="ident">bool</span>,
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">long</span> <span class="op">=</span> <span class="string">&quot;check&quot;</span>, <span class="ident">short</span> <span class="op">=</span> <span class="string">&#39;c&#39;</span>, <span class="ident">help</span> <span class="op">=</span> <span class="string">&quot;Check for pending migration&quot;</span>)]</span>
-    <span class="ident">check</span>: <span class="ident">bool</span>,
-    <span class="attribute">#[<span class="ident">clap</span>(
-        <span class="ident">long</span> <span class="op">=</span> <span class="string">&quot;fake&quot;</span>,
-        <span class="ident">short</span> <span class="op">=</span> <span class="string">&#39;f&#39;</span>,
-        <span class="ident">help</span> <span class="op">=</span> <span class="string">&quot;Make migration applied without applying&quot;</span>
-    )]</span>
-    <span class="ident">fake</span>: <span class="ident">bool</span>,
+<span class="attribute">#[derive(Parser, Debug)]</span>
+<span class="kw">struct </span>Apply {
+    <span class="attribute">#[clap(long = <span class="string">&quot;plan&quot;</span>, short = <span class="string">&#39;p&#39;</span>, help = <span class="string">&quot;Show plan&quot;</span>)]</span>
+    plan: bool,
+    <span class="attribute">#[clap(long = <span class="string">&quot;check&quot;</span>, short = <span class="string">&#39;c&#39;</span>, help = <span class="string">&quot;Check for pending migration&quot;</span>)]</span>
+    check: bool,
+    <span class="attribute">#[clap(
+        long = <span class="string">&quot;fake&quot;</span>,
+        short = <span class="string">&#39;f&#39;</span>,
+        help = <span class="string">&quot;Make migration applied without applying&quot;
+    </span>)]</span>
+    fake: bool,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Parser</span>, <span class="ident">Debug</span>)]</span>
-<span class="kw">struct</span> <span class="ident">Revert</span> {
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">long</span> <span class="op">=</span> <span class="string">&quot;plan&quot;</span>, <span class="ident">short</span> <span class="op">=</span> <span class="string">&#39;p&#39;</span>, <span class="ident">help</span> <span class="op">=</span> <span class="string">&quot;Show plan&quot;</span>)]</span>
-    <span class="ident">plan</span>: <span class="ident">bool</span>,
-    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">long</span> <span class="op">=</span> <span class="string">&quot;all&quot;</span>, <span class="ident">short</span> <span class="op">=</span> <span class="string">&#39;a&#39;</span>, <span class="ident">help</span> <span class="op">=</span> <span class="string">&quot;Revert all migration&quot;</span>)]</span>
-    <span class="ident">all</span>: <span class="ident">bool</span>,
-    <span class="attribute">#[<span class="ident">clap</span>(
-        <span class="ident">long</span> <span class="op">=</span> <span class="string">&quot;fake&quot;</span>,
-        <span class="ident">short</span> <span class="op">=</span> <span class="string">&#39;f&#39;</span>,
-        <span class="ident">help</span> <span class="op">=</span> <span class="string">&quot;Make migration reverted without reverting&quot;</span>
-    )]</span>
-    <span class="ident">fake</span>: <span class="ident">bool</span>,
+<span class="attribute">#[derive(Parser, Debug)]</span>
+<span class="kw">struct </span>Revert {
+    <span class="attribute">#[clap(long = <span class="string">&quot;plan&quot;</span>, short = <span class="string">&#39;p&#39;</span>, help = <span class="string">&quot;Show plan&quot;</span>)]</span>
+    plan: bool,
+    <span class="attribute">#[clap(long = <span class="string">&quot;all&quot;</span>, short = <span class="string">&#39;a&#39;</span>, help = <span class="string">&quot;Revert all migration&quot;</span>)]</span>
+    all: bool,
+    <span class="attribute">#[clap(
+        long = <span class="string">&quot;fake&quot;</span>,
+        short = <span class="string">&#39;f&#39;</span>,
+        help = <span class="string">&quot;Make migration reverted without reverting&quot;
+    </span>)]</span>
+    fake: bool,
 }
 
-<span class="kw">async</span> <span class="kw">fn</span> <span class="ident">list_migrations</span><span class="op">&lt;</span><span class="ident">DB</span><span class="op">&gt;</span>(<span class="ident">migrator</span>: <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Migrator</span><span class="op">&lt;</span><span class="ident">Database</span> <span class="op">=</span> <span class="ident">DB</span><span class="op">&gt;</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">Error</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="ident">DB</span>: <span class="ident">sqlx::Database</span>,
+<span class="kw">async fn </span>list_migrations&lt;DB&gt;(migrator: Box&lt;<span class="kw">dyn </span>Migrator&lt;Database = DB&gt;&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt;
+<span class="kw">where
+    </span>DB: sqlx::Database,
 {
-    <span class="kw">let</span> <span class="ident">applied_migrations</span> <span class="op">=</span> <span class="ident">migrator</span>.<span class="ident">list_applied_migrations</span>().<span class="kw">await</span><span class="question-mark">?</span>;
-    <span class="kw">let</span> <span class="ident">first_width</span> <span class="op">=</span> <span class="number">10</span>;
-    <span class="kw">let</span> <span class="ident">second_width</span> <span class="op">=</span> <span class="number">30</span>;
-    <span class="kw">let</span> <span class="ident">third_width</span> <span class="op">=</span> <span class="number">10</span>;
-    <span class="kw">let</span> <span class="ident">full_width</span> <span class="op">=</span> <span class="ident">first_width</span> <span class="op">+</span> <span class="ident">second_width</span> <span class="op">+</span> <span class="ident">third_width</span> <span class="op">+</span> <span class="number">6</span>;
+    <span class="kw">let </span>applied_migrations = migrator.list_applied_migrations().<span class="kw">await</span><span class="question-mark">?</span>;
+    <span class="kw">let </span>first_width = <span class="number">10</span>;
+    <span class="kw">let </span>second_width = <span class="number">30</span>;
+    <span class="kw">let </span>third_width = <span class="number">10</span>;
+    <span class="kw">let </span>full_width = first_width + second_width + third_width + <span class="number">6</span>;
     <span class="macro">println!</span>(
         <span class="string">&quot;{:^first_width$} | {:^second_width$} | {:^third_width$}&quot;</span>,
-        <span class="string">&quot;App&quot;</span>, <span class="string">&quot;Name&quot;</span>, <span class="string">&quot;Status&quot;</span>
-    );
-    <span class="macro">println!</span>(<span class="string">&quot;{:^full_width$}&quot;</span>, <span class="string">&quot;-&quot;</span>.<span class="ident">repeat</span>(<span class="ident">full_width</span>));
-    <span class="kw">for</span> <span class="ident">migration</span> <span class="kw">in</span> <span class="ident">migrator</span>.<span class="ident">generate_migration_plan</span>(<span class="ident">PlanType::Full</span>).<span class="kw">await</span><span class="question-mark">?</span> {
+        <span class="string">&quot;App&quot;</span>, <span class="string">&quot;Name&quot;</span>, <span class="string">&quot;Status&quot;
+    </span>);
+    <span class="macro">println!</span>(<span class="string">&quot;{:^full_width$}&quot;</span>, <span class="string">&quot;-&quot;</span>.repeat(full_width));
+    <span class="kw">for </span>migration <span class="kw">in </span>migrator.generate_migration_plan(PlanType::Full).<span class="kw">await</span><span class="question-mark">? </span>{
         <span class="macro">println!</span>(
             <span class="string">&quot;{:^first_width$} | {:^second_width$} | {:^third_width$}&quot;</span>,
-            <span class="ident">migration</span>.<span class="ident">app</span>(),
-            <span class="ident">migration</span>.<span class="ident">name</span>(),
-            <span class="kw">if</span> <span class="ident">applied_migrations</span>
-                .<span class="ident">iter</span>()
-                .<span class="ident">any</span>(<span class="op">|</span><span class="kw-2">&amp;</span><span class="ident">applied_migration</span><span class="op">|</span> <span class="ident">applied_migration</span> <span class="op">==</span> <span class="ident">migration</span>)
+            migration.app(),
+            migration.name(),
+            <span class="kw">if </span>applied_migrations
+                .iter()
+                .any(|<span class="kw-2">&amp;</span>applied_migration| applied_migration == migration)
             {
-                <span class="string">&quot;\u{2713}&quot;</span>
-            } <span class="kw">else</span> {
-                <span class="string">&quot;\u{2717}&quot;</span>
-            }
+                <span class="string">&quot;\u{2713}&quot;
+            </span>} <span class="kw">else </span>{
+                <span class="string">&quot;\u{2717}&quot;
+            </span>}
         );
     }
     <span class="prelude-val">Ok</span>(())
 }
 
-<span class="kw">async</span> <span class="kw">fn</span> <span class="ident">apply_migrations</span><span class="op">&lt;</span><span class="ident">DB</span><span class="op">&gt;</span>(
-    <span class="ident">migrator</span>: <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Migrator</span><span class="op">&lt;</span><span class="ident">Database</span> <span class="op">=</span> <span class="ident">DB</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="ident">apply</span>: <span class="ident">Apply</span>,
-) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">Error</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="ident">DB</span>: <span class="ident">sqlx::Database</span>,
+<span class="kw">async fn </span>apply_migrations&lt;DB&gt;(
+    migrator: Box&lt;<span class="kw">dyn </span>Migrator&lt;Database = DB&gt;&gt;,
+    apply: Apply,
+) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt;
+<span class="kw">where
+    </span>DB: sqlx::Database,
 {
-    <span class="kw">let</span> <span class="ident">migrations</span> <span class="op">=</span> <span class="ident">migrator</span>.<span class="ident">generate_migration_plan</span>(<span class="ident">PlanType::Apply</span>).<span class="kw">await</span><span class="question-mark">?</span>;
-    <span class="kw">if</span> <span class="ident">apply</span>.<span class="ident">check</span> <span class="op">&amp;&amp;</span> <span class="op">!</span><span class="ident">migrations</span>.<span class="ident">is_empty</span>() {
-        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">Error::PendingMigration</span>);
+    <span class="kw">let </span>migrations = migrator.generate_migration_plan(PlanType::Apply).<span class="kw">await</span><span class="question-mark">?</span>;
+    <span class="kw">if </span>apply.check &amp;&amp; !migrations.is_empty() {
+        <span class="kw">return </span><span class="prelude-val">Err</span>(Error::PendingMigration);
     }
-    <span class="kw">if</span> <span class="ident">apply</span>.<span class="ident">plan</span> {
-        <span class="kw">let</span> <span class="ident">first_width</span> <span class="op">=</span> <span class="number">10</span>;
-        <span class="kw">let</span> <span class="ident">second_width</span> <span class="op">=</span> <span class="number">30</span>;
-        <span class="kw">let</span> <span class="ident">full_width</span> <span class="op">=</span> <span class="ident">first_width</span> <span class="op">+</span> <span class="ident">second_width</span> <span class="op">+</span> <span class="number">3</span>;
+    <span class="kw">if </span>apply.plan {
+        <span class="kw">let </span>first_width = <span class="number">10</span>;
+        <span class="kw">let </span>second_width = <span class="number">30</span>;
+        <span class="kw">let </span>full_width = first_width + second_width + <span class="number">3</span>;
         <span class="macro">println!</span>(<span class="string">&quot;{:^first_width$} | {:^second_width$}&quot;</span>, <span class="string">&quot;App&quot;</span>, <span class="string">&quot;Name&quot;</span>);
-        <span class="macro">println!</span>(<span class="string">&quot;{:^full_width$}&quot;</span>, <span class="string">&quot;-&quot;</span>.<span class="ident">repeat</span>(<span class="ident">full_width</span>));
-        <span class="kw">for</span> <span class="ident">migration</span> <span class="kw">in</span> <span class="ident">migrations</span> {
+        <span class="macro">println!</span>(<span class="string">&quot;{:^full_width$}&quot;</span>, <span class="string">&quot;-&quot;</span>.repeat(full_width));
+        <span class="kw">for </span>migration <span class="kw">in </span>migrations {
             <span class="macro">println!</span>(
                 <span class="string">&quot;{:^first_width$} | {:^second_width$}&quot;</span>,
-                <span class="ident">migration</span>.<span class="ident">app</span>(),
-                <span class="ident">migration</span>.<span class="ident">name</span>(),
+                migration.app(),
+                migration.name(),
             );
         }
-    } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">apply</span>.<span class="ident">fake</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">connection</span> <span class="op">=</span> <span class="ident">migrator</span>.<span class="ident">pool</span>().<span class="ident">acquire</span>().<span class="kw">await</span><span class="question-mark">?</span>;
-        <span class="kw">for</span> <span class="ident">migration</span> <span class="kw">in</span> <span class="ident">migrations</span> {
-            <span class="ident">migrator</span>
-                .<span class="ident">add_migration_to_db_table</span>(<span class="ident">migration</span>, <span class="kw-2">&amp;mut</span> <span class="ident">connection</span>)
+    } <span class="kw">else if </span>apply.fake {
+        <span class="kw">let </span><span class="kw-2">mut </span>connection = migrator.pool().acquire().<span class="kw">await</span><span class="question-mark">?</span>;
+        <span class="kw">for </span>migration <span class="kw">in </span>migrations {
+            migrator
+                .add_migration_to_db_table(migration, <span class="kw-2">&amp;mut </span>connection)
                 .<span class="kw">await</span><span class="question-mark">?</span>;
         }
-    } <span class="kw">else</span> {
-        <span class="ident">migrator</span>.<span class="ident">apply_all</span>().<span class="kw">await</span><span class="question-mark">?</span>;
+    } <span class="kw">else </span>{
+        migrator.apply_all().<span class="kw">await</span><span class="question-mark">?</span>;
     }
     <span class="prelude-val">Ok</span>(())
 }
 
-<span class="kw">async</span> <span class="kw">fn</span> <span class="ident">revert_migrations</span><span class="op">&lt;</span><span class="ident">DB</span><span class="op">&gt;</span>(
-    <span class="ident">migrator</span>: <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Migrator</span><span class="op">&lt;</span><span class="ident">Database</span> <span class="op">=</span> <span class="ident">DB</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="ident">revert</span>: <span class="ident">Revert</span>,
-) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">Error</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="ident">DB</span>: <span class="ident">sqlx::Database</span>,
+<span class="kw">async fn </span>revert_migrations&lt;DB&gt;(
+    migrator: Box&lt;<span class="kw">dyn </span>Migrator&lt;Database = DB&gt;&gt;,
+    revert: Revert,
+) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt;
+<span class="kw">where
+    </span>DB: sqlx::Database,
 {
-    <span class="kw">let</span> <span class="ident">revert_plan</span> <span class="op">=</span> <span class="ident">migrator</span>.<span class="ident">generate_migration_plan</span>(<span class="ident">PlanType::Revert</span>).<span class="kw">await</span><span class="question-mark">?</span>;
-    <span class="kw">let</span> <span class="ident">revert_migrations</span>;
-    <span class="kw">if</span> <span class="ident">revert</span>.<span class="ident">all</span> {
-        <span class="ident">revert_migrations</span> <span class="op">=</span> <span class="ident">revert_plan</span>;
-    } <span class="kw">else</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">latest_migration</span>) <span class="op">=</span> <span class="ident">revert_plan</span>.<span class="ident">first</span>() {
-        <span class="ident">revert_migrations</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">latest_migration</span>];
-    } <span class="kw">else</span> {
-        <span class="ident">revert_migrations</span> <span class="op">=</span> <span class="macro">vec!</span>[];
+    <span class="kw">let </span>revert_plan = migrator.generate_migration_plan(PlanType::Revert).<span class="kw">await</span><span class="question-mark">?</span>;
+    <span class="kw">let </span>revert_migrations;
+    <span class="kw">if </span>revert.all {
+        revert_migrations = revert_plan;
+    } <span class="kw">else if let </span><span class="prelude-val">Some</span>(latest_migration) = revert_plan.first() {
+        revert_migrations = <span class="macro">vec!</span>[latest_migration];
+    } <span class="kw">else </span>{
+        revert_migrations = <span class="macro">vec!</span>[];
     }
-    <span class="kw">if</span> <span class="ident">revert</span>.<span class="ident">plan</span> {
-        <span class="kw">let</span> <span class="ident">first_width</span> <span class="op">=</span> <span class="number">10</span>;
-        <span class="kw">let</span> <span class="ident">second_width</span> <span class="op">=</span> <span class="number">30</span>;
-        <span class="kw">let</span> <span class="ident">full_width</span> <span class="op">=</span> <span class="ident">first_width</span> <span class="op">+</span> <span class="ident">second_width</span> <span class="op">+</span> <span class="number">3</span>;
+    <span class="kw">if </span>revert.plan {
+        <span class="kw">let </span>first_width = <span class="number">10</span>;
+        <span class="kw">let </span>second_width = <span class="number">30</span>;
+        <span class="kw">let </span>full_width = first_width + second_width + <span class="number">3</span>;
         <span class="macro">println!</span>(<span class="string">&quot;{:^first_width$} | {:^second_width$}&quot;</span>, <span class="string">&quot;App&quot;</span>, <span class="string">&quot;Name&quot;</span>);
-        <span class="macro">println!</span>(<span class="string">&quot;{:^full_width$}&quot;</span>, <span class="string">&quot;-&quot;</span>.<span class="ident">repeat</span>(<span class="ident">full_width</span>));
-        <span class="kw">for</span> <span class="ident">migration</span> <span class="kw">in</span> <span class="ident">revert_migrations</span> {
+        <span class="macro">println!</span>(<span class="string">&quot;{:^full_width$}&quot;</span>, <span class="string">&quot;-&quot;</span>.repeat(full_width));
+        <span class="kw">for </span>migration <span class="kw">in </span>revert_migrations {
             <span class="macro">println!</span>(
                 <span class="string">&quot;{:^first_width$} | {:^second_width$}&quot;</span>,
-                <span class="ident">migration</span>.<span class="ident">app</span>(),
-                <span class="ident">migration</span>.<span class="ident">name</span>(),
+                migration.app(),
+                migration.name(),
             );
         }
-    } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">revert</span>.<span class="ident">fake</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">connection</span> <span class="op">=</span> <span class="ident">migrator</span>.<span class="ident">pool</span>().<span class="ident">acquire</span>().<span class="kw">await</span><span class="question-mark">?</span>;
-        <span class="kw">for</span> <span class="ident">migration</span> <span class="kw">in</span> <span class="ident">revert_migrations</span> {
-            <span class="ident">migrator</span>
-                .<span class="ident">delete_migration_from_db_table</span>(<span class="ident">migration</span>, <span class="kw-2">&amp;mut</span> <span class="ident">connection</span>)
+    } <span class="kw">else if </span>revert.fake {
+        <span class="kw">let </span><span class="kw-2">mut </span>connection = migrator.pool().acquire().<span class="kw">await</span><span class="question-mark">?</span>;
+        <span class="kw">for </span>migration <span class="kw">in </span>revert_migrations {
+            migrator
+                .delete_migration_from_db_table(migration, <span class="kw-2">&amp;mut </span>connection)
                 .<span class="kw">await</span><span class="question-mark">?</span>;
         }
-    } <span class="kw">else</span> {
-        <span class="kw">for</span> <span class="ident">migration</span> <span class="kw">in</span> <span class="ident">revert_migrations</span> {
-            <span class="ident">migrator</span>.<span class="ident">revert_migration</span>(<span class="ident">migration</span>).<span class="kw">await</span><span class="question-mark">?</span>;
+    } <span class="kw">else </span>{
+        <span class="kw">for </span>migration <span class="kw">in </span>revert_migrations {
+            migrator.revert_migration(migration).<span class="kw">await</span><span class="question-mark">?</span>;
         }
     }
     <span class="prelude-val">Ok</span>(())
 }
 
-<span class="doccomment">/// Run cli by parsing args with help of migrator</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// # Errors</span>
-<span class="doccomment">/// When command fails to run</span>
-<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">run</span><span class="op">&lt;</span><span class="ident">DB</span><span class="op">&gt;</span>(<span class="ident">migrator</span>: <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Migrator</span><span class="op">&lt;</span><span class="ident">Database</span> <span class="op">=</span> <span class="ident">DB</span><span class="op">&gt;</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">Error</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="ident">DB</span>: <span class="ident">sqlx::Database</span>,
+<span class="doccomment">/// Run cli by parsing args with help of migrator
+///
+/// # Errors
+/// When command fails to run
+</span><span class="kw">pub async fn </span>run&lt;DB&gt;(migrator: Box&lt;<span class="kw">dyn </span>Migrator&lt;Database = DB&gt;&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt;
+<span class="kw">where
+    </span>DB: sqlx::Database,
 {
-    <span class="kw">let</span> <span class="ident">args</span> <span class="op">=</span> <span class="ident">Args::parse</span>();
-    <span class="kw">match</span> <span class="ident">args</span>.<span class="ident">sub_command</span> {
-        <span class="ident">SubCommand::List</span> =&gt; <span class="ident">list_migrations</span>(<span class="ident">migrator</span>).<span class="kw">await</span><span class="question-mark">?</span>,
-        <span class="ident">SubCommand::Apply</span>(<span class="ident">apply</span>) =&gt; <span class="ident">apply_migrations</span>(<span class="ident">migrator</span>, <span class="ident">apply</span>).<span class="kw">await</span><span class="question-mark">?</span>,
-        <span class="ident">SubCommand::Revert</span>(<span class="ident">revert</span>) =&gt; <span class="ident">revert_migrations</span>(<span class="ident">migrator</span>, <span class="ident">revert</span>).<span class="kw">await</span><span class="question-mark">?</span>,
+    <span class="kw">let </span>args = Args::parse();
+    <span class="kw">match </span>args.sub_command {
+        SubCommand::List =&gt; list_migrations(migrator).<span class="kw">await</span><span class="question-mark">?</span>,
+        SubCommand::Apply(apply) =&gt; apply_migrations(migrator, apply).<span class="kw">await</span><span class="question-mark">?</span>,
+        SubCommand::Revert(revert) =&gt; revert_migrations(migrator, revert).<span class="kw">await</span><span class="question-mark">?</span>,
     }
     <span class="prelude-val">Ok</span>(())
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="sqlx_migrator" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (fe3342816 2022-08-01)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="sqlx_migrator" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (9c20b2a8c 2022-08-17)" ></div></body></html>

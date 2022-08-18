@@ -17,24 +17,24 @@
 <span id="17">17</span>
 <span id="18">18</span>
 <span id="19">19</span>
-</pre><pre class="rust"><code><span class="attribute">#![<span class="ident">warn</span>(<span class="ident">bare_trait_objects</span>, <span class="ident">missing_docs</span>, <span class="ident">unreachable_pub</span>)]</span>
-<span class="attribute">#![<span class="ident">deny</span>(<span class="ident">unsafe_code</span>)]</span>
-<span class="attribute">#![<span class="ident">deny</span>(<span class="ident">clippy::all</span>)]</span>
-<span class="attribute">#![<span class="ident">warn</span>(<span class="ident">clippy::pedantic</span>)]</span>
-<span class="attribute">#![<span class="ident">cfg_attr</span>(<span class="ident">docsrs</span>, <span class="ident">feature</span>(<span class="ident">doc_auto_cfg</span>))]</span>
+</pre><pre class="rust"><code><span class="attribute">#![warn(bare_trait_objects, missing_docs, unreachable_pub)]</span>
+<span class="attribute">#![deny(unsafe_code)]</span>
+<span class="attribute">#![deny(clippy::all)]</span>
+<span class="attribute">#![warn(clippy::pedantic)]</span>
+<span class="attribute">#![cfg_attr(docsrs, feature(doc_auto_cfg))]</span>
 
-<span class="doccomment">//! Library to create sqlx migration using rust code instead of sql</span>
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;cli&quot;</span>)]</span>
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">cli</span>;
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">error</span>;
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">migration</span>;
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">migrator</span>;
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">operation</span>;
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;postgres&quot;</span>)]</span>
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">postgres</span>;
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;sqlite&quot;</span>)]</span>
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">sqlite</span>;
+<span class="doccomment">//! Library to create sqlx migration using rust code instead of sql
+</span><span class="attribute">#[cfg(feature = <span class="string">&quot;cli&quot;</span>)]</span>
+<span class="kw">pub mod </span>cli;
+<span class="kw">pub mod </span>error;
+<span class="kw">pub mod </span>migration;
+<span class="kw">pub mod </span>migrator;
+<span class="kw">pub mod </span>operation;
+<span class="attribute">#[cfg(feature = <span class="string">&quot;postgres&quot;</span>)]</span>
+<span class="kw">pub mod </span>postgres;
+<span class="attribute">#[cfg(feature = <span class="string">&quot;sqlite&quot;</span>)]</span>
+<span class="kw">pub mod </span>sqlite;
 
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">sqlx</span>;
+<span class="kw">pub use </span>sqlx;
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="sqlx_migrator" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (fe3342816 2022-08-01)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="sqlx_migrator" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (9c20b2a8c 2022-08-17)" ></div></body></html>

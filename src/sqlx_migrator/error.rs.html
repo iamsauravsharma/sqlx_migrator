@@ -20,27 +20,27 @@
 <span id="20">20</span>
 <span id="21">21</span>
 <span id="22">22</span>
-</pre><pre class="rust"><code><span class="doccomment">//! Module for library error</span>
+</pre><pre class="rust"><code><span class="doccomment">//! Module for library error
 
-<span class="doccomment">/// Error enum to store different types of error</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">thiserror::Error</span>)]</span>
-<span class="attribute">#[<span class="ident">non_exhaustive</span>]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">Error</span> {
-    <span class="doccomment">/// Error type created from error raised by sqlx</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">SqlxError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">sqlx::error::Error</span>),
+/// Error enum to store different types of error
+</span><span class="attribute">#[derive(Debug, thiserror::Error)]</span>
+<span class="attribute">#[non_exhaustive]</span>
+<span class="kw">pub enum </span>Error {
+    <span class="doccomment">/// Error type created from error raised by sqlx
+    </span><span class="attribute">#[error(transparent)]</span>
+    SqlxError(<span class="attribute">#[from]</span> sqlx::error::Error),
 
-    <span class="doccomment">/// Error for failed to create migrations plan</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Failed to create migrations plan&quot;</span>)]</span>
-    <span class="ident">FailedToCreateMigrationPlan</span>,
+    <span class="doccomment">/// Error for failed to create migrations plan
+    </span><span class="attribute">#[error(<span class="string">&quot;Failed to create migrations plan&quot;</span>)]</span>
+    FailedToCreateMigrationPlan,
 
-    <span class="doccomment">/// Error for irreversible operation</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Operation is irreversible&quot;</span>)]</span>
-    <span class="ident">IrreversibleOperation</span>,
+    <span class="doccomment">/// Error for irreversible operation
+    </span><span class="attribute">#[error(<span class="string">&quot;Operation is irreversible&quot;</span>)]</span>
+    IrreversibleOperation,
 
-    <span class="doccomment">/// Error for pending migration present</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Pending migration present&quot;</span>)]</span>
-    <span class="ident">PendingMigration</span>,
+    <span class="doccomment">/// Error for pending migration present
+    </span><span class="attribute">#[error(<span class="string">&quot;Pending migration present&quot;</span>)]</span>
+    PendingMigration,
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="sqlx_migrator" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (fe3342816 2022-08-01)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="sqlx_migrator" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (9c20b2a8c 2022-08-17)" ></div></body></html>
