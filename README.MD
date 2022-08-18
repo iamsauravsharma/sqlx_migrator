@@ -12,7 +12,7 @@ Supported Databases:
 ## Installation
 
 ```toml
-sqlx_migrator = "0.1.0"
+sqlx_migrator = "0.2.0"
 ```
 
 # Usage
