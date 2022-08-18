@@ -29,7 +29,12 @@ default = [
     "sqlx/macros",
     "sqlx/chrono",
 ]
+runtime-async-std-native-tls = ["sqlx/runtime-async-std-native-tls"]
+runtime-async-std-rustls = ["sqlx/runtime-async-std-rustls"]
+runtime-actix-native-tls = ["sqlx/runtime-actix-native-tls"]
+runtime-actix-rustls = ["sqlx/runtime-actix-rustls"]
 runtime-tokio-native-tls = ["sqlx/runtime-tokio-native-tls"]
+runtime-tokio-rustls = ["sqlx/runtime-tokio-rustls"]
 postgres = ["sqlx/postgres"]
 sqlite = ["sqlx/sqlite"]
 cli = ["clap"]
