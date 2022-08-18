@@ -10,13 +10,13 @@ license = "MIT"
 readme = "README.MD"
 
 [dependencies]
-sqlx = { version = "0.6.0", default-features = false, features = [
+sqlx = { version = "0.6.1", default-features = false, features = [
     "macros",
     "chrono",
 ] }
-async-trait = "0.1.56"
+async-trait = "0.1.57"
 tracing = { version = "0.1.36", optional = true }
-thiserror = "1.0.31"
+thiserror = "1.0.32"
 clap = { version = "3.2.16", features = ["derive"], optional = true }
 chrono = "0.4.19"
 
@@ -47,5 +47,5 @@ path = "examples/sqlite/main.rs"
 required-features = ["sqlite", "runtime-tokio-native-tls"]
 
 [package.metadata.docs.rs]
-all-features = true
+features = ["postgres", "sqlite", "runtime-tokio-native-tls"]
 rustdoc-args = ["--cfg", "docsrs"]
