@@ -11,8 +11,9 @@ Supported Databases:
 
 ## Installation
 
+To use postgres migrator along with tokio-native-tls runtime you can configure Cargo.toml
 ```toml
-sqlx_migrator = "0.2.0"
+sqlx_migrator = { version = "0.2.0", features=["postgres", "runtime-tokio-native-tls"]
 ```
 
 # Usage
@@ -94,7 +95,7 @@ use sqlx_migrator::sqlite::migrator::Migrator;
 let uri = std::env::var("DATABASE_URL").unwrap();
 let pool = sqlx::Pool::connect(&uri).await.unwrap();
 let mut migrator = Migrator::new(&pool);
-migrator.add_migration(FirstMigration);
+migrator.add_migration(Box::new(FirstMigration));
 ```
 
 Now you can use two ways to run migrator either directly running migration or creating cli from migrator
