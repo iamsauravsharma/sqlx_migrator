@@ -11,8 +11,7 @@ jobs:
     name: Deploy Github page
     runs-on: ubuntu-latest
     env:
-      FEATURES_FLAG: "--features postgres,sqlite,runtime-tokio-native-tls"
-
+      ENV_FEATURES_FLAG: "--features postgres,sqlite,runtime-tokio-native-tls"
     steps:
       - uses: actions/checkout@v2
       - name: Setup rust toolchain
@@ -23,9 +22,13 @@ jobs:
           profile: default
       - name: Install cargo make
         uses: davidB/rust-cargo-make@v1
+      - name: Create env file
+        uses: iamsauravsharma/create-dotenv@v1.2.1
+        with:
+          env-prefix: 'ENV_'
       - name: Generate documentation
         run: |
-          cargo make rustdoc --env FEATURES_FLAG=$FEATURES_FLAG VERBOSE_FLAG=$VERBOSE_FLAG TARGET_TRIPLE_FLAG=$TARGET_TRIPLE_FLAG
+          cargo make rustdoc --env-file=./.env
       - name: Generate index page
         run: |
           echo "<meta http-equiv=refresh content=0;url=sqlx_migrator/index.html>" > target/doc/index.html

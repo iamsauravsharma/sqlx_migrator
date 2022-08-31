@@ -25,7 +25,7 @@ jobs:
              rust-version: "nightly"
     runs-on: ${{ matrix.os }}
     env:
-      FEATURES_FLAG: "--features postgres,sqlite,runtime-tokio-native-tls"
+      ENV_FEATURES_FLAG: "--features postgres,sqlite,runtime-tokio-native-tls"
     defaults:
       run:
         shell: bash
@@ -40,6 +40,10 @@ jobs:
          components: rustfmt, clippy
      - name: Install cargo make
        uses: davidB/rust-cargo-make@v1
+      - name: Create env file
+        uses: iamsauravsharma/create-dotenv@v1.2.1
+        with:
+          env-prefix: 'ENV_'
      - name: Run tests
        run: |
-        cargo make ci --env FEATURES_FLAG=$FEATURES_FLAG VERBOSE_FLAG=$VERBOSE_FLAG TARGET_TRIPLE_FLAG=$TARGET_TRIPLE_FLAG
+        cargo make ci --env-file=./.env
