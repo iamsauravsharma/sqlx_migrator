@@ -328,6 +328,7 @@
 <span id="328">328</span>
 <span id="329">329</span>
 <span id="330">330</span>
+<span id="331">331</span>
 </pre><pre class="rust"><code><span class="doccomment">//! migrator module
 //!
 //! It contains common enum and trait for implementing migrator for sqlx
@@ -471,13 +472,13 @@
         <span class="kw">let </span><span class="kw-2">mut </span>migration_plan = Vec::new();
 
         <span class="comment">// Hashmap which contains key as migration name and value as list of migration
-        // which needs to applied earlier than key according to before method of value
+        // which needs to applied earlier than key according to run_before method of
         // migration
-        </span><span class="kw">let </span><span class="kw-2">mut </span>run_before_parents_hashmap = HashMap::new();
+        </span><span class="kw">let </span><span class="kw-2">mut </span>run_before_migration_hashmap = HashMap::new();
 
         <span class="kw">for </span>migration <span class="kw">in </span><span class="self">self</span>.migrations() {
             <span class="kw">for </span>run_before_migration <span class="kw">in </span>migration.run_before() {
-                run_before_parents_hashmap
+                run_before_migration_hashmap
                     .entry(run_before_migration)
                     .or_insert(Vec::new())
                     .push(migration);
@@ -495,12 +496,12 @@
                     .iter()
                     .all(|migration| migration_plan.contains(<span class="kw-2">&amp;</span>migration));
 
-                <span class="kw">let </span><span class="kw-2">mut </span>all_run_before_parents_added = <span class="bool-val">true</span>;
-                <span class="kw">if let </span><span class="prelude-val">Some</span>(before_migrations) = run_before_parents_hashmap.get(migration) {
-                    all_run_before_parents_added = before_migrations
-                        .iter()
-                        .all(|migration| migration_plan.contains(migration));
-                }
+                <span class="comment">// Check if all run before parents are added or not
+                </span><span class="kw">let </span>all_run_before_parents_added = run_before_migration_hashmap
+                    .get(migration)
+                    .unwrap_or(<span class="kw-2">&amp;</span><span class="macro">vec!</span>[])
+                    .iter()
+                    .all(|migration| migration_plan.contains(migration));
 
                 <span class="kw">if </span>all_parents_applied
                     &amp;&amp; all_run_before_parents_added
@@ -511,17 +512,18 @@
             }
 
             <span class="comment">// If old migration plan length is equal to current length than no new migration
-            // was added. Next loop also will not add migration so return error.
+            // was added. Next loop also will not add migration so return error. This case
+            // can only occur when Migration 1 needs to run before Migration 2 as
+            // well as Migration 1 has Migration 2 as parents.
             </span><span class="kw">if </span>old_migration_plan_length == migration_plan.len() {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(Error::FailedToCreateMigrationPlan);
             }
         }
 
-        <span class="comment">// Handle replaces condition
+        <span class="comment">// List which migrations needs to be removed according to replace method
         </span><span class="kw">let </span><span class="kw-2">mut </span>removed_migration_info = Vec::new();
 
-        <span class="comment">// List which migration needs to be removed from plan
-        </span><span class="kw">for </span>migration <span class="kw">in </span><span class="kw-2">&amp;</span>migration_plan {
+        <span class="kw">for </span>migration <span class="kw">in </span><span class="kw-2">&amp;</span>migration_plan {
             <span class="kw">if </span>!migration.replaces().is_empty() {
                 <span class="comment">// Check if any replaces migration are applied for not
                 </span><span class="kw">let </span>replaces_applied = migration
@@ -543,7 +545,7 @@
             }
         }
 
-        <span class="comment">// Retain only migration which are not in removed migration name
+        <span class="comment">// Retain only migration which are not in removed migration info
         </span>migration_plan
             .retain(|migration| !removed_migration_info.iter().any(|info| migration == info));
 
@@ -659,4 +661,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="sqlx_migrator" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (02654a084 2022-08-30)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="sqlx_migrator" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (9243168fa 2022-08-31)" ></div></body></html>
