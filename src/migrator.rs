@@ -141,13 +141,13 @@ pub trait Migrator: Send + Sync {
         let mut migration_plan = Vec::new();
 
         // Hashmap which contains key as migration name and value as list of migration
-        // which needs to applied earlier than key according to before method of value
+        // which needs to applied earlier than key according to run_before method of
         // migration
-        let mut run_before_parents_hashmap = HashMap::new();
+        let mut run_before_migration_hashmap = HashMap::new();
 
         for migration in self.migrations() {
             for run_before_migration in migration.run_before() {
-                run_before_parents_hashmap
+                run_before_migration_hashmap
                     .entry(run_before_migration)
                     .or_insert(Vec::new())
                     .push(migration);
@@ -165,12 +165,12 @@ pub trait Migrator: Send + Sync {
                     .iter()
                     .all(|migration| migration_plan.contains(&migration));
 
-                let mut all_run_before_parents_added = true;
-                if let Some(before_migrations) = run_before_parents_hashmap.get(migration) {
-                    all_run_before_parents_added = before_migrations
-                        .iter()
-                        .all(|migration| migration_plan.contains(migration));
-                }
+                // Check if all run before parents are added or not
+                let all_run_before_parents_added = run_before_migration_hashmap
+                    .get(migration)
+                    .unwrap_or(&vec![])
+                    .iter()
+                    .all(|migration| migration_plan.contains(migration));
 
                 if all_parents_applied
                     && all_run_before_parents_added
@@ -181,16 +181,17 @@ pub trait Migrator: Send + Sync {
             }
 
             // If old migration plan length is equal to current length than no new migration
-            // was added. Next loop also will not add migration so return error.
+            // was added. Next loop also will not add migration so return error. This case
+            // can only occur when Migration 1 needs to run before Migration 2 as
+            // well as Migration 1 has Migration 2 as parents.
             if old_migration_plan_length == migration_plan.len() {
                 return Err(Error::FailedToCreateMigrationPlan);
             }
         }
 
-        // Handle replaces condition
+        // List which migrations needs to be removed according to replace method
         let mut removed_migration_info = Vec::new();
 
-        // List which migration needs to be removed from plan
         for migration in &migration_plan {
             if !migration.replaces().is_empty() {
                 // Check if any replaces migration are applied for not
@@ -213,7 +214,7 @@ pub trait Migrator: Send + Sync {
             }
         }
 
-        // Retain only migration which are not in removed migration name
+        // Retain only migration which are not in removed migration info
         migration_plan
             .retain(|migration| !removed_migration_info.iter().any(|info| migration == info));
 
