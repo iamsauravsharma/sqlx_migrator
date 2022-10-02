@@ -110,12 +110,3 @@ where
         self.name().hash(state);
     }
 }
-
-impl<DB> PartialEq<(String, String)> for &Box<dyn Migration<Database = DB>>
-where
-    DB: sqlx::Database,
-{
-    fn eq(&self, other: &(String, String)) -> bool {
-        self.app() == other.0 && self.name() == other.1
-    }
-}

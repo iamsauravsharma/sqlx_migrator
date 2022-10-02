@@ -6,27 +6,27 @@ use crate::migrator::{Migrator, PlanType};
 
 #[derive(Parser, Debug)]
 struct Args {
-    #[clap(subcommand)]
+    #[command(subcommand)]
     sub_command: SubCommand,
 }
 
 #[derive(Subcommand, Debug)]
 enum SubCommand {
-    #[clap(about = "List migrations along with their status")]
+    #[command(about = "List migrations along with their status")]
     List,
-    #[clap(about = "Apply migrations")]
+    #[command(about = "Apply migrations")]
     Apply(Apply),
-    #[clap(about = "Revert migrations")]
+    #[command(about = "Revert migrations")]
     Revert(Revert),
 }
 
 #[derive(Parser, Debug)]
 struct Apply {
-    #[clap(long = "plan", short = 'p', help = "Show plan")]
+    #[arg(long = "plan", short = 'p', help = "Show plan")]
     plan: bool,
-    #[clap(long = "check", short = 'c', help = "Check for pending migration")]
+    #[arg(long = "check", short = 'c', help = "Check for pending migration")]
     check: bool,
-    #[clap(
+    #[arg(
         long = "fake",
         short = 'f',
         help = "Make migration applied without applying"
@@ -36,11 +36,11 @@ struct Apply {
 
 #[derive(Parser, Debug)]
 struct Revert {
-    #[clap(long = "plan", short = 'p', help = "Show plan")]
+    #[arg(long = "plan", short = 'p', help = "Show plan")]
     plan: bool,
-    #[clap(long = "all", short = 'a', help = "Revert all migration")]
+    #[arg(long = "all", short = 'a', help = "Revert all migration")]
     all: bool,
-    #[clap(
+    #[arg(
         long = "fake",
         short = 'f',
         help = "Make migration reverted without reverting"
