@@ -143,13 +143,13 @@ pub trait Migrator: Send + Sync {
         // Hashmap which contains key as migration name and value as list of migration
         // which needs to applied earlier than key according to run_before method of
         // migration
-        let mut run_before_migration_hashmap = HashMap::new();
+        let mut run_before_migration_hashmap = HashMap::<_, Vec<_>>::new();
 
         for migration in self.migrations() {
             for run_before_migration in migration.run_before() {
                 run_before_migration_hashmap
                     .entry(run_before_migration)
-                    .or_insert(Vec::new())
+                    .or_default()
                     .push(migration);
             }
         }
@@ -189,10 +189,9 @@ pub trait Migrator: Send + Sync {
             }
         }
 
-        // List which migrations needs to be removed according to replace method
-        let mut removed_migration_info = Vec::new();
-
-        for migration in &migration_plan {
+        // Remove migration from migration plan
+        let temp_migration = migration_plan.clone();
+        for migration in &temp_migration {
             if !migration.replaces().is_empty() {
                 // Check if any replaces migration are applied for not
                 let replaces_applied = migration
@@ -201,22 +200,15 @@ pub trait Migrator: Send + Sync {
                     .any(|migration| applied_migrations.contains(&migration));
 
                 if replaces_applied {
-                    removed_migration_info
-                        .push((migration.app().to_string(), migration.name().to_string()));
+                    migration_plan.retain(|plan_migration| migration != plan_migration);
                 } else {
                     for replaced_migration in migration.replaces() {
-                        removed_migration_info.push((
-                            replaced_migration.app().to_string(),
-                            replaced_migration.name().to_string(),
-                        ));
+                        migration_plan
+                            .retain(|plan_migration| &&replaced_migration != plan_migration);
                     }
                 }
             }
         }
-
-        // Retain only migration which are not in removed migration info
-        migration_plan
-            .retain(|migration| !removed_migration_info.iter().any(|info| migration == info));
 
         // Return migration according to plan type
         match plan_type {

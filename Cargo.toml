@@ -10,18 +10,18 @@ license = "MIT"
 readme = "README.MD"
 
 [dependencies]
-sqlx = { version = "0.6.1", default-features = false, features = [
+sqlx = { version = "0.6.2", default-features = false, features = [
     "macros",
     "chrono",
 ] }
 async-trait = "0.1.57"
 tracing = { version = "0.1.36", optional = true }
-thiserror = "1.0.33"
-clap = { version = "3.2.19", features = ["derive"], optional = true }
+thiserror = "1.0.37"
+clap = { version = "4.0.8", features = ["derive"], optional = true }
 chrono = "0.4.22"
 
 [dev-dependencies]
-tokio = { version = "1.20.1", features = ["rt-multi-thread", "macros"] }
+tokio = { version = "1.21.2", features = ["rt-multi-thread", "macros"] }
 
 [features]
 default = ["cli", "tracing"]
