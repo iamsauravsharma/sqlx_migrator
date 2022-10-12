@@ -1,0 +1,3 @@
+(function() {var implementors = {
+"sqlx_migrator":[["impl <a class=\"trait\" href=\"https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html\" title=\"trait core::clone::Clone\">Clone</a> for <a class=\"struct\" href=\"sqlx_migrator/migrator/struct.SqlMigratorMigration.html\" title=\"struct sqlx_migrator::migrator::SqlMigratorMigration\">SqlMigratorMigration</a>"]]
+};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()
