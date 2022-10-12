@@ -52,29 +52,49 @@ async fn list_migrations<DB>(migrator: Box<dyn Migrator<Database = DB>>) -> Resu
 where
     DB: sqlx::Database,
 {
-    let applied_migrations = migrator.list_applied_migrations().await?;
-    let first_width = 10;
-    let second_width = 30;
-    let third_width = 10;
-    let full_width = first_width + second_width + third_width + 6;
+    migrator.ensure_migration_table_exists().await?;
+    let applied_migrations = migrator.fetch_applied_migration_from_db().await?;
+
+    let widths = [5, 10, 30, 10, 20];
+    let full_width = widths.iter().sum::<usize>() + widths.len() * 3;
+
+    let first_width = widths[0];
+    let second_width = widths[1];
+    let third_width = widths[2];
+    let fourth_width = widths[3];
+    let fifth_width = widths[4];
+
     println!(
-        "{:^first_width$} | {:^second_width$} | {:^third_width$}",
-        "App", "Name", "Status"
+        "{:^first_width$} | {:^second_width$} | {:^third_width$} | {:^fourth_width$} | \
+         {:^fifth_width$}",
+        "ID", "App", "Name", "Status", "Applied time"
     );
+
     println!("{:^full_width$}", "-".repeat(full_width));
     for migration in migrator.generate_migration_plan(PlanType::Full).await? {
+        // let mutable_applied_migrations = applied_migrations.clone();
+        let applied_migration_info = applied_migrations
+            .iter()
+            .find(|&applied_migration| applied_migration == migration);
+
+        let mut id = String::from("N/A");
+        let mut status = "\u{2717}";
+        let mut applied_time = String::from("N/A");
+
+        if let Some(sqlx_migration) = applied_migration_info {
+            id = sqlx_migration.id().to_string();
+            status = "\u{2713}";
+            applied_time = sqlx_migration.applied_time().to_string();
+        }
+
         println!(
-            "{:^first_width$} | {:^second_width$} | {:^third_width$}",
+            "{:^first_width$} | {:^second_width$} | {:^third_width$} | {:^fourth_width$} | \
+             {:^fifth_width$}",
+            id,
             migration.app(),
             migration.name(),
-            if applied_migrations
-                .iter()
-                .any(|&applied_migration| applied_migration == migration)
-            {
-                "\u{2713}"
-            } else {
-                "\u{2717}"
-            }
+            status,
+            applied_time
         );
     }
     Ok(())
