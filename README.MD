@@ -111,6 +111,56 @@ Or you can create cli
 sqlx_migrator::cli::run(Box::new(migrator)).await.unwrap();
 ```
 
+# Migrate from sqlx default sql based migration
+To migrate from sqlx sql based migration you have two alternative:
+1. Write all sql migration as rust operation
+2. Write single rust based operation which apply and revert all sqlx sql based migration
+
+#### Option: 1
+Can be easily applied by following above usage docs where you only need to write your sql based migration as sqlx query
+Then you can create cli for migrator
+```rust
+sqlx_migrator::cli::run(Box::new(migrator)).await.unwrap();
+```
+and run fake apply cli command
+`<COMMAND_NAME> apply --fake`
+which actually doesn't apply migration query but only update migration table
+
+#### Option: 2
+To run all sqlx sql based migration as single command create new operation
+```rust
+use sqlx_migrator::error::Error;
+use sqlx_migrator::operation::Operation;
+use sqlx_migrator::sqlx;
+
+pub(crate) struct SqlxOperation;
+
+#[async_trait::async_trait]
+impl Operation for SqlxOperation {
+    type Database = sqlx::Postgres;
+
+    async fn up(
+        &self,
+        connection: &mut <Self::Database as sqlx::Database>::Connection,
+    ) -> Result<(), Error> {
+        sqlx::migrate!("db/migrations")
+            .run(connection)
+            .await?;
+        Ok(())
+    }
+
+    async fn down(
+        &self,
+        connection: &mut <Self::Database as sqlx::Database>::Connection,
+    ) -> Result<(), Error> {
+        sqlx::migrate!("db/migrations")
+            .undo(connection, 0)
+            .await?;
+        Ok(())
+    }
+}
+```
+
 [license_badge]: https://img.shields.io/github/license/iamsauravsharma/sqlx_migrator.svg?style=for-the-badge
 [license_link]: LICENSE
 
