@@ -203,29 +203,29 @@
 <span class="kw">use </span><span class="kw">crate</span>::error::Error;
 <span class="kw">use </span><span class="kw">crate</span>::migrator::{Migrator, PlanType};
 
-<span class="attribute">#[derive(Parser, Debug)]
+<span class="attr">#[derive(Parser, Debug)]
 </span><span class="kw">struct </span>Args {
-    <span class="attribute">#[command(subcommand)]
+    <span class="attr">#[command(subcommand)]
     </span>sub_command: SubCommand,
 }
 
-<span class="attribute">#[derive(Subcommand, Debug)]
+<span class="attr">#[derive(Subcommand, Debug)]
 </span><span class="kw">enum </span>SubCommand {
-    <span class="attribute">#[command(about = <span class="string">&quot;List migrations along with their status&quot;</span>)]
+    <span class="attr">#[command(about = <span class="string">&quot;List migrations along with their status&quot;</span>)]
     </span>List,
-    <span class="attribute">#[command(about = <span class="string">&quot;Apply migrations&quot;</span>)]
+    <span class="attr">#[command(about = <span class="string">&quot;Apply migrations&quot;</span>)]
     </span>Apply(Apply),
-    <span class="attribute">#[command(about = <span class="string">&quot;Revert migrations&quot;</span>)]
+    <span class="attr">#[command(about = <span class="string">&quot;Revert migrations&quot;</span>)]
     </span>Revert(Revert),
 }
 
-<span class="attribute">#[derive(Parser, Debug)]
+<span class="attr">#[derive(Parser, Debug)]
 </span><span class="kw">struct </span>Apply {
-    <span class="attribute">#[arg(long = <span class="string">&quot;plan&quot;</span>, short = <span class="string">&#39;p&#39;</span>, help = <span class="string">&quot;Show plan&quot;</span>)]
+    <span class="attr">#[arg(long = <span class="string">&quot;plan&quot;</span>, short = <span class="string">&#39;p&#39;</span>, help = <span class="string">&quot;Show plan&quot;</span>)]
     </span>plan: bool,
-    <span class="attribute">#[arg(long = <span class="string">&quot;check&quot;</span>, short = <span class="string">&#39;c&#39;</span>, help = <span class="string">&quot;Check for pending migration&quot;</span>)]
+    <span class="attr">#[arg(long = <span class="string">&quot;check&quot;</span>, short = <span class="string">&#39;c&#39;</span>, help = <span class="string">&quot;Check for pending migration&quot;</span>)]
     </span>check: bool,
-    <span class="attribute">#[arg(
+    <span class="attr">#[arg(
         long = <span class="string">&quot;fake&quot;</span>,
         short = <span class="string">&#39;f&#39;</span>,
         help = <span class="string">&quot;Make migration applied without applying&quot;
@@ -233,13 +233,13 @@
     </span>fake: bool,
 }
 
-<span class="attribute">#[derive(Parser, Debug)]
+<span class="attr">#[derive(Parser, Debug)]
 </span><span class="kw">struct </span>Revert {
-    <span class="attribute">#[arg(long = <span class="string">&quot;plan&quot;</span>, short = <span class="string">&#39;p&#39;</span>, help = <span class="string">&quot;Show plan&quot;</span>)]
+    <span class="attr">#[arg(long = <span class="string">&quot;plan&quot;</span>, short = <span class="string">&#39;p&#39;</span>, help = <span class="string">&quot;Show plan&quot;</span>)]
     </span>plan: bool,
-    <span class="attribute">#[arg(long = <span class="string">&quot;all&quot;</span>, short = <span class="string">&#39;a&#39;</span>, help = <span class="string">&quot;Revert all migration&quot;</span>)]
+    <span class="attr">#[arg(long = <span class="string">&quot;all&quot;</span>, short = <span class="string">&#39;a&#39;</span>, help = <span class="string">&quot;Revert all migration&quot;</span>)]
     </span>all: bool,
-    <span class="attribute">#[arg(
+    <span class="attr">#[arg(
         long = <span class="string">&quot;fake&quot;</span>,
         short = <span class="string">&#39;f&#39;</span>,
         help = <span class="string">&quot;Make migration reverted without reverting&quot;
@@ -397,4 +397,4 @@
     <span class="prelude-val">Ok</span>(())
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="sqlx_migrator" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (77e57db38 2022-10-30)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="sqlx_migrator" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (11ebe6512 2022-11-01)" ></div></body></html>

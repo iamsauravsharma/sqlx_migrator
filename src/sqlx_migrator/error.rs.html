@@ -23,24 +23,24 @@
 </pre><pre class="rust"><code><span class="doccomment">//! Module for library error
 
 /// Error enum to store different types of error
-</span><span class="attribute">#[derive(Debug, thiserror::Error)]
+</span><span class="attr">#[derive(Debug, thiserror::Error)]
 #[non_exhaustive]
 </span><span class="kw">pub enum </span>Error {
     <span class="doccomment">/// Error type created from error raised by sqlx
-    </span><span class="attribute">#[error(transparent)]
-    </span>SqlxError(<span class="attribute">#[from] </span>sqlx::error::Error),
+    </span><span class="attr">#[error(transparent)]
+    </span>SqlxError(<span class="attr">#[from] </span>sqlx::error::Error),
 
     <span class="doccomment">/// Error for failed to create migrations plan
-    </span><span class="attribute">#[error(<span class="string">&quot;Failed to create migrations plan&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">&quot;Failed to create migrations plan&quot;</span>)]
     </span>FailedToCreateMigrationPlan,
 
     <span class="doccomment">/// Error for irreversible operation
-    </span><span class="attribute">#[error(<span class="string">&quot;Operation is irreversible&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">&quot;Operation is irreversible&quot;</span>)]
     </span>IrreversibleOperation,
 
     <span class="doccomment">/// Error for pending migration present
-    </span><span class="attribute">#[error(<span class="string">&quot;Pending migration present&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">&quot;Pending migration present&quot;</span>)]
     </span>PendingMigration,
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="sqlx_migrator" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (77e57db38 2022-10-30)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="sqlx_migrator" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (11ebe6512 2022-11-01)" ></div></body></html>

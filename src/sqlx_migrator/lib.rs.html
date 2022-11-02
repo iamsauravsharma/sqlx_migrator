@@ -17,24 +17,24 @@
 <span id="17">17</span>
 <span id="18">18</span>
 <span id="19">19</span>
-</pre><pre class="rust"><code><span class="attribute">#![warn(bare_trait_objects, missing_docs, unreachable_pub)]
+</pre><pre class="rust"><code><span class="attr">#![warn(bare_trait_objects, missing_docs, unreachable_pub)]
 #![deny(unsafe_code)]
 #![deny(clippy::all)]
 #![warn(clippy::pedantic)]
 #![cfg_attr(docsrs, feature(doc_auto_cfg))]
 
 </span><span class="doccomment">//! Library to create sqlx migration using rust code instead of sql
-</span><span class="attribute">#[cfg(feature = <span class="string">&quot;cli&quot;</span>)]
+</span><span class="attr">#[cfg(feature = <span class="string">&quot;cli&quot;</span>)]
 </span><span class="kw">pub mod </span>cli;
 <span class="kw">pub mod </span>error;
 <span class="kw">pub mod </span>migration;
 <span class="kw">pub mod </span>migrator;
 <span class="kw">pub mod </span>operation;
-<span class="attribute">#[cfg(feature = <span class="string">&quot;postgres&quot;</span>)]
+<span class="attr">#[cfg(feature = <span class="string">&quot;postgres&quot;</span>)]
 </span><span class="kw">pub mod </span>postgres;
-<span class="attribute">#[cfg(feature = <span class="string">&quot;sqlite&quot;</span>)]
+<span class="attr">#[cfg(feature = <span class="string">&quot;sqlite&quot;</span>)]
 </span><span class="kw">pub mod </span>sqlite;
 
 <span class="kw">pub use </span>sqlx;
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="sqlx_migrator" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (77e57db38 2022-10-30)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="sqlx_migrator" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (11ebe6512 2022-11-01)" ></div></body></html>
