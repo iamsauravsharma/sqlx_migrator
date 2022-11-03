@@ -20,6 +20,10 @@
 <span id="20">20</span>
 <span id="21">21</span>
 <span id="22">22</span>
+<span id="23">23</span>
+<span id="24">24</span>
+<span id="25">25</span>
+<span id="26">26</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Module for library error
 
 /// Error enum to store different types of error
@@ -40,7 +44,11 @@
 
     <span class="doccomment">/// Error for pending migration present
     </span><span class="attr">#[error(<span class="string">&quot;Pending migration present&quot;</span>)]
-    </span>PendingMigration,
+    </span>PendingMigrationPresent,
+
+    <span class="doccomment">/// Error when migration name is only present but not app name
+    </span><span class="attr">#[error(<span class="string">&quot;App name required. Only migration name present&quot;</span>)]
+    </span>AppNameRequired,
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="sqlx_migrator" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (11ebe6512 2022-11-01)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="sqlx_migrator" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (edf018221 2022-11-02)" ></div></body></html>

@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"trait":[["Migration","Trait for migration"]]};
+window.SIDEBAR_ITEMS = {"struct":[["AppliedMigrationSqlRow","Migration struct created from sql table. Struct contains 4 fields which maps to `id`, `app`, `name`, `applied_time` sql fields. It is used to list applied migrations"]],"trait":[["Migration","Trait for migration"]]};

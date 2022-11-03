@@ -106,8 +106,8 @@
 <span class="kw">use </span>sqlx::{Pool, Sqlite};
 
 <span class="kw">use </span><span class="kw">crate</span>::error::Error;
-<span class="kw">use </span><span class="kw">crate</span>::migration::Migration;
-<span class="kw">use </span><span class="kw">crate</span>::migrator::{Migrator <span class="kw">as </span>MigratorTrait, SqlMigratorMigration};
+<span class="kw">use </span><span class="kw">crate</span>::migration::{AppliedMigrationSqlRow, Migration};
+<span class="kw">use </span><span class="kw">crate</span>::migrator::Migrator <span class="kw">as </span>MigratorTrait;
 
 <span class="doccomment">/// Migrator struct which store migrations graph and information related to
 /// Sqlite migration
@@ -194,7 +194,7 @@ DELETE FROM _sqlx_migrator_migrations WHERE app = $1 AND name = $2
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="kw">async fn </span>fetch_applied_migration_from_db(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;SqlMigratorMigration&gt;, Error&gt; {
+    <span class="kw">async fn </span>fetch_applied_migration_from_db(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;AppliedMigrationSqlRow&gt;, Error&gt; {
         <span class="kw">let </span>rows =
             sqlx::query_as(<span class="string">&quot;SELECT id, app, name, applied_time FROM _sqlx_migrator_migrations&quot;</span>)
                 .fetch_all(<span class="self">self</span>.pool())
@@ -203,4 +203,4 @@ DELETE FROM _sqlx_migrator_migrations WHERE app = $1 AND name = $2
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="sqlx_migrator" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (11ebe6512 2022-11-01)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="sqlx_migrator" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (edf018221 2022-11-02)" ></div></body></html>

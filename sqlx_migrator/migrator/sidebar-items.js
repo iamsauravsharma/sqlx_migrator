@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":[["PlanType","Type of plan used to generate migrations"]],"struct":[["SqlMigratorMigration","Migration struct created from sql table. struct contains 4 fields which maps to `id`, `app`, `name`, `applied_time` sql fields"]],"trait":[["Migrator","Migrator trait"]]};
+window.SIDEBAR_ITEMS = {"enum":[["Plan","Type of plan used to generate migrations"]],"trait":[["Migrator","Migrator trait"]]};

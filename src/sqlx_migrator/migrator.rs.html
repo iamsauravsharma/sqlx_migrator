@@ -334,6 +334,17 @@
 <span id="334">334</span>
 <span id="335">335</span>
 <span id="336">336</span>
+<span id="337">337</span>
+<span id="338">338</span>
+<span id="339">339</span>
+<span id="340">340</span>
+<span id="341">341</span>
+<span id="342">342</span>
+<span id="343">343</span>
+<span id="344">344</span>
+<span id="345">345</span>
+<span id="346">346</span>
+<span id="347">347</span>
 </pre><pre class="rust"><code><span class="doccomment">//! migrator module
 //!
 //! It contains common enum and trait for implementing migrator for sqlx
@@ -346,56 +357,34 @@
 
 </span><span class="kw">use </span>std::collections::{HashMap, HashSet};
 
-<span class="kw">use </span>chrono::{DateTime, Utc};
 <span class="kw">use </span>sqlx::Pool;
 
 <span class="kw">use </span><span class="kw">crate</span>::error::Error;
-<span class="kw">use </span><span class="kw">crate</span>::migration::Migration;
+<span class="kw">use </span><span class="kw">crate</span>::migration::{AppliedMigrationSqlRow, Migration};
 
 <span class="kw">type </span>MigrationVecResult&lt;<span class="lifetime">&#39;a</span>, DB&gt; = <span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Box&lt;<span class="kw">dyn </span>Migration&lt;Database = DB&gt;&gt;&gt;, Error&gt;;
 
-<span class="doccomment">/// Migration struct created from sql table. struct contains 4 fields which maps
-/// to `id`, `app`, `name`, `applied_time` sql fields
-</span><span class="attr">#[derive(sqlx::FromRow, Clone)]
-</span><span class="kw">pub struct </span>SqlMigratorMigration {
-    id: i32,
-    app: String,
-    name: String,
-    applied_time: DateTime&lt;Utc&gt;,
-}
-
-<span class="kw">impl </span>SqlMigratorMigration {
-    <span class="doccomment">/// Return id value present on database
-    </span><span class="attr">#[must_use]
-    </span><span class="kw">pub fn </span>id(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; i32 {
-        <span class="self">self</span>.id
-    }
-
-    <span class="doccomment">/// Return migration applied time
-    </span><span class="attr">#[must_use]
-    </span><span class="kw">pub fn </span>applied_time(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; DateTime&lt;Utc&gt; {
-        <span class="self">self</span>.applied_time
-    }
-}
-
-<span class="kw">impl</span>&lt;T&gt; PartialEq&lt;Box&lt;<span class="kw">dyn </span>Migration&lt;Database = T&gt;&gt;&gt; <span class="kw">for </span>SqlMigratorMigration
-<span class="kw">where
-    </span>T: sqlx::Database,
-{
-    <span class="kw">fn </span>eq(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span>Box&lt;<span class="kw">dyn </span>Migration&lt;Database = T&gt;&gt;) -&gt; bool {
-        <span class="self">self</span>.app == other.app() &amp;&amp; <span class="self">self</span>.name == other.name()
-    }
-}
-
 <span class="doccomment">/// Type of plan used to generate migrations
 </span><span class="attr">#[derive(Debug)]
-</span><span class="kw">pub enum </span>PlanType {
-    <span class="doccomment">/// Full plan. Plan containing all migrations according to order
+</span><span class="kw">pub enum </span>Plan {
+    <span class="doccomment">/// Full generation plan. Plan containing all migrations according to order
     </span>Full,
-    <span class="doccomment">/// Apply plan. Plan containing migrations which can be applied
-    </span>Apply,
-    <span class="doccomment">/// Revert plan. Plan containing migrations which can be reverted
-    </span>Revert,
+    <span class="doccomment">/// Apply generation plan. Plan containing migrations which can be applied
+    </span>Apply {
+        <span class="doccomment">/// Migration app name which migration needs to be applied
+        </span>app: <span class="prelude-ty">Option</span>&lt;String&gt;,
+        <span class="doccomment">/// Migration name till which migration needs to be applied. app should
+        /// be Some if it is Some value
+        </span>name: <span class="prelude-ty">Option</span>&lt;String&gt;,
+    },
+    <span class="doccomment">/// Revert generation plan. Plan containing migrations which can be reverted
+    </span>Revert {
+        <span class="doccomment">/// Migration app name which migration needs to be reverted
+        </span>app: <span class="prelude-ty">Option</span>&lt;String&gt;,
+        <span class="doccomment">/// Migration name till which migration needs to be reverted. app should
+        /// be Some if it is Some value
+        </span>name: <span class="prelude-ty">Option</span>&lt;String&gt;,
+    },
 }
 
 <span class="attr">#[async_trait::async_trait]
@@ -435,7 +424,7 @@
 
     <span class="doccomment">/// List all applied migrations from database in string format (full name of
     /// migration)
-    </span><span class="kw">async fn </span>fetch_applied_migration_from_db(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;SqlMigratorMigration&gt;, Error&gt;;
+    </span><span class="kw">async fn </span>fetch_applied_migration_from_db(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;AppliedMigrationSqlRow&gt;, Error&gt;;
 
     <span class="doccomment">/// Add vector of migrations to Migrator object
     </span><span class="kw">fn </span>add_migrations(<span class="kw-2">&amp;mut </span><span class="self">self</span>, migrations: Vec&lt;Box&lt;<span class="kw">dyn </span>Migration&lt;Database = <span class="self">Self</span>::Database&gt;&gt;&gt;) {
@@ -477,14 +466,11 @@
 
     <span class="doccomment">/// Generate migration plan for according to plan type. Returns a vector of
     /// migration
-    </span><span class="kw">async fn </span>generate_migration_plan(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        plan_type: PlanType,
-    ) -&gt; MigrationVecResult&lt;<span class="self">Self</span>::Database&gt; {
+    </span><span class="kw">async fn </span>generate_migration_plan(<span class="kw-2">&amp;</span><span class="self">self</span>, plan: Plan) -&gt; MigrationVecResult&lt;<span class="self">Self</span>::Database&gt; {
         <span class="kw">let </span>applied_migrations = <span class="self">self</span>.list_applied_migrations().<span class="kw">await</span><span class="question-mark">?</span>;
 
         <span class="kw">if </span><span class="macro">cfg!</span>(feature = <span class="string">&quot;tracing&quot;</span>) {
-            <span class="macro">tracing::info!</span>(<span class="string">&quot;Generating {:?} migration plan&quot;</span>, plan_type);
+            <span class="macro">tracing::info!</span>(<span class="string">&quot;Generating {:?} migration plan&quot;</span>, plan);
         }
 
         <span class="kw">let </span><span class="kw-2">mut </span>migration_plan = Vec::new();
@@ -559,17 +545,41 @@
             }
         }
 
-        <span class="comment">// Return migration according to plan type
-        </span><span class="kw">match </span>plan_type {
-            PlanType::Full =&gt; (),
-            PlanType::Apply =&gt; {
+        <span class="comment">// Modify migration plan according to plan type
+        </span><span class="kw">let </span>(migration_app, migration_name) = <span class="kw">match </span>plan {
+            Plan::Full =&gt; (<span class="prelude-val">None</span>, <span class="prelude-val">None</span>),
+            Plan::Apply { app, name } =&gt; {
                 migration_plan.retain(|migration| !applied_migrations.contains(migration));
+                (app, name)
             }
-            PlanType::Revert =&gt; {
+            Plan::Revert { app, name } =&gt; {
                 migration_plan.retain(|migration| applied_migrations.contains(migration));
-                migration_plan.reverse();
+                (app, name)
             }
         };
+
+        <span class="comment">// Error if only migration name present and app name not present
+        </span><span class="kw">if </span>migration_name.is_some() &amp;&amp; migration_app.is_none() {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(Error::AppNameRequired);
+        }
+
+        <span class="comment">// Find position of last element and truncate till that position
+        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(app) = migration_app {
+            <span class="kw">let </span>position = <span class="kw">if let </span><span class="prelude-val">Some</span>(name) = migration_name {
+                migration_plan
+                    .iter()
+                    .rposition(|migration| migration.app() == app &amp;&amp; migration.name() == name)
+            } <span class="kw">else </span>{
+                migration_plan
+                    .iter()
+                    .rposition(|migration| migration.app() == app)
+            };
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(pos) = position {
+                migration_plan.truncate(pos + <span class="number">1</span>);
+            } <span class="kw">else </span>{
+                migration_plan.clear();
+            }
+        }
         <span class="prelude-val">Ok</span>(migration_plan)
     }
 
@@ -581,7 +591,13 @@
         <span class="kw">if </span><span class="macro">cfg!</span>(feature = <span class="string">&quot;tracing&quot;</span>) {
             <span class="macro">tracing::info!</span>(<span class="string">&quot;Applying all migration&quot;</span>);
         }
-        <span class="kw">for </span>migration <span class="kw">in </span><span class="self">self</span>.generate_migration_plan(PlanType::Apply).<span class="kw">await</span><span class="question-mark">? </span>{
+        <span class="kw">for </span>migration <span class="kw">in </span><span class="self">self
+            </span>.generate_migration_plan(Plan::Apply {
+                app: <span class="prelude-val">None</span>,
+                name: <span class="prelude-val">None</span>,
+            })
+            .<span class="kw">await</span><span class="question-mark">?
+        </span>{
             <span class="self">self</span>.apply_migration(migration).<span class="kw">await</span><span class="question-mark">?</span>;
         }
         <span class="prelude-val">Ok</span>(())
@@ -627,7 +643,13 @@
         <span class="kw">if </span><span class="macro">cfg!</span>(feature = <span class="string">&quot;tracing&quot;</span>) {
             <span class="macro">tracing::info!</span>(<span class="string">&quot;Reverting all migration&quot;</span>);
         }
-        <span class="kw">for </span>migration <span class="kw">in </span><span class="self">self</span>.generate_migration_plan(PlanType::Revert).<span class="kw">await</span><span class="question-mark">? </span>{
+        <span class="kw">for </span>migration <span class="kw">in </span><span class="self">self
+            </span>.generate_migration_plan(Plan::Revert {
+                app: <span class="prelude-val">None</span>,
+                name: <span class="prelude-val">None</span>,
+            })
+            .<span class="kw">await</span><span class="question-mark">?
+        </span>{
             <span class="self">self</span>.revert_migration(migration).<span class="kw">await</span><span class="question-mark">?</span>;
         }
         <span class="prelude-val">Ok</span>(())
@@ -671,4 +693,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="sqlx_migrator" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (11ebe6512 2022-11-01)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="sqlx_migrator" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (edf018221 2022-11-02)" ></div></body></html>

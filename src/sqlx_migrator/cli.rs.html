@@ -197,11 +197,47 @@
 <span id="197">197</span>
 <span id="198">198</span>
 <span id="199">199</span>
+<span id="200">200</span>
+<span id="201">201</span>
+<span id="202">202</span>
+<span id="203">203</span>
+<span id="204">204</span>
+<span id="205">205</span>
+<span id="206">206</span>
+<span id="207">207</span>
+<span id="208">208</span>
+<span id="209">209</span>
+<span id="210">210</span>
+<span id="211">211</span>
+<span id="212">212</span>
+<span id="213">213</span>
+<span id="214">214</span>
+<span id="215">215</span>
+<span id="216">216</span>
+<span id="217">217</span>
+<span id="218">218</span>
+<span id="219">219</span>
+<span id="220">220</span>
+<span id="221">221</span>
+<span id="222">222</span>
+<span id="223">223</span>
+<span id="224">224</span>
+<span id="225">225</span>
+<span id="226">226</span>
+<span id="227">227</span>
+<span id="228">228</span>
+<span id="229">229</span>
+<span id="230">230</span>
+<span id="231">231</span>
+<span id="232">232</span>
+<span id="233">233</span>
+<span id="234">234</span>
+<span id="235">235</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Module for creating and running cli with help of migrator
 </span><span class="kw">use </span>clap::{Parser, Subcommand};
 
 <span class="kw">use </span><span class="kw">crate</span>::error::Error;
-<span class="kw">use </span><span class="kw">crate</span>::migrator::{Migrator, PlanType};
+<span class="kw">use </span><span class="kw">crate</span>::migrator::{Migrator, Plan};
 
 <span class="attr">#[derive(Parser, Debug)]
 </span><span class="kw">struct </span>Args {
@@ -231,6 +267,17 @@
         help = <span class="string">&quot;Make migration applied without applying&quot;
     </span>)]
     </span>fake: bool,
+    <span class="attr">#[arg(
+        long = <span class="string">&quot;app&quot;</span>,
+        help = <span class="string">&quot;Apply migration till all app migration are applied&quot;
+    </span>)]
+    </span>app: <span class="prelude-ty">Option</span>&lt;String&gt;,
+    <span class="attr">#[arg(
+        long = <span class="string">&quot;name&quot;</span>,
+        help = <span class="string">&quot;Apply migration till provided migration&quot;</span>,
+        requires = <span class="string">&quot;app&quot;
+    </span>)]
+    </span>name: <span class="prelude-ty">Option</span>&lt;String&gt;,
 }
 
 <span class="attr">#[derive(Parser, Debug)]
@@ -245,6 +292,17 @@
         help = <span class="string">&quot;Make migration reverted without reverting&quot;
     </span>)]
     </span>fake: bool,
+    <span class="attr">#[arg(
+        long = <span class="string">&quot;app&quot;</span>,
+        help = <span class="string">&quot;Revert migration till all app migration are reverted&quot;
+    </span>)]
+    </span>app: <span class="prelude-ty">Option</span>&lt;String&gt;,
+    <span class="attr">#[arg(
+        long = <span class="string">&quot;name&quot;</span>,
+        help = <span class="string">&quot;Revert migration till provided migration&quot;</span>,
+        requires = <span class="string">&quot;app&quot;
+    </span>)]
+    </span>name: <span class="prelude-ty">Option</span>&lt;String&gt;,
 }
 
 <span class="kw">async fn </span>list_migrations&lt;DB&gt;(migrator: Box&lt;<span class="kw">dyn </span>Migrator&lt;Database = DB&gt;&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt;
@@ -270,9 +328,8 @@
     </span>);
 
     <span class="macro">println!</span>(<span class="string">&quot;{:^full_width$}&quot;</span>, <span class="string">&quot;-&quot;</span>.repeat(full_width));
-    <span class="kw">for </span>migration <span class="kw">in </span>migrator.generate_migration_plan(PlanType::Full).<span class="kw">await</span><span class="question-mark">? </span>{
-        <span class="comment">// let mutable_applied_migrations = applied_migrations.clone();
-        </span><span class="kw">let </span>applied_migration_info = applied_migrations
+    <span class="kw">for </span>migration <span class="kw">in </span>migrator.generate_migration_plan(Plan::Full).<span class="kw">await</span><span class="question-mark">? </span>{
+        <span class="kw">let </span>applied_migration_info = applied_migrations
             .iter()
             .find(|<span class="kw-2">&amp;</span>applied_migration| applied_migration == migration);
 
@@ -306,9 +363,14 @@
 <span class="kw">where
     </span>DB: sqlx::Database,
 {
-    <span class="kw">let </span>migrations = migrator.generate_migration_plan(PlanType::Apply).<span class="kw">await</span><span class="question-mark">?</span>;
+    <span class="kw">let </span>migrations = migrator
+        .generate_migration_plan(Plan::Apply {
+            app: apply.app,
+            name: apply.name,
+        })
+        .<span class="kw">await</span><span class="question-mark">?</span>;
     <span class="kw">if </span>apply.check &amp;&amp; !migrations.is_empty() {
-        <span class="kw">return </span><span class="prelude-val">Err</span>(Error::PendingMigration);
+        <span class="kw">return </span><span class="prelude-val">Err</span>(Error::PendingMigrationPresent);
     }
     <span class="kw">if </span>apply.plan {
         <span class="kw">let </span>first_width = <span class="number">10</span>;
@@ -331,7 +393,10 @@
                 .<span class="kw">await</span><span class="question-mark">?</span>;
         }
     } <span class="kw">else </span>{
-        migrator.apply_all().<span class="kw">await</span><span class="question-mark">?</span>;
+        <span class="kw">for </span>migration <span class="kw">in </span>migrations {
+            migrator.apply_migration(migration).<span class="kw">await</span><span class="question-mark">?</span>;
+            <span class="macro">println!</span>(<span class="string">&quot;Applied {} : {}&quot;</span>, migration.app(), migration.name());
+        }
     }
     <span class="prelude-val">Ok</span>(())
 }
@@ -343,9 +408,15 @@
 <span class="kw">where
     </span>DB: sqlx::Database,
 {
-    <span class="kw">let </span>revert_plan = migrator.generate_migration_plan(PlanType::Revert).<span class="kw">await</span><span class="question-mark">?</span>;
+    <span class="kw">let </span>app_is_some = revert.app.is_some();
+    <span class="kw">let </span>revert_plan = migrator
+        .generate_migration_plan(Plan::Revert {
+            app: revert.app,
+            name: revert.name,
+        })
+        .<span class="kw">await</span><span class="question-mark">?</span>;
     <span class="kw">let </span>revert_migrations;
-    <span class="kw">if </span>revert.all {
+    <span class="kw">if </span>revert.all || app_is_some {
         revert_migrations = revert_plan;
     } <span class="kw">else if let </span><span class="prelude-val">Some</span>(latest_migration) = revert_plan.first() {
         revert_migrations = <span class="macro">vec!</span>[latest_migration];
@@ -375,6 +446,7 @@
     } <span class="kw">else </span>{
         <span class="kw">for </span>migration <span class="kw">in </span>revert_migrations {
             migrator.revert_migration(migration).<span class="kw">await</span><span class="question-mark">?</span>;
+            <span class="macro">println!</span>(<span class="string">&quot;Reverted {} : {}&quot;</span>, migration.app(), migration.name());
         }
     }
     <span class="prelude-val">Ok</span>(())
@@ -397,4 +469,4 @@
     <span class="prelude-val">Ok</span>(())
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="sqlx_migrator" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (11ebe6512 2022-11-01)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="sqlx_migrator" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (edf018221 2022-11-02)" ></div></body></html>
