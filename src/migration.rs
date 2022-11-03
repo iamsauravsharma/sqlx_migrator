@@ -46,6 +46,8 @@
 
 use std::hash::Hash;
 
+use chrono::{DateTime, Utc};
+
 use crate::operation::Operation;
 
 /// Trait for migration
@@ -108,5 +110,39 @@ where
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.app().hash(state);
         self.name().hash(state);
+    }
+}
+
+/// Migration struct created from sql table. Struct contains 4 fields which maps
+/// to `id`, `app`, `name`, `applied_time` sql fields. It is used to list
+/// applied migrations
+#[derive(sqlx::FromRow, Clone)]
+pub struct AppliedMigrationSqlRow {
+    id: i32,
+    app: String,
+    name: String,
+    applied_time: DateTime<Utc>,
+}
+
+impl AppliedMigrationSqlRow {
+    /// Return id value present on database
+    #[must_use]
+    pub fn id(&self) -> i32 {
+        self.id
+    }
+
+    /// Return migration applied time
+    #[must_use]
+    pub fn applied_time(&self) -> DateTime<Utc> {
+        self.applied_time
+    }
+}
+
+impl<T> PartialEq<Box<dyn Migration<Database = T>>> for AppliedMigrationSqlRow
+where
+    T: sqlx::Database,
+{
+    fn eq(&self, other: &Box<dyn Migration<Database = T>>) -> bool {
+        self.app == other.app() && self.name == other.name()
     }
 }

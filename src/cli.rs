@@ -2,7 +2,7 @@
 use clap::{Parser, Subcommand};
 
 use crate::error::Error;
-use crate::migrator::{Migrator, PlanType};
+use crate::migrator::{Migrator, Plan};
 
 #[derive(Parser, Debug)]
 struct Args {
@@ -32,6 +32,17 @@ struct Apply {
         help = "Make migration applied without applying"
     )]
     fake: bool,
+    #[arg(
+        long = "app",
+        help = "Apply migration till all app migration are applied"
+    )]
+    app: Option<String>,
+    #[arg(
+        long = "name",
+        help = "Apply migration till provided migration",
+        requires = "app"
+    )]
+    name: Option<String>,
 }
 
 #[derive(Parser, Debug)]
@@ -46,6 +57,17 @@ struct Revert {
         help = "Make migration reverted without reverting"
     )]
     fake: bool,
+    #[arg(
+        long = "app",
+        help = "Revert migration till all app migration are reverted"
+    )]
+    app: Option<String>,
+    #[arg(
+        long = "name",
+        help = "Revert migration till provided migration",
+        requires = "app"
+    )]
+    name: Option<String>,
 }
 
 async fn list_migrations<DB>(migrator: Box<dyn Migrator<Database = DB>>) -> Result<(), Error>
@@ -71,8 +93,7 @@ where
     );
 
     println!("{:^full_width$}", "-".repeat(full_width));
-    for migration in migrator.generate_migration_plan(PlanType::Full).await? {
-        // let mutable_applied_migrations = applied_migrations.clone();
+    for migration in migrator.generate_migration_plan(Plan::Full).await? {
         let applied_migration_info = applied_migrations
             .iter()
             .find(|&applied_migration| applied_migration == migration);
@@ -107,9 +128,14 @@ async fn apply_migrations<DB>(
 where
     DB: sqlx::Database,
 {
-    let migrations = migrator.generate_migration_plan(PlanType::Apply).await?;
+    let migrations = migrator
+        .generate_migration_plan(Plan::Apply {
+            app: apply.app,
+            name: apply.name,
+        })
+        .await?;
     if apply.check && !migrations.is_empty() {
-        return Err(Error::PendingMigration);
+        return Err(Error::PendingMigrationPresent);
     }
     if apply.plan {
         let first_width = 10;
@@ -132,7 +158,10 @@ where
                 .await?;
         }
     } else {
-        migrator.apply_all().await?;
+        for migration in migrations {
+            migrator.apply_migration(migration).await?;
+            println!("Applied {} : {}", migration.app(), migration.name());
+        }
     }
     Ok(())
 }
@@ -144,9 +173,15 @@ async fn revert_migrations<DB>(
 where
     DB: sqlx::Database,
 {
-    let revert_plan = migrator.generate_migration_plan(PlanType::Revert).await?;
+    let app_is_some = revert.app.is_some();
+    let revert_plan = migrator
+        .generate_migration_plan(Plan::Revert {
+            app: revert.app,
+            name: revert.name,
+        })
+        .await?;
     let revert_migrations;
-    if revert.all {
+    if revert.all || app_is_some {
         revert_migrations = revert_plan;
     } else if let Some(latest_migration) = revert_plan.first() {
         revert_migrations = vec![latest_migration];
@@ -176,6 +211,7 @@ where
     } else {
         for migration in revert_migrations {
             migrator.revert_migration(migration).await?;
+            println!("Reverted {} : {}", migration.app(), migration.name());
         }
     }
     Ok(())
