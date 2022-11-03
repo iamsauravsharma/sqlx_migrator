@@ -10,56 +10,34 @@
 
 use std::collections::{HashMap, HashSet};
 
-use chrono::{DateTime, Utc};
 use sqlx::Pool;
 
 use crate::error::Error;
-use crate::migration::Migration;
+use crate::migration::{AppliedMigrationSqlRow, Migration};
 
 type MigrationVecResult<'a, DB> = Result<Vec<&'a Box<dyn Migration<Database = DB>>>, Error>;
 
-/// Migration struct created from sql table. struct contains 4 fields which maps
-/// to `id`, `app`, `name`, `applied_time` sql fields
-#[derive(sqlx::FromRow, Clone)]
-pub struct SqlMigratorMigration {
-    id: i32,
-    app: String,
-    name: String,
-    applied_time: DateTime<Utc>,
-}
-
-impl SqlMigratorMigration {
-    /// Return id value present on database
-    #[must_use]
-    pub fn id(&self) -> i32 {
-        self.id
-    }
-
-    /// Return migration applied time
-    #[must_use]
-    pub fn applied_time(&self) -> DateTime<Utc> {
-        self.applied_time
-    }
-}
-
-impl<T> PartialEq<Box<dyn Migration<Database = T>>> for SqlMigratorMigration
-where
-    T: sqlx::Database,
-{
-    fn eq(&self, other: &Box<dyn Migration<Database = T>>) -> bool {
-        self.app == other.app() && self.name == other.name()
-    }
-}
-
 /// Type of plan used to generate migrations
 #[derive(Debug)]
-pub enum PlanType {
-    /// Full plan. Plan containing all migrations according to order
+pub enum Plan {
+    /// Full generation plan. Plan containing all migrations according to order
     Full,
-    /// Apply plan. Plan containing migrations which can be applied
-    Apply,
-    /// Revert plan. Plan containing migrations which can be reverted
-    Revert,
+    /// Apply generation plan. Plan containing migrations which can be applied
+    Apply {
+        /// Migration app name which migration needs to be applied
+        app: Option<String>,
+        /// Migration name till which migration needs to be applied. app should
+        /// be Some if it is Some value
+        name: Option<String>,
+    },
+    /// Revert generation plan. Plan containing migrations which can be reverted
+    Revert {
+        /// Migration app name which migration needs to be reverted
+        app: Option<String>,
+        /// Migration name till which migration needs to be reverted. app should
+        /// be Some if it is Some value
+        name: Option<String>,
+    },
 }
 
 #[async_trait::async_trait]
@@ -99,7 +77,7 @@ pub trait Migrator: Send + Sync {
 
     /// List all applied migrations from database in string format (full name of
     /// migration)
-    async fn fetch_applied_migration_from_db(&self) -> Result<Vec<SqlMigratorMigration>, Error>;
+    async fn fetch_applied_migration_from_db(&self) -> Result<Vec<AppliedMigrationSqlRow>, Error>;
 
     /// Add vector of migrations to Migrator object
     fn add_migrations(&mut self, migrations: Vec<Box<dyn Migration<Database = Self::Database>>>) {
@@ -141,14 +119,11 @@ pub trait Migrator: Send + Sync {
 
     /// Generate migration plan for according to plan type. Returns a vector of
     /// migration
-    async fn generate_migration_plan(
-        &self,
-        plan_type: PlanType,
-    ) -> MigrationVecResult<Self::Database> {
+    async fn generate_migration_plan(&self, plan: Plan) -> MigrationVecResult<Self::Database> {
         let applied_migrations = self.list_applied_migrations().await?;
 
         if cfg!(feature = "tracing") {
-            tracing::info!("Generating {:?} migration plan", plan_type);
+            tracing::info!("Generating {:?} migration plan", plan);
         }
 
         let mut migration_plan = Vec::new();
@@ -223,17 +198,41 @@ pub trait Migrator: Send + Sync {
             }
         }
 
-        // Return migration according to plan type
-        match plan_type {
-            PlanType::Full => (),
-            PlanType::Apply => {
+        // Modify migration plan according to plan type
+        let (migration_app, migration_name) = match plan {
+            Plan::Full => (None, None),
+            Plan::Apply { app, name } => {
                 migration_plan.retain(|migration| !applied_migrations.contains(migration));
+                (app, name)
             }
-            PlanType::Revert => {
+            Plan::Revert { app, name } => {
                 migration_plan.retain(|migration| applied_migrations.contains(migration));
-                migration_plan.reverse();
+                (app, name)
             }
         };
+
+        // Error if only migration name present and app name not present
+        if migration_name.is_some() && migration_app.is_none() {
+            return Err(Error::AppNameRequired);
+        }
+
+        // Find position of last element and truncate till that position
+        if let Some(app) = migration_app {
+            let position = if let Some(name) = migration_name {
+                migration_plan
+                    .iter()
+                    .rposition(|migration| migration.app() == app && migration.name() == name)
+            } else {
+                migration_plan
+                    .iter()
+                    .rposition(|migration| migration.app() == app)
+            };
+            if let Some(pos) = position {
+                migration_plan.truncate(pos + 1);
+            } else {
+                migration_plan.clear();
+            }
+        }
         Ok(migration_plan)
     }
 
@@ -245,7 +244,13 @@ pub trait Migrator: Send + Sync {
         if cfg!(feature = "tracing") {
             tracing::info!("Applying all migration");
         }
-        for migration in self.generate_migration_plan(PlanType::Apply).await? {
+        for migration in self
+            .generate_migration_plan(Plan::Apply {
+                app: None,
+                name: None,
+            })
+            .await?
+        {
             self.apply_migration(migration).await?;
         }
         Ok(())
@@ -291,7 +296,13 @@ pub trait Migrator: Send + Sync {
         if cfg!(feature = "tracing") {
             tracing::info!("Reverting all migration");
         }
-        for migration in self.generate_migration_plan(PlanType::Revert).await? {
+        for migration in self
+            .generate_migration_plan(Plan::Revert {
+                app: None,
+                name: None,
+            })
+            .await?
+        {
             self.revert_migration(migration).await?;
         }
         Ok(())

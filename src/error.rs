@@ -18,5 +18,9 @@ pub enum Error {
 
     /// Error for pending migration present
     #[error("Pending migration present")]
-    PendingMigration,
+    PendingMigrationPresent,
+
+    /// Error when migration name is only present but not app name
+    #[error("App name required. Only migration name present")]
+    AppNameRequired,
 }

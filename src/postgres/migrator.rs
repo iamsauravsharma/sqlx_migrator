@@ -4,8 +4,8 @@ use std::collections::HashSet;
 use sqlx::{Pool, Postgres};
 
 use crate::error::Error;
-use crate::migration::Migration;
-use crate::migrator::{Migrator as MigratorTrait, SqlMigratorMigration};
+use crate::migration::{AppliedMigrationSqlRow, Migration};
+use crate::migrator::Migrator as MigratorTrait;
 
 /// Migrator struct which store migrations graph and information related to
 /// postgres migrations
@@ -92,7 +92,7 @@ DELETE FROM _sqlx_migrator_migrations WHERE app = $1 AND name = $2
         Ok(())
     }
 
-    async fn fetch_applied_migration_from_db(&self) -> Result<Vec<SqlMigratorMigration>, Error> {
+    async fn fetch_applied_migration_from_db(&self) -> Result<Vec<AppliedMigrationSqlRow>, Error> {
         let rows =
             sqlx::query_as("SELECT id, app, name, applied_time FROM _sqlx_migrator_migrations")
                 .fetch_all(self.pool())
