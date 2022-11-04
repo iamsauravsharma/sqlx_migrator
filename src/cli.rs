@@ -2,7 +2,7 @@
 use clap::{Parser, Subcommand};
 
 use crate::error::Error;
-use crate::migrator::{Migrator, Plan};
+use crate::migrator::{MigratorTrait, Plan};
 
 #[derive(Parser, Debug)]
 struct Args {
@@ -70,7 +70,7 @@ struct Revert {
     name: Option<String>,
 }
 
-async fn list_migrations<DB>(migrator: Box<dyn Migrator<Database = DB>>) -> Result<(), Error>
+async fn list_migrations<DB>(migrator: Box<dyn MigratorTrait<DB>>) -> Result<(), Error>
 where
     DB: sqlx::Database,
 {
@@ -122,7 +122,7 @@ where
 }
 
 async fn apply_migrations<DB>(
-    migrator: Box<dyn Migrator<Database = DB>>,
+    migrator: Box<dyn MigratorTrait<DB>>,
     apply: Apply,
 ) -> Result<(), Error>
 where
@@ -167,7 +167,7 @@ where
 }
 
 async fn revert_migrations<DB>(
-    migrator: Box<dyn Migrator<Database = DB>>,
+    migrator: Box<dyn MigratorTrait<DB>>,
     revert: Revert,
 ) -> Result<(), Error>
 where
@@ -221,7 +221,7 @@ where
 ///
 /// # Errors
 /// When command fails to run
-pub async fn run<DB>(migrator: Box<dyn Migrator<Database = DB>>) -> Result<(), Error>
+pub async fn run<DB>(migrator: Box<dyn MigratorTrait<DB>>) -> Result<(), Error>
 where
     DB: sqlx::Database,
 {

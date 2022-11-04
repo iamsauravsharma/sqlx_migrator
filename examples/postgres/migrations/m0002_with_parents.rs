@@ -6,12 +6,10 @@ use sqlx_migrator::sqlx::Postgres;
 pub(crate) struct M0002Operation;
 
 #[async_trait::async_trait]
-impl Operation for M0002Operation {
-    type Database = Postgres;
-
+impl Operation<Postgres> for M0002Operation {
     async fn up(
         &self,
-        connection: &mut <Self::Database as sqlx::Database>::Connection,
+        connection: &mut <Postgres as sqlx::Database>::Connection,
     ) -> Result<(), Error> {
         sqlx::query("INSERT INTO sample (id, name) VALUES (99, 'Some text') ")
             .execute(connection)
@@ -21,7 +19,7 @@ impl Operation for M0002Operation {
 
     async fn down(
         &self,
-        connection: &mut <Self::Database as sqlx::Database>::Connection,
+        connection: &mut <Postgres as sqlx::Database>::Connection,
     ) -> Result<(), Error> {
         sqlx::query("DELETE FROM sample WHERE id = 99")
             .execute(connection)
@@ -33,9 +31,7 @@ impl Operation for M0002Operation {
 pub(crate) struct M0002Migration;
 
 #[async_trait::async_trait]
-impl Migration for M0002Migration {
-    type Database = Postgres;
-
+impl Migration<Postgres> for M0002Migration {
     fn app(&self) -> &str {
         "main"
     }
@@ -44,11 +40,11 @@ impl Migration for M0002Migration {
         "m0002_with_parents"
     }
 
-    fn parents(&self) -> Vec<Box<dyn Migration<Database = Self::Database>>> {
+    fn parents(&self) -> Vec<Box<dyn Migration<Postgres>>> {
         vec![Box::new(crate::migrations::m0001_simple::M0001Migration)]
     }
 
-    fn operations(&self) -> Vec<Box<dyn Operation<Database = Self::Database>>> {
+    fn operations(&self) -> Vec<Box<dyn Operation<Postgres>>> {
         vec![Box::new(M0002Operation)]
     }
 }

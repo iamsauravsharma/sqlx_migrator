@@ -11,9 +11,5 @@ pub mod error;
 pub mod migration;
 pub mod migrator;
 pub mod operation;
-#[cfg(feature = "postgres")]
-pub mod postgres;
-#[cfg(feature = "sqlite")]
-pub mod sqlite;
 
 pub use sqlx;
