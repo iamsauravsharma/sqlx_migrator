@@ -28,13 +28,11 @@ use sqlx_migrator::sqlx;
 pub(crate) struct FirstOperation;
 
 #[async_trait::async_trait]
-impl Operation for FirstOperation {
-    type Database = sqlx::Postgres;
-
+impl Operation<sqlx::Postgres> for FirstOperation {
     // Up function runs apply migration
     async fn up(
         &self,
-        connection: &mut <Self::Database as sqlx::Database>::Connection,
+        connection: &mut <sqlx::Postgres as sqlx::Database>::Connection,
     ) -> Result<(), Error> {
         sqlx::query("CREATE TABLE sample (id INTEGER PRIMARY KEY, name TEXT)")
             .execute(connection)
@@ -45,7 +43,7 @@ impl Operation for FirstOperation {
     // down migration runs down migration
     async fn down(
         &self,
-        connection: &mut <Self::Database as sqlx::Database>::Connection,
+        connection: &mut <sqlx::Postgres as sqlx::Database>::Connection,
     ) -> Result<(), Error> {
         sqlx::query("DROP TABLE sample").execute(connection).await?;
         Ok(())
@@ -64,9 +62,7 @@ use sqlx_migrator::sqlx;
 pub(crate) struct FirstMigration;
 
 #[async_trait::async_trait]
-impl Migration for FirstMigration {
-    type Database = Postgres;
-
+impl Migration<sqlx::Postgres> for FirstMigration {
     // app where migration lies can be any value
     fn app(&self) -> &str {
         "main"
@@ -79,7 +75,7 @@ impl Migration for FirstMigration {
     }
 
     // use operations function to add operation part of migration
-    fn operations(&self) -> Vec<Box<dyn Operation<Database = Self::Database>>> {
+    fn operations(&self) -> Vec<Box<dyn Operation<sqlx::Postgres>>> {
         vec![Box::new(FirstOperation)]
     }
 
@@ -89,11 +85,11 @@ impl Migration for FirstMigration {
 
 Now at last you need to create migrator for your database to run migrations
 ```rust
-use sqlx_migrator::migrator::Migrator as MigratorTrait;
-use sqlx_migrator::sqlite::migrator::Migrator;
+use sqlx_migrator::migrator::{MigratorTrait,Migrator};
+use sqlx_migrator::sqlx;
 
 let uri = std::env::var("DATABASE_URL").unwrap();
-let pool = sqlx::Pool::connect(&uri).await.unwrap();
+let pool = sqlx::Pool::<sqlx::Postgres>::connect(&uri).await.unwrap();
 let mut migrator = Migrator::new(&pool);
 migrator.add_migration(Box::new(FirstMigration));
 ```
@@ -136,12 +132,11 @@ use sqlx_migrator::sqlx;
 pub(crate) struct SqlxOperation;
 
 #[async_trait::async_trait]
-impl Operation for SqlxOperation {
-    type Database = sqlx::Postgres;
+impl Operation<sqlx::Postgres> for SqlxOperation {
 
     async fn up(
         &self,
-        connection: &mut <Self::Database as sqlx::Database>::Connection,
+        connection: &mut <sqlx::Postgres as sqlx::Database>::Connection,
     ) -> Result<(), Error> {
         sqlx::migrate!("db/migrations")
             .run(connection)
@@ -151,7 +146,7 @@ impl Operation for SqlxOperation {
 
     async fn down(
         &self,
-        connection: &mut <Self::Database as sqlx::Database>::Connection,
+        connection: &mut <sqlx::Postgres as sqlx::Database>::Connection,
     ) -> Result<(), Error> {
         sqlx::migrate!("db/migrations")
             .undo(connection, 0)

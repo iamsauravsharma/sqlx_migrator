@@ -6,12 +6,10 @@ use sqlx_migrator::sqlx::Sqlite;
 pub(crate) struct M0001Operation;
 
 #[async_trait::async_trait]
-impl Operation for M0001Operation {
-    type Database = Sqlite;
-
+impl Operation<Sqlite> for M0001Operation {
     async fn up(
         &self,
-        connection: &mut <Self::Database as sqlx::Database>::Connection,
+        connection: &mut <Sqlite as sqlx::Database>::Connection,
     ) -> Result<(), Error> {
         sqlx::query("CREATE TABLE sample (id INTEGER PRIMARY KEY, name TEXT)")
             .execute(connection)
@@ -21,7 +19,7 @@ impl Operation for M0001Operation {
 
     async fn down(
         &self,
-        connection: &mut <Self::Database as sqlx::Database>::Connection,
+        connection: &mut <Sqlite as sqlx::Database>::Connection,
     ) -> Result<(), Error> {
         sqlx::query("DROP TABLE sample").execute(connection).await?;
         Ok(())
@@ -31,9 +29,7 @@ impl Operation for M0001Operation {
 pub(crate) struct M0001Migration;
 
 #[async_trait::async_trait]
-impl Migration for M0001Migration {
-    type Database = Sqlite;
-
+impl Migration<Sqlite> for M0001Migration {
     fn app(&self) -> &str {
         "main"
     }
@@ -42,7 +38,7 @@ impl Migration for M0001Migration {
         "m0001_simple"
     }
 
-    fn operations(&self) -> Vec<Box<dyn Operation<Database = Self::Database>>> {
+    fn operations(&self) -> Vec<Box<dyn Operation<Sqlite>>> {
         vec![Box::new(M0001Operation)]
     }
 }
