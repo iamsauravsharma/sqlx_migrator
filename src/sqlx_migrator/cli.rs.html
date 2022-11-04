@@ -237,7 +237,7 @@
 </span><span class="kw">use </span>clap::{Parser, Subcommand};
 
 <span class="kw">use </span><span class="kw">crate</span>::error::Error;
-<span class="kw">use </span><span class="kw">crate</span>::migrator::{Migrator, Plan};
+<span class="kw">use </span><span class="kw">crate</span>::migrator::{MigratorTrait, Plan};
 
 <span class="attr">#[derive(Parser, Debug)]
 </span><span class="kw">struct </span>Args {
@@ -305,7 +305,7 @@
     </span>name: <span class="prelude-ty">Option</span>&lt;String&gt;,
 }
 
-<span class="kw">async fn </span>list_migrations&lt;DB&gt;(migrator: Box&lt;<span class="kw">dyn </span>Migrator&lt;Database = DB&gt;&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt;
+<span class="kw">async fn </span>list_migrations&lt;DB&gt;(migrator: Box&lt;<span class="kw">dyn </span>MigratorTrait&lt;DB&gt;&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt;
 <span class="kw">where
     </span>DB: sqlx::Database,
 {
@@ -357,7 +357,7 @@
 }
 
 <span class="kw">async fn </span>apply_migrations&lt;DB&gt;(
-    migrator: Box&lt;<span class="kw">dyn </span>Migrator&lt;Database = DB&gt;&gt;,
+    migrator: Box&lt;<span class="kw">dyn </span>MigratorTrait&lt;DB&gt;&gt;,
     apply: Apply,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt;
 <span class="kw">where
@@ -402,7 +402,7 @@
 }
 
 <span class="kw">async fn </span>revert_migrations&lt;DB&gt;(
-    migrator: Box&lt;<span class="kw">dyn </span>Migrator&lt;Database = DB&gt;&gt;,
+    migrator: Box&lt;<span class="kw">dyn </span>MigratorTrait&lt;DB&gt;&gt;,
     revert: Revert,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt;
 <span class="kw">where
@@ -456,7 +456,7 @@
 ///
 /// # Errors
 /// When command fails to run
-</span><span class="kw">pub async fn </span>run&lt;DB&gt;(migrator: Box&lt;<span class="kw">dyn </span>Migrator&lt;Database = DB&gt;&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt;
+</span><span class="kw">pub async fn </span>run&lt;DB&gt;(migrator: Box&lt;<span class="kw">dyn </span>MigratorTrait&lt;DB&gt;&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt;
 <span class="kw">where
     </span>DB: sqlx::Database,
 {
@@ -469,4 +469,4 @@
     <span class="prelude-val">Ok</span>(())
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="sqlx_migrator" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (edf018221 2022-11-02)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="sqlx_migrator" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (215e3cd21 2022-11-03)" ></div></body></html>

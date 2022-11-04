@@ -49,13 +49,6 @@
 <span id="49">49</span>
 <span id="50">50</span>
 <span id="51">51</span>
-<span id="52">52</span>
-<span id="53">53</span>
-<span id="54">54</span>
-<span id="55">55</span>
-<span id="56">56</span>
-<span id="57">57</span>
-<span id="58">58</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Operation module
 //!
 //! To create own operation implement trait for type
@@ -65,15 +58,14 @@
 //! ```rust,no_run
 //! use sqlx_migrator::error::Error;
 //! use sqlx_migrator::operation::Operation;
+//! use sqlx_migrator::sqlx::Sqlite;
 //!
 //! struct ExampleOperation;
 //! #[async_trait::async_trait]
-//! impl Operation for ExampleOperation {
-//!     type Database = sqlx_migrator::sqlx::Sqlite;
-//!
+//! impl Operation&lt;Sqlite&gt; for ExampleOperation {
 //!     async fn up(
 //!         &amp;self,
-//!         connection: &amp;mut &lt;Self::Database as sqlx::Database&gt;::Connection,
+//!         connection: &amp;mut &lt;Sqlite as sqlx::Database&gt;::Connection,
 //!     ) -&gt; Result&lt;(), Error&gt; {
 //!         // Do some operations
 //!         Ok(())
@@ -83,36 +75,30 @@
 //!     // reverse of migration than add down function as well
 //!     async fn down(
 //!         &amp;self,
-//!         connection: &amp;mut &lt;Self::Database as sqlx::Database&gt;::Connection,
+//!         connection: &amp;mut &lt;Sqlite as sqlx::Database&gt;::Connection,
 //!     ) -&gt; Result&lt;(), Error&gt; {
 //!         // Do some operations
 //!         Ok(())
 //!     }
 //! }
 //! ```
-
 </span><span class="kw">use </span><span class="kw">crate</span>::error::Error;
 
 <span class="doccomment">/// Trait for operation
 </span><span class="attr">#[async_trait::async_trait]
-</span><span class="kw">pub trait </span>Operation: Send + Sync {
-    <span class="doccomment">/// Database type to be used
-    </span><span class="kw">type </span>Database: sqlx::Database;
+</span><span class="kw">pub trait </span>Operation&lt;DB&gt;: Send + Sync
+<span class="kw">where
+    </span>DB: sqlx::Database,
+{
     <span class="doccomment">/// Up command to be executed during migration apply
-    </span><span class="kw">async fn </span>up(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        connection: <span class="kw-2">&amp;mut </span>&lt;<span class="self">Self</span>::Database <span class="kw">as </span>sqlx::Database&gt;::Connection,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt;;
+    </span><span class="kw">async fn </span>up(<span class="kw-2">&amp;</span><span class="self">self</span>, connection: <span class="kw-2">&amp;mut </span>&lt;DB <span class="kw">as </span>sqlx::Database&gt;::Connection) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt;;
     <span class="doccomment">/// Down command to be executed during migration rollback. If it is not
     /// implemented than operation is irreversible operation.
-    </span><span class="kw">async fn </span>down(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        connection: <span class="kw-2">&amp;mut </span>&lt;<span class="self">Self</span>::Database <span class="kw">as </span>sqlx::Database&gt;::Connection,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
+    </span><span class="kw">async fn </span>down(<span class="kw-2">&amp;</span><span class="self">self</span>, connection: <span class="kw-2">&amp;mut </span>&lt;DB <span class="kw">as </span>sqlx::Database&gt;::Connection) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
         <span class="comment">// use connection from parameter for default implementation
         </span><span class="kw">let _ </span>= connection;
         <span class="kw">return </span><span class="prelude-val">Err</span>(Error::IrreversibleOperation);
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="sqlx_migrator" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (edf018221 2022-11-02)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="sqlx_migrator" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (215e3cd21 2022-11-03)" ></div></body></html>

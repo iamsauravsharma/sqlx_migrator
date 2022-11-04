@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":[["Plan","Type of plan used to generate migrations"]],"trait":[["Migrator","Migrator trait"]]};
+window.SIDEBAR_ITEMS = {"enum":[["Plan","Type of plan used to generate migrations"]],"struct":[["Migrator","Migrator struct which store migrations graph and information related to postgres migrations"]],"trait":[["MigratorTrait","Migrator trait"]]};
