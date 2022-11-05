@@ -6,13 +6,12 @@
 //!
 //! ```rust,no_run
 //! use sqlx_migrator::error::Error;
-//! use sqlx_migrator::migration::Migration;
-//! use sqlx_migrator::operation::Operation;
+//! use sqlx_migrator::migration::MigrationTrait;
+//! use sqlx_migrator::operation::OperationTrait;
 //! use sqlx_migrator::sqlx::Sqlite;
 //!
 //! struct ExampleMigration;
-//! #[async_trait::async_trait]
-//! impl Migration<Sqlite> for ExampleMigration {
+//! impl MigrationTrait<Sqlite> for ExampleMigration {
 //!     fn app(&self) -> &str {
 //!         "example"
 //!     }
@@ -21,19 +20,19 @@
 //!         "first_migration"
 //!     }
 //!
-//!     fn parents(&self) -> Vec<Box<dyn Migration<Sqlite>>> {
+//!     fn parents(&self) -> Vec<Box<dyn MigrationTrait<Sqlite>>> {
 //!         vec![]
 //!     }
 //!
-//!     fn operations(&self) -> Vec<Box<dyn Operation<Sqlite>>> {
+//!     fn operations(&self) -> Vec<Box<dyn OperationTrait<Sqlite>>> {
 //!         vec![]
 //!     }
 //!
-//!     fn replaces(&self) -> Vec<Box<dyn Migration<Sqlite>>> {
+//!     fn replaces(&self) -> Vec<Box<dyn MigrationTrait<Sqlite>>> {
 //!         vec![]
 //!     }
 //!
-//!     fn run_before(&self) -> Vec<Box<dyn Migration<Sqlite>>> {
+//!     fn run_before(&self) -> Vec<Box<dyn MigrationTrait<Sqlite>>> {
 //!         vec![]
 //!     }
 //!
@@ -47,10 +46,11 @@ use std::hash::Hash;
 
 use chrono::{DateTime, Utc};
 
-use crate::operation::Operation;
+use crate::operation::OperationTrait;
 
 /// Trait for migration
-pub trait Migration<DB>: Send + Sync {
+#[allow(clippy::module_name_repetitions)]
+pub trait MigrationTrait<DB>: Send + Sync {
     /// Migration app name. Can be name of folder or library where migration is
     /// located
     fn app(&self) -> &str;
@@ -60,25 +60,25 @@ pub trait Migration<DB>: Send + Sync {
 
     /// Parents of migration (migrations that should be applied before this
     /// migration)
-    fn parents(&self) -> Vec<Box<dyn Migration<DB>>> {
+    fn parents(&self) -> Vec<Box<dyn MigrationTrait<DB>>> {
         vec![]
     }
 
     /// Operation performed for migration (create, drop, etc.)
-    fn operations(&self) -> Vec<Box<dyn Operation<DB>>> {
+    fn operations(&self) -> Vec<Box<dyn OperationTrait<DB>>> {
         vec![]
     }
 
     /// Replace certain migrations. If any one of listed migration is applied
     /// than migration will not be applied else migration will apply instead of
     /// applying those migration.
-    fn replaces(&self) -> Vec<Box<dyn Migration<DB>>> {
+    fn replaces(&self) -> Vec<Box<dyn MigrationTrait<DB>>> {
         vec![]
     }
 
     /// Run before certain migration. This can be helpful in condition where
     /// other library migration need to be applied after this migration
-    fn run_before(&self) -> Vec<Box<dyn Migration<DB>>> {
+    fn run_before(&self) -> Vec<Box<dyn MigrationTrait<DB>>> {
         vec![]
     }
 
@@ -88,7 +88,7 @@ pub trait Migration<DB>: Send + Sync {
     }
 }
 
-impl<DB> PartialEq for dyn Migration<DB>
+impl<DB> PartialEq for dyn MigrationTrait<DB>
 where
     DB: sqlx::Database,
 {
@@ -97,9 +97,9 @@ where
     }
 }
 
-impl<DB> Eq for dyn Migration<DB> where DB: sqlx::Database {}
+impl<DB> Eq for dyn MigrationTrait<DB> where DB: sqlx::Database {}
 
-impl<DB> Hash for dyn Migration<DB>
+impl<DB> Hash for dyn MigrationTrait<DB>
 where
     DB: sqlx::Database,
 {
@@ -134,11 +134,11 @@ impl AppliedMigrationSqlRow {
     }
 }
 
-impl<DB> PartialEq<Box<dyn Migration<DB>>> for AppliedMigrationSqlRow
+impl<DB> PartialEq<Box<dyn MigrationTrait<DB>>> for AppliedMigrationSqlRow
 where
     DB: sqlx::Database,
 {
-    fn eq(&self, other: &Box<dyn Migration<DB>>) -> bool {
+    fn eq(&self, other: &Box<dyn MigrationTrait<DB>>) -> bool {
         self.app == other.app() && self.name == other.name()
     }
 }

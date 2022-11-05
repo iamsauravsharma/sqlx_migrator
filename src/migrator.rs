@@ -17,9 +17,9 @@ use sqlx::Postgres;
 use sqlx::Sqlite;
 
 use crate::error::Error;
-use crate::migration::{AppliedMigrationSqlRow, Migration};
+use crate::migration::{AppliedMigrationSqlRow, MigrationTrait};
 
-type MigrationVecResult<'a, DB> = Result<Vec<&'a Box<dyn Migration<DB>>>, Error>;
+type MigrationTraitVecResult<'a, DB> = Result<Vec<&'a Box<dyn MigrationTrait<DB>>>, Error>;
 
 /// Type of plan used to generate migrations
 #[derive(Debug)]
@@ -52,10 +52,10 @@ where
     DB: sqlx::Database,
 {
     /// Return migrations
-    fn migrations(&self) -> &HashSet<Box<dyn Migration<DB>>>;
+    fn migrations(&self) -> &HashSet<Box<dyn MigrationTrait<DB>>>;
 
     /// Return mutable reference of migrations
-    fn migrations_mut(&mut self) -> &mut HashSet<Box<dyn Migration<DB>>>;
+    fn migrations_mut(&mut self) -> &mut HashSet<Box<dyn MigrationTrait<DB>>>;
 
     /// Return pool of database
     fn pool(&self) -> &Pool<DB>;
@@ -68,7 +68,7 @@ where
     #[allow(clippy::borrowed_box)]
     async fn add_migration_to_db_table(
         &self,
-        migration: &Box<dyn Migration<DB>>,
+        migration: &Box<dyn MigrationTrait<DB>>,
         connection: &mut <DB as sqlx::Database>::Connection,
     ) -> Result<(), Error>;
 
@@ -76,7 +76,7 @@ where
     #[allow(clippy::borrowed_box)]
     async fn delete_migration_from_db_table(
         &self,
-        migration: &Box<dyn Migration<DB>>,
+        migration: &Box<dyn MigrationTrait<DB>>,
         connection: &mut <DB as sqlx::Database>::Connection,
     ) -> Result<(), Error>;
 
@@ -85,14 +85,14 @@ where
     async fn fetch_applied_migration_from_db(&self) -> Result<Vec<AppliedMigrationSqlRow>, Error>;
 
     /// Add vector of migrations to Migrator object
-    fn add_migrations(&mut self, migrations: Vec<Box<dyn Migration<DB>>>) {
+    fn add_migrations(&mut self, migrations: Vec<Box<dyn MigrationTrait<DB>>>) {
         for migration in migrations {
             self.add_migration(migration);
         }
     }
 
     /// Add single migration to migrator object
-    fn add_migration(&mut self, migration: Box<dyn Migration<DB>>) {
+    fn add_migration(&mut self, migration: Box<dyn MigrationTrait<DB>>) {
         for parent in migration.parents() {
             self.add_migration(parent);
         }
@@ -100,7 +100,7 @@ where
     }
 
     /// List all applied migrations. Returns a vector of migration
-    async fn list_applied_migrations(&self) -> MigrationVecResult<DB> {
+    async fn list_applied_migrations(&self) -> MigrationTraitVecResult<DB> {
         if cfg!(feature = "tracing") {
             tracing::info!("Fetching applied migrations");
         }
@@ -124,7 +124,7 @@ where
 
     /// Generate migration plan for according to plan type. Returns a vector of
     /// migration
-    async fn generate_migration_plan(&self, plan: Plan) -> MigrationVecResult<DB> {
+    async fn generate_migration_plan(&self, plan: Plan) -> MigrationTraitVecResult<DB> {
         let applied_migrations = self.list_applied_migrations().await?;
 
         if cfg!(feature = "tracing") {
@@ -264,7 +264,7 @@ where
 
     /// Apply given migration and add it to applied migration table
     #[allow(clippy::borrowed_box)]
-    async fn apply_migration(&self, migration: &Box<dyn Migration<DB>>) -> Result<(), Error> {
+    async fn apply_migration(&self, migration: &Box<dyn MigrationTrait<DB>>) -> Result<(), Error> {
         if cfg!(feature = "tracing") {
             tracing::info!(
                 "Applying {} migration {}",
@@ -313,7 +313,7 @@ where
 
     /// Revert provided migration and remove migration from table
     #[allow(clippy::borrowed_box)]
-    async fn revert_migration(&self, migration: &Box<dyn Migration<DB>>) -> Result<(), Error> {
+    async fn revert_migration(&self, migration: &Box<dyn MigrationTrait<DB>>) -> Result<(), Error> {
         if cfg!(feature = "tracing") {
             tracing::info!(
                 "Reverting {} migration {}",
@@ -352,7 +352,7 @@ pub struct Migrator<DB>
 where
     DB: sqlx::Database,
 {
-    migrations: HashSet<Box<dyn Migration<DB>>>,
+    migrations: HashSet<Box<dyn MigrationTrait<DB>>>,
     pool: Pool<DB>,
 }
 
@@ -373,11 +373,11 @@ where
 #[cfg(feature = "postgres")]
 #[async_trait::async_trait]
 impl MigratorTrait<Postgres> for Migrator<Postgres> {
-    fn migrations(&self) -> &HashSet<Box<dyn Migration<Postgres>>> {
+    fn migrations(&self) -> &HashSet<Box<dyn MigrationTrait<Postgres>>> {
         &self.migrations
     }
 
-    fn migrations_mut(&mut self) -> &mut HashSet<Box<dyn Migration<Postgres>>> {
+    fn migrations_mut(&mut self) -> &mut HashSet<Box<dyn MigrationTrait<Postgres>>> {
         &mut self.migrations
     }
 
@@ -404,7 +404,7 @@ CREATE TABLE IF NOT EXISTS _sqlx_migrator_migrations (
 
     async fn add_migration_to_db_table(
         &self,
-        migration: &Box<dyn Migration<Postgres>>,
+        migration: &Box<dyn MigrationTrait<Postgres>>,
         connection: &mut <Postgres as sqlx::Database>::Connection,
     ) -> Result<(), Error> {
         sqlx::query(
@@ -421,7 +421,7 @@ INSERT INTO _sqlx_migrator_migrations(app, name) VALUES ($1, $2)
 
     async fn delete_migration_from_db_table(
         &self,
-        migration: &Box<dyn Migration<Postgres>>,
+        migration: &Box<dyn MigrationTrait<Postgres>>,
         connection: &mut <Postgres as sqlx::Database>::Connection,
     ) -> Result<(), Error> {
         sqlx::query(
@@ -448,11 +448,11 @@ DELETE FROM _sqlx_migrator_migrations WHERE app = $1 AND name = $2
 #[cfg(feature = "sqlite")]
 #[async_trait::async_trait]
 impl MigratorTrait<Sqlite> for Migrator<Sqlite> {
-    fn migrations(&self) -> &HashSet<Box<dyn Migration<Sqlite>>> {
+    fn migrations(&self) -> &HashSet<Box<dyn MigrationTrait<Sqlite>>> {
         &self.migrations
     }
 
-    fn migrations_mut(&mut self) -> &mut HashSet<Box<dyn Migration<Sqlite>>> {
+    fn migrations_mut(&mut self) -> &mut HashSet<Box<dyn MigrationTrait<Sqlite>>> {
         &mut self.migrations
     }
 
@@ -479,7 +479,7 @@ CREATE TABLE IF NOT EXISTS _sqlx_migrator_migrations (
 
     async fn add_migration_to_db_table(
         &self,
-        migration: &Box<dyn Migration<Sqlite>>,
+        migration: &Box<dyn MigrationTrait<Sqlite>>,
         connection: &mut <Sqlite as sqlx::Database>::Connection,
     ) -> Result<(), Error> {
         sqlx::query(
@@ -496,7 +496,7 @@ INSERT INTO _sqlx_migrator_migrations(app, name) VALUES ($1, $2)
 
     async fn delete_migration_from_db_table(
         &self,
-        migration: &Box<dyn Migration<Sqlite>>,
+        migration: &Box<dyn MigrationTrait<Sqlite>>,
         connection: &mut <Sqlite as sqlx::Database>::Connection,
     ) -> Result<(), Error> {
         sqlx::query(

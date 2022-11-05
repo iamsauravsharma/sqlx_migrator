@@ -18,17 +18,17 @@ sqlx_migrator = { version = "0.2.1", features=["postgres", "runtime-tokio-native
 
 # Usage
 
-To use sqlx_migrator first you need to implement Operation trait to write your sqlx operation
+To use sqlx_migrator first you need to implement OperationTrait trait to write your sqlx operation
 ```rust
 use sqlx_migrator::error::Error;
-use sqlx_migrator::operation::Operation;
+use sqlx_migrator::operation::OperationTrait;
 //Its better to use sqlx imported from sqlx_migrator
 use sqlx_migrator::sqlx;
 
 pub(crate) struct FirstOperation;
 
 #[async_trait::async_trait]
-impl Operation<sqlx::Postgres> for FirstOperation {
+impl OperationTrait<sqlx::Postgres> for FirstOperation {
     // Up function runs apply migration
     async fn up(
         &self,
@@ -55,14 +55,13 @@ After creation of operation you can implement Migration struct to create single 
 
 ```rust
 use sqlx_migrator::error::Error;
-use sqlx_migrator::migration::Migration;
-use sqlx_migrator::operation::Operation;
+use sqlx_migrator::migration::MigrationTrait;
+use sqlx_migrator::operation::OperationTrait;
 use sqlx_migrator::sqlx;
 
 pub(crate) struct FirstMigration;
 
-#[async_trait::async_trait]
-impl Migration<sqlx::Postgres> for FirstMigration {
+impl MigrationTrait<sqlx::Postgres> for FirstMigration {
     // app where migration lies can be any value
     fn app(&self) -> &str {
         "main"
@@ -75,11 +74,11 @@ impl Migration<sqlx::Postgres> for FirstMigration {
     }
 
     // use operations function to add operation part of migration
-    fn operations(&self) -> Vec<Box<dyn Operation<sqlx::Postgres>>> {
+    fn operations(&self) -> Vec<Box<dyn OperationTrait<sqlx::Postgres>>> {
         vec![Box::new(FirstOperation)]
     }
 
-    // Migration trait also have multiple other function see docs for usage
+    // MigrationTrait trait also have multiple other function see docs for usage
 }
 ```
 
@@ -91,7 +90,7 @@ use sqlx_migrator::sqlx;
 let uri = std::env::var("DATABASE_URL").unwrap();
 let pool = sqlx::Pool::<sqlx::Postgres>::connect(&uri).await.unwrap();
 let mut migrator = Migrator::new(&pool);
-migrator.add_migration(Box::new(FirstMigration));
+migrator.add_migration(Box::new(FirstMigrationTrait));
 ```
 
 Now you can use two ways to run migrator either directly running migration or creating cli from migrator
@@ -126,13 +125,13 @@ which actually doesn't apply migration query but only update migration table
 To run all sqlx sql based migration as single command create new operation
 ```rust
 use sqlx_migrator::error::Error;
-use sqlx_migrator::operation::Operation;
+use sqlx_migrator::operation::OperationTrait;
 use sqlx_migrator::sqlx;
 
 pub(crate) struct SqlxOperation;
 
 #[async_trait::async_trait]
-impl Operation<sqlx::Postgres> for SqlxOperation {
+impl OperationTrait<sqlx::Postgres> for SqlxOperation {
 
     async fn up(
         &self,

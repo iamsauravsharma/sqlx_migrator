@@ -1,12 +1,12 @@
 use sqlx_migrator::error::Error;
-use sqlx_migrator::migration::Migration;
-use sqlx_migrator::operation::Operation;
+use sqlx_migrator::migration::MigrationTrait;
+use sqlx_migrator::operation::OperationTrait;
 use sqlx_migrator::sqlx::Postgres;
 
 pub(crate) struct M0002Operation;
 
 #[async_trait::async_trait]
-impl Operation<Postgres> for M0002Operation {
+impl OperationTrait<Postgres> for M0002Operation {
     async fn up(
         &self,
         connection: &mut <Postgres as sqlx::Database>::Connection,
@@ -31,7 +31,7 @@ impl Operation<Postgres> for M0002Operation {
 pub(crate) struct M0002Migration;
 
 #[async_trait::async_trait]
-impl Migration<Postgres> for M0002Migration {
+impl MigrationTrait<Postgres> for M0002Migration {
     fn app(&self) -> &str {
         "main"
     }
@@ -40,11 +40,11 @@ impl Migration<Postgres> for M0002Migration {
         "m0002_with_parents"
     }
 
-    fn parents(&self) -> Vec<Box<dyn Migration<Postgres>>> {
+    fn parents(&self) -> Vec<Box<dyn MigrationTrait<Postgres>>> {
         vec![Box::new(crate::migrations::m0001_simple::M0001Migration)]
     }
 
-    fn operations(&self) -> Vec<Box<dyn Operation<Postgres>>> {
+    fn operations(&self) -> Vec<Box<dyn OperationTrait<Postgres>>> {
         vec![Box::new(M0002Operation)]
     }
 }
