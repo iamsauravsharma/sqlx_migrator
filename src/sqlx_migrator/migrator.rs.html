@@ -538,9 +538,9 @@
 </span><span class="kw">use </span>sqlx::Sqlite;
 
 <span class="kw">use </span><span class="kw">crate</span>::error::Error;
-<span class="kw">use </span><span class="kw">crate</span>::migration::{AppliedMigrationSqlRow, Migration};
+<span class="kw">use </span><span class="kw">crate</span>::migration::{AppliedMigrationSqlRow, MigrationTrait};
 
-<span class="kw">type </span>MigrationVecResult&lt;<span class="lifetime">&#39;a</span>, DB&gt; = <span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Box&lt;<span class="kw">dyn </span>Migration&lt;DB&gt;&gt;&gt;, Error&gt;;
+<span class="kw">type </span>MigrationTraitVecResult&lt;<span class="lifetime">&#39;a</span>, DB&gt; = <span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Box&lt;<span class="kw">dyn </span>MigrationTrait&lt;DB&gt;&gt;&gt;, Error&gt;;
 
 <span class="doccomment">/// Type of plan used to generate migrations
 </span><span class="attr">#[derive(Debug)]
@@ -573,10 +573,10 @@
     </span>DB: sqlx::Database,
 {
     <span class="doccomment">/// Return migrations
-    </span><span class="kw">fn </span>migrations(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>HashSet&lt;Box&lt;<span class="kw">dyn </span>Migration&lt;DB&gt;&gt;&gt;;
+    </span><span class="kw">fn </span>migrations(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>HashSet&lt;Box&lt;<span class="kw">dyn </span>MigrationTrait&lt;DB&gt;&gt;&gt;;
 
     <span class="doccomment">/// Return mutable reference of migrations
-    </span><span class="kw">fn </span>migrations_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>HashSet&lt;Box&lt;<span class="kw">dyn </span>Migration&lt;DB&gt;&gt;&gt;;
+    </span><span class="kw">fn </span>migrations_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>HashSet&lt;Box&lt;<span class="kw">dyn </span>MigrationTrait&lt;DB&gt;&gt;&gt;;
 
     <span class="doccomment">/// Return pool of database
     </span><span class="kw">fn </span>pool(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Pool&lt;DB&gt;;
@@ -589,7 +589,7 @@
     </span><span class="attr">#[allow(clippy::borrowed_box)]
     </span><span class="kw">async fn </span>add_migration_to_db_table(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        migration: <span class="kw-2">&amp;</span>Box&lt;<span class="kw">dyn </span>Migration&lt;DB&gt;&gt;,
+        migration: <span class="kw-2">&amp;</span>Box&lt;<span class="kw">dyn </span>MigrationTrait&lt;DB&gt;&gt;,
         connection: <span class="kw-2">&amp;mut </span>&lt;DB <span class="kw">as </span>sqlx::Database&gt;::Connection,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt;;
 
@@ -597,7 +597,7 @@
     </span><span class="attr">#[allow(clippy::borrowed_box)]
     </span><span class="kw">async fn </span>delete_migration_from_db_table(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        migration: <span class="kw-2">&amp;</span>Box&lt;<span class="kw">dyn </span>Migration&lt;DB&gt;&gt;,
+        migration: <span class="kw-2">&amp;</span>Box&lt;<span class="kw">dyn </span>MigrationTrait&lt;DB&gt;&gt;,
         connection: <span class="kw-2">&amp;mut </span>&lt;DB <span class="kw">as </span>sqlx::Database&gt;::Connection,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt;;
 
@@ -606,14 +606,14 @@
     </span><span class="kw">async fn </span>fetch_applied_migration_from_db(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;AppliedMigrationSqlRow&gt;, Error&gt;;
 
     <span class="doccomment">/// Add vector of migrations to Migrator object
-    </span><span class="kw">fn </span>add_migrations(<span class="kw-2">&amp;mut </span><span class="self">self</span>, migrations: Vec&lt;Box&lt;<span class="kw">dyn </span>Migration&lt;DB&gt;&gt;&gt;) {
+    </span><span class="kw">fn </span>add_migrations(<span class="kw-2">&amp;mut </span><span class="self">self</span>, migrations: Vec&lt;Box&lt;<span class="kw">dyn </span>MigrationTrait&lt;DB&gt;&gt;&gt;) {
         <span class="kw">for </span>migration <span class="kw">in </span>migrations {
             <span class="self">self</span>.add_migration(migration);
         }
     }
 
     <span class="doccomment">/// Add single migration to migrator object
-    </span><span class="kw">fn </span>add_migration(<span class="kw-2">&amp;mut </span><span class="self">self</span>, migration: Box&lt;<span class="kw">dyn </span>Migration&lt;DB&gt;&gt;) {
+    </span><span class="kw">fn </span>add_migration(<span class="kw-2">&amp;mut </span><span class="self">self</span>, migration: Box&lt;<span class="kw">dyn </span>MigrationTrait&lt;DB&gt;&gt;) {
         <span class="kw">for </span>parent <span class="kw">in </span>migration.parents() {
             <span class="self">self</span>.add_migration(parent);
         }
@@ -621,7 +621,7 @@
     }
 
     <span class="doccomment">/// List all applied migrations. Returns a vector of migration
-    </span><span class="kw">async fn </span>list_applied_migrations(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; MigrationVecResult&lt;DB&gt; {
+    </span><span class="kw">async fn </span>list_applied_migrations(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; MigrationTraitVecResult&lt;DB&gt; {
         <span class="kw">if </span><span class="macro">cfg!</span>(feature = <span class="string">&quot;tracing&quot;</span>) {
             <span class="macro">tracing::info!</span>(<span class="string">&quot;Fetching applied migrations&quot;</span>);
         }
@@ -645,7 +645,7 @@
 
     <span class="doccomment">/// Generate migration plan for according to plan type. Returns a vector of
     /// migration
-    </span><span class="kw">async fn </span>generate_migration_plan(<span class="kw-2">&amp;</span><span class="self">self</span>, plan: Plan) -&gt; MigrationVecResult&lt;DB&gt; {
+    </span><span class="kw">async fn </span>generate_migration_plan(<span class="kw-2">&amp;</span><span class="self">self</span>, plan: Plan) -&gt; MigrationTraitVecResult&lt;DB&gt; {
         <span class="kw">let </span>applied_migrations = <span class="self">self</span>.list_applied_migrations().<span class="kw">await</span><span class="question-mark">?</span>;
 
         <span class="kw">if </span><span class="macro">cfg!</span>(feature = <span class="string">&quot;tracing&quot;</span>) {
@@ -785,7 +785,7 @@
 
     <span class="doccomment">/// Apply given migration and add it to applied migration table
     </span><span class="attr">#[allow(clippy::borrowed_box)]
-    </span><span class="kw">async fn </span>apply_migration(<span class="kw-2">&amp;</span><span class="self">self</span>, migration: <span class="kw-2">&amp;</span>Box&lt;<span class="kw">dyn </span>Migration&lt;DB&gt;&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
+    </span><span class="kw">async fn </span>apply_migration(<span class="kw-2">&amp;</span><span class="self">self</span>, migration: <span class="kw-2">&amp;</span>Box&lt;<span class="kw">dyn </span>MigrationTrait&lt;DB&gt;&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
         <span class="kw">if </span><span class="macro">cfg!</span>(feature = <span class="string">&quot;tracing&quot;</span>) {
             <span class="macro">tracing::info!</span>(
                 <span class="string">&quot;Applying {} migration {}&quot;</span>,
@@ -834,7 +834,7 @@
 
     <span class="doccomment">/// Revert provided migration and remove migration from table
     </span><span class="attr">#[allow(clippy::borrowed_box)]
-    </span><span class="kw">async fn </span>revert_migration(<span class="kw-2">&amp;</span><span class="self">self</span>, migration: <span class="kw-2">&amp;</span>Box&lt;<span class="kw">dyn </span>Migration&lt;DB&gt;&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
+    </span><span class="kw">async fn </span>revert_migration(<span class="kw-2">&amp;</span><span class="self">self</span>, migration: <span class="kw-2">&amp;</span>Box&lt;<span class="kw">dyn </span>MigrationTrait&lt;DB&gt;&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
         <span class="kw">if </span><span class="macro">cfg!</span>(feature = <span class="string">&quot;tracing&quot;</span>) {
             <span class="macro">tracing::info!</span>(
                 <span class="string">&quot;Reverting {} migration {}&quot;</span>,
@@ -873,7 +873,7 @@
 <span class="kw">where
     </span>DB: sqlx::Database,
 {
-    migrations: HashSet&lt;Box&lt;<span class="kw">dyn </span>Migration&lt;DB&gt;&gt;&gt;,
+    migrations: HashSet&lt;Box&lt;<span class="kw">dyn </span>MigrationTrait&lt;DB&gt;&gt;&gt;,
     pool: Pool&lt;DB&gt;,
 }
 
@@ -894,11 +894,11 @@
 <span class="attr">#[cfg(feature = <span class="string">&quot;postgres&quot;</span>)]
 #[async_trait::async_trait]
 </span><span class="kw">impl </span>MigratorTrait&lt;Postgres&gt; <span class="kw">for </span>Migrator&lt;Postgres&gt; {
-    <span class="kw">fn </span>migrations(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>HashSet&lt;Box&lt;<span class="kw">dyn </span>Migration&lt;Postgres&gt;&gt;&gt; {
+    <span class="kw">fn </span>migrations(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>HashSet&lt;Box&lt;<span class="kw">dyn </span>MigrationTrait&lt;Postgres&gt;&gt;&gt; {
         <span class="kw-2">&amp;</span><span class="self">self</span>.migrations
     }
 
-    <span class="kw">fn </span>migrations_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>HashSet&lt;Box&lt;<span class="kw">dyn </span>Migration&lt;Postgres&gt;&gt;&gt; {
+    <span class="kw">fn </span>migrations_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>HashSet&lt;Box&lt;<span class="kw">dyn </span>MigrationTrait&lt;Postgres&gt;&gt;&gt; {
         <span class="kw-2">&amp;mut </span><span class="self">self</span>.migrations
     }
 
@@ -925,7 +925,7 @@ CREATE TABLE IF NOT EXISTS _sqlx_migrator_migrations (
 
     <span class="kw">async fn </span>add_migration_to_db_table(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        migration: <span class="kw-2">&amp;</span>Box&lt;<span class="kw">dyn </span>Migration&lt;Postgres&gt;&gt;,
+        migration: <span class="kw-2">&amp;</span>Box&lt;<span class="kw">dyn </span>MigrationTrait&lt;Postgres&gt;&gt;,
         connection: <span class="kw-2">&amp;mut </span>&lt;Postgres <span class="kw">as </span>sqlx::Database&gt;::Connection,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
         sqlx::query(
@@ -942,7 +942,7 @@ INSERT INTO _sqlx_migrator_migrations(app, name) VALUES ($1, $2)
 
     <span class="kw">async fn </span>delete_migration_from_db_table(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        migration: <span class="kw-2">&amp;</span>Box&lt;<span class="kw">dyn </span>Migration&lt;Postgres&gt;&gt;,
+        migration: <span class="kw-2">&amp;</span>Box&lt;<span class="kw">dyn </span>MigrationTrait&lt;Postgres&gt;&gt;,
         connection: <span class="kw-2">&amp;mut </span>&lt;Postgres <span class="kw">as </span>sqlx::Database&gt;::Connection,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
         sqlx::query(
@@ -969,11 +969,11 @@ DELETE FROM _sqlx_migrator_migrations WHERE app = $1 AND name = $2
 <span class="attr">#[cfg(feature = <span class="string">&quot;sqlite&quot;</span>)]
 #[async_trait::async_trait]
 </span><span class="kw">impl </span>MigratorTrait&lt;Sqlite&gt; <span class="kw">for </span>Migrator&lt;Sqlite&gt; {
-    <span class="kw">fn </span>migrations(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>HashSet&lt;Box&lt;<span class="kw">dyn </span>Migration&lt;Sqlite&gt;&gt;&gt; {
+    <span class="kw">fn </span>migrations(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>HashSet&lt;Box&lt;<span class="kw">dyn </span>MigrationTrait&lt;Sqlite&gt;&gt;&gt; {
         <span class="kw-2">&amp;</span><span class="self">self</span>.migrations
     }
 
-    <span class="kw">fn </span>migrations_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>HashSet&lt;Box&lt;<span class="kw">dyn </span>Migration&lt;Sqlite&gt;&gt;&gt; {
+    <span class="kw">fn </span>migrations_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>HashSet&lt;Box&lt;<span class="kw">dyn </span>MigrationTrait&lt;Sqlite&gt;&gt;&gt; {
         <span class="kw-2">&amp;mut </span><span class="self">self</span>.migrations
     }
 
@@ -1000,7 +1000,7 @@ CREATE TABLE IF NOT EXISTS _sqlx_migrator_migrations (
 
     <span class="kw">async fn </span>add_migration_to_db_table(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        migration: <span class="kw-2">&amp;</span>Box&lt;<span class="kw">dyn </span>Migration&lt;Sqlite&gt;&gt;,
+        migration: <span class="kw-2">&amp;</span>Box&lt;<span class="kw">dyn </span>MigrationTrait&lt;Sqlite&gt;&gt;,
         connection: <span class="kw-2">&amp;mut </span>&lt;Sqlite <span class="kw">as </span>sqlx::Database&gt;::Connection,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
         sqlx::query(
@@ -1017,7 +1017,7 @@ INSERT INTO _sqlx_migrator_migrations(app, name) VALUES ($1, $2)
 
     <span class="kw">async fn </span>delete_migration_from_db_table(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        migration: <span class="kw-2">&amp;</span>Box&lt;<span class="kw">dyn </span>Migration&lt;Sqlite&gt;&gt;,
+        migration: <span class="kw-2">&amp;</span>Box&lt;<span class="kw">dyn </span>MigrationTrait&lt;Sqlite&gt;&gt;,
         connection: <span class="kw-2">&amp;mut </span>&lt;Sqlite <span class="kw">as </span>sqlx::Database&gt;::Connection,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
         sqlx::query(
@@ -1041,4 +1041,4 @@ DELETE FROM _sqlx_migrator_migrations WHERE app = $1 AND name = $2
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="sqlx_migrator" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (215e3cd21 2022-11-03)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="sqlx_migrator" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (09508489e 2022-11-04)" ></div></body></html>

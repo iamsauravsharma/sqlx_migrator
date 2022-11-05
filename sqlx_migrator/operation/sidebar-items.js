@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"trait":[["Operation","Trait for operation"]]};
+window.SIDEBAR_ITEMS = {"trait":[["OperationTrait","Trait for operation"]]};

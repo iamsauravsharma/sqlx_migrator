@@ -49,6 +49,8 @@
 <span id="49">49</span>
 <span id="50">50</span>
 <span id="51">51</span>
+<span id="52">52</span>
+<span id="53">53</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Operation module
 //!
 //! To create own operation implement trait for type
@@ -57,12 +59,12 @@
 //!
 //! ```rust,no_run
 //! use sqlx_migrator::error::Error;
-//! use sqlx_migrator::operation::Operation;
+//! use sqlx_migrator::operation::OperationTrait;
 //! use sqlx_migrator::sqlx::Sqlite;
 //!
 //! struct ExampleOperation;
 //! #[async_trait::async_trait]
-//! impl Operation&lt;Sqlite&gt; for ExampleOperation {
+//! impl OperationTrait&lt;Sqlite&gt; for ExampleOperation {
 //!     async fn up(
 //!         &amp;self,
 //!         connection: &amp;mut &lt;Sqlite as sqlx::Database&gt;::Connection,
@@ -82,11 +84,13 @@
 //!     }
 //! }
 //! ```
+
 </span><span class="kw">use </span><span class="kw">crate</span>::error::Error;
 
 <span class="doccomment">/// Trait for operation
-</span><span class="attr">#[async_trait::async_trait]
-</span><span class="kw">pub trait </span>Operation&lt;DB&gt;: Send + Sync
+</span><span class="attr">#[allow(clippy::module_name_repetitions)]
+#[async_trait::async_trait]
+</span><span class="kw">pub trait </span>OperationTrait&lt;DB&gt;: Send + Sync
 <span class="kw">where
     </span>DB: sqlx::Database,
 {
@@ -101,4 +105,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="sqlx_migrator" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (215e3cd21 2022-11-03)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="sqlx_migrator" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (09508489e 2022-11-04)" ></div></body></html>
