@@ -531,11 +531,11 @@
 
 </span><span class="kw">use </span>std::collections::{HashMap, HashSet};
 
-<span class="kw">use </span>sqlx::{Pool, PgConnection, SqliteConnection};
 <span class="attr">#[cfg(feature = <span class="string">&quot;postgres&quot;</span>)]
 </span><span class="kw">use </span>sqlx::Postgres;
 <span class="attr">#[cfg(feature = <span class="string">&quot;sqlite&quot;</span>)]
 </span><span class="kw">use </span>sqlx::Sqlite;
+<span class="kw">use </span>sqlx::{PgConnection, Pool, SqliteConnection};
 
 <span class="kw">use </span><span class="kw">crate</span>::error::Error;
 <span class="kw">use </span><span class="kw">crate</span>::migration::{AppliedMigrationSqlRow, MigrationTrait};
