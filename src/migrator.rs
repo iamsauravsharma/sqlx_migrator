@@ -10,11 +10,11 @@
 
 use std::collections::{HashMap, HashSet};
 
-use sqlx::{Pool, PgConnection, SqliteConnection};
 #[cfg(feature = "postgres")]
 use sqlx::Postgres;
 #[cfg(feature = "sqlite")]
 use sqlx::Sqlite;
+use sqlx::{PgConnection, Pool, SqliteConnection};
 
 use crate::error::Error;
 use crate::migration::{AppliedMigrationSqlRow, MigrationTrait};
