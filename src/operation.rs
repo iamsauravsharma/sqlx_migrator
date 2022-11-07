@@ -12,20 +12,14 @@
 //! struct ExampleOperation;
 //! #[async_trait::async_trait]
 //! impl OperationTrait<Sqlite> for ExampleOperation {
-//!     async fn up(
-//!         &self,
-//!         connection: &mut <Sqlite as sqlx::Database>::Connection,
-//!     ) -> Result<(), Error> {
+//!     async fn up(&self, connection: &mut sqlx::SqliteConnection) -> Result<(), Error> {
 //!         // Do some operations
 //!         Ok(())
 //!     }
 //!
 //!     // By default operation is irreversible and cannot be reversed if you want to support
 //!     // reverse of migration than add down function as well
-//!     async fn down(
-//!         &self,
-//!         connection: &mut <Sqlite as sqlx::Database>::Connection,
-//!     ) -> Result<(), Error> {
+//!     async fn down(&self, connection: &mut sqlx::SqliteConnection) -> Result<(), Error> {
 //!         // Do some operations
 //!         Ok(())
 //!     }

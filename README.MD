@@ -32,7 +32,7 @@ impl OperationTrait<sqlx::Postgres> for FirstOperation {
     // Up function runs apply migration
     async fn up(
         &self,
-        connection: &mut <sqlx::Postgres as sqlx::Database>::Connection,
+        connection: &mut sqlx::PgConnection,
     ) -> Result<(), Error> {
         sqlx::query("CREATE TABLE sample (id INTEGER PRIMARY KEY, name TEXT)")
             .execute(connection)
@@ -43,7 +43,7 @@ impl OperationTrait<sqlx::Postgres> for FirstOperation {
     // down migration runs down migration
     async fn down(
         &self,
-        connection: &mut <sqlx::Postgres as sqlx::Database>::Connection,
+        connection: &mut sqlx::PgConnection,
     ) -> Result<(), Error> {
         sqlx::query("DROP TABLE sample").execute(connection).await?;
         Ok(())
@@ -135,7 +135,7 @@ impl OperationTrait<sqlx::Postgres> for SqlxOperation {
 
     async fn up(
         &self,
-        connection: &mut <sqlx::Postgres as sqlx::Database>::Connection,
+        connection: &mut sqlx::PgConnection,
     ) -> Result<(), Error> {
         sqlx::migrate!("db/migrations")
             .run(connection)
@@ -145,7 +145,7 @@ impl OperationTrait<sqlx::Postgres> for SqlxOperation {
 
     async fn down(
         &self,
-        connection: &mut <sqlx::Postgres as sqlx::Database>::Connection,
+        connection: &mut sqlx::PgConnection,
     ) -> Result<(), Error> {
         sqlx::migrate!("db/migrations")
             .undo(connection, 0)

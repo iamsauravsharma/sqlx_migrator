@@ -10,7 +10,7 @@
 
 use std::collections::{HashMap, HashSet};
 
-use sqlx::Pool;
+use sqlx::{Pool, PgConnection, SqliteConnection};
 #[cfg(feature = "postgres")]
 use sqlx::Postgres;
 #[cfg(feature = "sqlite")]
@@ -405,7 +405,7 @@ CREATE TABLE IF NOT EXISTS _sqlx_migrator_migrations (
     async fn add_migration_to_db_table(
         &self,
         migration: &Box<dyn MigrationTrait<Postgres>>,
-        connection: &mut <Postgres as sqlx::Database>::Connection,
+        connection: &mut PgConnection,
     ) -> Result<(), Error> {
         sqlx::query(
             r#"
@@ -422,7 +422,7 @@ INSERT INTO _sqlx_migrator_migrations(app, name) VALUES ($1, $2)
     async fn delete_migration_from_db_table(
         &self,
         migration: &Box<dyn MigrationTrait<Postgres>>,
-        connection: &mut <Postgres as sqlx::Database>::Connection,
+        connection: &mut PgConnection,
     ) -> Result<(), Error> {
         sqlx::query(
             r#"
@@ -480,7 +480,7 @@ CREATE TABLE IF NOT EXISTS _sqlx_migrator_migrations (
     async fn add_migration_to_db_table(
         &self,
         migration: &Box<dyn MigrationTrait<Sqlite>>,
-        connection: &mut <Sqlite as sqlx::Database>::Connection,
+        connection: &mut SqliteConnection,
     ) -> Result<(), Error> {
         sqlx::query(
             r#"
@@ -497,7 +497,7 @@ INSERT INTO _sqlx_migrator_migrations(app, name) VALUES ($1, $2)
     async fn delete_migration_from_db_table(
         &self,
         migration: &Box<dyn MigrationTrait<Sqlite>>,
-        connection: &mut <Sqlite as sqlx::Database>::Connection,
+        connection: &mut SqliteConnection,
     ) -> Result<(), Error> {
         sqlx::query(
             r#"

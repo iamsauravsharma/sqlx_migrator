@@ -1,3 +1,4 @@
+use sqlx::SqliteConnection;
 use sqlx_migrator::error::Error;
 use sqlx_migrator::migration::MigrationTrait;
 use sqlx_migrator::operation::OperationTrait;
@@ -7,20 +8,14 @@ pub(crate) struct M0001Operation;
 
 #[async_trait::async_trait]
 impl OperationTrait<Sqlite> for M0001Operation {
-    async fn up(
-        &self,
-        connection: &mut <Sqlite as sqlx::Database>::Connection,
-    ) -> Result<(), Error> {
+    async fn up(&self, connection: &mut SqliteConnection) -> Result<(), Error> {
         sqlx::query("CREATE TABLE sample (id INTEGER PRIMARY KEY, name TEXT)")
             .execute(connection)
             .await?;
         Ok(())
     }
 
-    async fn down(
-        &self,
-        connection: &mut <Sqlite as sqlx::Database>::Connection,
-    ) -> Result<(), Error> {
+    async fn down(&self, connection: &mut SqliteConnection) -> Result<(), Error> {
         sqlx::query("DROP TABLE sample").execute(connection).await?;
         Ok(())
     }
