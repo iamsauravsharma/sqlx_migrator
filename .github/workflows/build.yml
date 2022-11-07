@@ -25,7 +25,7 @@ jobs:
              rust-version: "nightly"
     runs-on: ${{ matrix.os }}
     env:
-      ENV_FEATURES_FLAG: "--features postgres,sqlite,runtime-tokio-native-tls"
+      MAKE_FEATURES_FLAG: "--features postgres,sqlite,runtime-tokio-native-tls"
     defaults:
       run:
         shell: bash
@@ -43,7 +43,7 @@ jobs:
      - name: Create env file
        uses: iamsauravsharma/create-dotenv@v1.2.1
        with:
-         env-prefix: 'ENV_'
+         env-prefix: 'MAKE_'
      - name: Run tests
        run: |
-        cargo make ci --env-file=./.env
+        cargo make ci --env-file=.env

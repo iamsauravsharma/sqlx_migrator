@@ -11,7 +11,7 @@ jobs:
     name: Deploy Github page
     runs-on: ubuntu-latest
     env:
-      ENV_FEATURES_FLAG: "--features postgres,sqlite,runtime-tokio-native-tls"
+      MAKE_FEATURES_FLAG: "--features postgres,sqlite,runtime-tokio-native-tls"
     steps:
       - uses: actions/checkout@v2
       - name: Setup rust toolchain
@@ -25,7 +25,7 @@ jobs:
       - name: Create env file
         uses: iamsauravsharma/create-dotenv@v1.2.1
         with:
-          env-prefix: 'ENV_'
+          env-prefix: 'MAKE_'
       - name: Generate documentation
         run: |
           cargo make rustdoc --env-file=./.env

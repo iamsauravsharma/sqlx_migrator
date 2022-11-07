@@ -30,11 +30,13 @@ args = [
 ]
 
 [tasks.fmt]
+condition = { channels = ["nightly"] }
 description = "Check whether rust code is properly formatted or not"
 command = "cargo"
 args = ["fmt", "@@remove-empty(VERBOSE_FLAG)", "--", "--check"]
 
 [tasks.clippy]
+condition = { channels = ["nightly"] }
 description = "Check if clippy return any warnings or error"
 command = "cargo"
 args = [
@@ -60,7 +62,7 @@ args = [
 ]
 
 [tasks.doc]
-description = "Run rustdoc"
+description = "Run doc"
 command = "cargo"
 args = [
     "doc",
