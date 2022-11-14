@@ -3,11 +3,7 @@
 //! It contains common enum and trait for implementing migrator for sqlx
 //! supported database
 //!
-//! For support only some required trait methods need to be implemented. It is
-//! best if you do not override provided methods as such method are database
-//! agnostic and perform some complex tasks its rarely needs to be custom
-//! implemented
-
+//! Currently project supports Postgres and Sqlite Database only
 use std::collections::{HashMap, HashSet};
 
 use sqlx::Pool;
@@ -44,9 +40,15 @@ pub enum Plan {
     },
 }
 
+/// Migrator trait which needs to be implemented for supported database for
+/// support of migration
+///
+/// For support only some required trait methods need to be implemented. It is
+/// best if you do not override provided methods as such method are database
+/// agnostic and perform some complex tasks its rarely needs to be custom
+/// implemented
 #[allow(clippy::module_name_repetitions)]
 #[async_trait::async_trait]
-/// Migrator trait
 pub trait MigratorTrait<DB>: Send + Sync
 where
     DB: sqlx::Database,
@@ -80,8 +82,7 @@ where
         connection: &mut <DB as sqlx::Database>::Connection,
     ) -> Result<(), Error>;
 
-    /// List all applied migrations from database in string format (full name of
-    /// migration)
+    /// List all applied migrations from database as struct
     async fn fetch_applied_migration_from_db(&self) -> Result<Vec<AppliedMigrationSqlRow>, Error>;
 
     /// Add vector of migrations to Migrator object
@@ -347,7 +348,7 @@ where
 }
 
 /// Migrator struct which store migrations graph and information related to
-/// postgres migrations
+/// different library supported migrations
 pub struct Migrator<DB>
 where
     DB: sqlx::Database,

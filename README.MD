@@ -13,7 +13,7 @@ Supported Databases:
 
 To use postgres migrator along with tokio-native-tls runtime you can configure Cargo.toml
 ```toml
-sqlx_migrator = { version = "0.2.1", features=["postgres", "runtime-tokio-native-tls"]
+sqlx_migrator = { version = "0.3.0", features=["postgres", "runtime-tokio-native-tls"]
 ```
 
 # Usage
@@ -22,7 +22,7 @@ To use sqlx_migrator first you need to implement OperationTrait trait to write y
 ```rust
 use sqlx_migrator::error::Error;
 use sqlx_migrator::operation::OperationTrait;
-//Its better to use sqlx imported from sqlx_migrator
+// Its better to use sqlx imported from sqlx_migrator
 use sqlx_migrator::sqlx;
 
 pub(crate) struct FirstOperation;
