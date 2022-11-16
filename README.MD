@@ -30,10 +30,7 @@ pub(crate) struct FirstOperation;
 #[async_trait::async_trait]
 impl OperationTrait<sqlx::Postgres> for FirstOperation {
     // Up function runs apply migration
-    async fn up(
-        &self,
-        connection: &mut sqlx::PgConnection,
-    ) -> Result<(), Error> {
+    async fn up(&self, connection: &mut sqlx::PgConnection) -> Result<(), Error> {
         sqlx::query("CREATE TABLE sample (id INTEGER PRIMARY KEY, name TEXT)")
             .execute(connection)
             .await?;
@@ -41,10 +38,7 @@ impl OperationTrait<sqlx::Postgres> for FirstOperation {
     }
 
     // down migration runs down migration
-    async fn down(
-        &self,
-        connection: &mut sqlx::PgConnection,
-    ) -> Result<(), Error> {
+    async fn down(&self, connection: &mut sqlx::PgConnection) -> Result<(), Error> {
         sqlx::query("DROP TABLE sample").execute(connection).await?;
         Ok(())
     }
@@ -84,13 +78,15 @@ impl MigrationTrait<sqlx::Postgres> for FirstMigration {
 
 Now at last you need to create migrator for your database to run migrations
 ```rust
-use sqlx_migrator::migrator::{MigratorTrait,Migrator};
+use sqlx_migrator::migrator::{Migrator, MigratorTrait};
 use sqlx_migrator::sqlx;
 
-let uri = std::env::var("DATABASE_URL").unwrap();
-let pool = sqlx::Pool::<sqlx::Postgres>::connect(&uri).await.unwrap();
-let mut migrator = Migrator::new(&pool);
-migrator.add_migration(Box::new(FirstMigrationTrait));
+fn main() {
+    let uri = std::env::var("DATABASE_URL").unwrap();
+    let pool = sqlx::Pool::<sqlx::Postgres>::connect(&uri).await.unwrap();
+    let mut migrator = Migrator::new(&pool);
+    migrator.add_migration(Box::new(FirstMigrationTrait));
+}
 ```
 
 Now you can use two ways to run migrator either directly running migration or creating cli from migrator
@@ -132,24 +128,13 @@ pub(crate) struct SqlxOperation;
 
 #[async_trait::async_trait]
 impl OperationTrait<sqlx::Postgres> for SqlxOperation {
-
-    async fn up(
-        &self,
-        connection: &mut sqlx::PgConnection,
-    ) -> Result<(), Error> {
-        sqlx::migrate!("db/migrations")
-            .run(connection)
-            .await?;
+    async fn up(&self, connection: &mut sqlx::PgConnection) -> Result<(), Error> {
+        sqlx::migrate!("db/migrations").run(connection).await?;
         Ok(())
     }
 
-    async fn down(
-        &self,
-        connection: &mut sqlx::PgConnection,
-    ) -> Result<(), Error> {
-        sqlx::migrate!("db/migrations")
-            .undo(connection, 0)
-            .await?;
+    async fn down(&self, connection: &mut sqlx::PgConnection) -> Result<(), Error> {
+        sqlx::migrate!("db/migrations").undo(connection, 0).await?;
         Ok(())
     }
 }
