@@ -8,6 +8,7 @@ Migrator for writing sqlx migration using Rust instead of SQL
 Supported Databases:
 - [X] PostgreSQL
 - [X] SQLite
+- [X] MySql
 
 ## Installation
 

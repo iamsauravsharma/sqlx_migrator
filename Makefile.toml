@@ -2,7 +2,7 @@
 RUST_BACKTRACE = "full"
 
 [env.FEATURES_FLAG]
-value = "--features runtime-tokio-native-tls,sqlite,postgres"
+value = "--features runtime-tokio-native-tls,sqlite,postgres,mysql"
 condition = { env_not_set = ["FEATURES_FLAG"] }
 
 [env.VERBOSE_FLAG]

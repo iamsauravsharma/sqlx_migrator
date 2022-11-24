@@ -17,17 +17,18 @@ sqlx = { version = "0.6.2", default-features = false, features = [
 async-trait = "0.1.58"
 tracing = { version = "0.1.37", optional = true }
 thiserror = "1.0.37"
-clap = { version = "4.0.23", features = ["derive"], optional = true }
+clap = { version = "4.0.26", features = ["derive"], optional = true }
 chrono = "0.4.23"
 
 [dev-dependencies]
-tokio = { version = "1.21.2", features = ["rt-multi-thread", "macros"] }
+tokio = { version = "1.22.0", features = ["rt-multi-thread", "macros"] }
 
 [features]
 default = ["cli", "tracing"]
 tracing = ["dep:tracing"]
 postgres = ["sqlx/postgres"]
 sqlite = ["sqlx/sqlite"]
+mysql = ["sqlx/mysql"]
 cli = ["dep:clap"]
 runtime-async-std-native-tls = ["sqlx/runtime-async-std-native-tls"]
 runtime-async-std-rustls = ["sqlx/runtime-async-std-rustls"]
@@ -46,6 +47,11 @@ name = "sqlite"
 path = "examples/sqlite/main.rs"
 required-features = ["sqlite", "runtime-tokio-native-tls"]
 
+[[example]]
+name = "mysql"
+path = "examples/mysql/main.rs"
+required-features =["mysql", "runtime-tokio-native-tls"]
+
 [package.metadata.docs.rs]
-features = ["postgres", "sqlite", "runtime-tokio-native-tls"]
+features = ["postgres", "sqlite", "mysql", "runtime-tokio-native-tls"]
 rustdoc-args = ["--cfg", "docsrs"]
