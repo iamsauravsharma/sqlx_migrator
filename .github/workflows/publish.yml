@@ -19,4 +19,4 @@ jobs:
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
         run: |
-          cargo publish --features postgres,sqlite,runtime-tokio-native-tls
+          cargo publish --features postgres,sqlite,mysql,runtime-tokio-native-tls
