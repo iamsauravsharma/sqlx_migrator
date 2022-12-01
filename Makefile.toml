@@ -2,7 +2,7 @@
 RUST_BACKTRACE = "full"
 
 [env.FEATURES_FLAG]
-value = "--features runtime-tokio-native-tls,sqlite,postgres,mysql"
+value = "--features runtime-tokio-native-tls,sqlite,postgres,mysql,any"
 condition = { env_not_set = ["FEATURES_FLAG"] }
 
 [env.VERBOSE_FLAG]
@@ -86,5 +86,8 @@ args = [
     "docsrs",
 ]
 
-[tasks.ci]
-dependencies = ["clean", "fmt", "build", "clippy", "doc", "test"]
+[tasks.local]
+dependencies = ["fmt", "build", "clippy", "doc", "test"]
+
+[tasks.full]
+dependencies = ["clean", "local"]
