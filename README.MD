@@ -9,6 +9,7 @@ Supported Databases:
 - [X] PostgreSQL
 - [X] SQLite
 - [X] MySql
+- [X] Any
 
 ## Installation
 

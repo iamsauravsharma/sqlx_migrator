@@ -29,6 +29,7 @@ tracing = ["dep:tracing"]
 postgres = ["sqlx/postgres"]
 sqlite = ["sqlx/sqlite"]
 mysql = ["sqlx/mysql"]
+any = ["sqlx/any"]
 cli = ["dep:clap"]
 runtime-async-std-native-tls = ["sqlx/runtime-async-std-native-tls"]
 runtime-async-std-rustls = ["sqlx/runtime-async-std-rustls"]
@@ -50,7 +51,7 @@ required-features = ["sqlite", "runtime-tokio-native-tls"]
 [[example]]
 name = "mysql"
 path = "examples/mysql/main.rs"
-required-features =["mysql", "runtime-tokio-native-tls"]
+required-features = ["mysql", "runtime-tokio-native-tls"]
 
 [package.metadata.docs.rs]
 features = ["postgres", "sqlite", "mysql", "runtime-tokio-native-tls"]
