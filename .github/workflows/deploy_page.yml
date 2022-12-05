@@ -13,13 +13,11 @@ jobs:
     env:
       MAKE_FEATURES_FLAG: "--features postgres,sqlite,mysql,any,runtime-tokio-native-tls"
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Setup rust toolchain
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@master
         with:
           toolchain: nightly
-          default: true
-          profile: default
       - name: Install cargo make
         uses: davidB/rust-cargo-make@v1
       - name: Create env file

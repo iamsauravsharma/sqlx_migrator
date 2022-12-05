@@ -31,12 +31,11 @@ jobs:
         shell: bash
 
     steps:
-     - uses: actions/checkout@v2
+     - uses: actions/checkout@v3
      - name: Setup rust toolchain
-       uses: actions-rs/toolchain@v1
+       uses: dtolnay/rust-toolchain@master
        with:
          toolchain: ${{ matrix.rust-version }}
-         default: true
          components: rustfmt, clippy
      - name: Install cargo make
        uses: davidB/rust-cargo-make@v1
