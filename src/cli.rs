@@ -246,7 +246,8 @@ where
 }
 
 /// Run full cli by parsing args with help of migrator. If you only need to add
-/// subcommand to your app than use `SubCommand` enum `handle_subcommand` function
+/// subcommand to your app than use `SubCommand` enum `handle_subcommand`
+/// function
 ///
 /// # Errors
 /// When command fails to run
