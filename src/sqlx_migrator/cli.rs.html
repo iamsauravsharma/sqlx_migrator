@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/cli.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>cli.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-1f7d512b176f0f72.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-124a1ca42af929b6.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-bc83104505b8ebd3.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../static.files/light-046227e470cd3629.css"><link rel="stylesheet" disabled href="../../static.files/dark-800f2ee593c8e6f7.css"><link rel="stylesheet" disabled href="../../static.files/ayu-9edae3c387f5a5b3.css"><script id="default-settings" ></script><script src="../../static.files/storage-d43fa987303ecbbb.js"></script><script defer src="../../static.files/source-script-5cf2e01a42cc9858.js"></script><script defer src="../../source-files.js"></script><script defer src="../../static.files/main-287cecec4dbb45b0.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><div class="width-limiter"><nav class="sub"><a class="sub-logo-container" href="../../sqlx_migrator/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-5ec35bf9ca753509.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/cli.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>cli.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-1f7d512b176f0f72.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-124a1ca42af929b6.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-e963ab4a0d0c903e.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../static.files/light-046227e470cd3629.css"><link rel="stylesheet" disabled href="../../static.files/dark-800f2ee593c8e6f7.css"><link rel="stylesheet" disabled href="../../static.files/ayu-9edae3c387f5a5b3.css"><script id="default-settings" ></script><script src="../../static.files/storage-d43fa987303ecbbb.js"></script><script defer src="../../static.files/source-script-5cf2e01a42cc9858.js"></script><script defer src="../../source-files.js"></script><script defer src="../../static.files/main-287cecec4dbb45b0.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><div class="width-limiter"><nav class="sub"><a class="sub-logo-container" href="../../sqlx_migrator/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-5ec35bf9ca753509.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -233,6 +233,31 @@
 <a href="#233" id="233">233</a>
 <a href="#234" id="234">234</a>
 <a href="#235" id="235">235</a>
+<a href="#236" id="236">236</a>
+<a href="#237" id="237">237</a>
+<a href="#238" id="238">238</a>
+<a href="#239" id="239">239</a>
+<a href="#240" id="240">240</a>
+<a href="#241" id="241">241</a>
+<a href="#242" id="242">242</a>
+<a href="#243" id="243">243</a>
+<a href="#244" id="244">244</a>
+<a href="#245" id="245">245</a>
+<a href="#246" id="246">246</a>
+<a href="#247" id="247">247</a>
+<a href="#248" id="248">248</a>
+<a href="#249" id="249">249</a>
+<a href="#250" id="250">250</a>
+<a href="#251" id="251">251</a>
+<a href="#252" id="252">252</a>
+<a href="#253" id="253">253</a>
+<a href="#254" id="254">254</a>
+<a href="#255" id="255">255</a>
+<a href="#256" id="256">256</a>
+<a href="#257" id="257">257</a>
+<a href="#258" id="258">258</a>
+<a href="#259" id="259">259</a>
+<a href="#260" id="260">260</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Module for creating and running cli with help of migrator
 </span><span class="kw">use </span>clap::{Parser, Subcommand};
 
@@ -246,17 +271,43 @@
 }
 
 <span class="attr">#[derive(Subcommand, Debug)]
-</span><span class="kw">enum </span>SubCommand {
-    <span class="attr">#[command(about = <span class="string">&quot;List migrations along with their status&quot;</span>)]
+</span><span class="doccomment">/// Subcommand for sqlx migrator cli
+</span><span class="kw">pub enum </span>SubCommand {
+    <span class="doccomment">/// List migrations along with their status
+    </span><span class="attr">#[command(about = <span class="string">&quot;List migrations along with their status&quot;</span>)]
     </span>List,
-    <span class="attr">#[command(about = <span class="string">&quot;Apply migrations&quot;</span>)]
+    <span class="doccomment">/// Apply migrations
+    </span><span class="attr">#[command(about = <span class="string">&quot;Apply migrations&quot;</span>)]
     </span>Apply(Apply),
-    <span class="attr">#[command(about = <span class="string">&quot;Revert migrations&quot;</span>)]
+    <span class="doccomment">/// Revert migrations
+    </span><span class="attr">#[command(about = <span class="string">&quot;Revert migrations&quot;</span>)]
     </span>Revert(Revert),
 }
 
+<span class="kw">impl </span>SubCommand {
+    <span class="doccomment">/// Handle all subcommand operations
+    ///
+    /// # Errors
+    ///  If any subcommand operations fail running
+    </span><span class="kw">pub async fn </span>handle_subcommand&lt;DB&gt;(
+        <span class="self">self</span>,
+        migrator: Box&lt;<span class="kw">dyn </span>MigratorTrait&lt;DB&gt;&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt;
+    <span class="kw">where
+        </span>DB: sqlx::Database,
+    {
+        <span class="kw">match </span><span class="self">self </span>{
+            SubCommand::List =&gt; list_migrations(migrator).<span class="kw">await</span><span class="question-mark">?</span>,
+            SubCommand::Apply(apply) =&gt; apply_migrations(migrator, apply).<span class="kw">await</span><span class="question-mark">?</span>,
+            SubCommand::Revert(revert) =&gt; revert_migrations(migrator, revert).<span class="kw">await</span><span class="question-mark">?</span>,
+        }
+        <span class="prelude-val">Ok</span>(())
+    }
+}
+
 <span class="attr">#[derive(Parser, Debug)]
-</span><span class="kw">struct </span>Apply {
+</span><span class="doccomment">/// CLI struct for apply subcommand
+</span><span class="kw">pub struct </span>Apply {
     <span class="attr">#[arg(long = <span class="string">&quot;plan&quot;</span>, short = <span class="string">&#39;p&#39;</span>, help = <span class="string">&quot;Show plan&quot;</span>)]
     </span>plan: bool,
     <span class="attr">#[arg(long = <span class="string">&quot;check&quot;</span>, short = <span class="string">&#39;c&#39;</span>, help = <span class="string">&quot;Check for pending migration&quot;</span>)]
@@ -281,7 +332,8 @@
 }
 
 <span class="attr">#[derive(Parser, Debug)]
-</span><span class="kw">struct </span>Revert {
+</span><span class="doccomment">/// CLI struct for revert subcommand
+</span><span class="kw">pub struct </span>Revert {
     <span class="attr">#[arg(long = <span class="string">&quot;plan&quot;</span>, short = <span class="string">&#39;p&#39;</span>, help = <span class="string">&quot;Show plan&quot;</span>)]
     </span>plan: bool,
     <span class="attr">#[arg(long = <span class="string">&quot;all&quot;</span>, short = <span class="string">&#39;a&#39;</span>, help = <span class="string">&quot;Revert all migration&quot;</span>)]
@@ -328,6 +380,7 @@
     </span>);
 
     <span class="macro">println!</span>(<span class="string">&quot;{:^full_width$}&quot;</span>, <span class="string">&quot;-&quot;</span>.repeat(full_width));
+
     <span class="kw">for </span>migration <span class="kw">in </span>migrator.generate_migration_plan(Plan::Full).<span class="kw">await</span><span class="question-mark">? </span>{
         <span class="kw">let </span>applied_migration_info = applied_migrations
             .iter()
@@ -452,7 +505,8 @@
     <span class="prelude-val">Ok</span>(())
 }
 
-<span class="doccomment">/// Run cli by parsing args with help of migrator
+<span class="doccomment">/// Run full cli by parsing args with help of migrator. If you only need to add
+/// subcommand to your app than use `SubCommand` enum `handle_subcommand` function
 ///
 /// # Errors
 /// When command fails to run
@@ -461,12 +515,8 @@
     </span>DB: sqlx::Database,
 {
     <span class="kw">let </span>args = Args::parse();
-    <span class="kw">match </span>args.sub_command {
-        SubCommand::List =&gt; list_migrations(migrator).<span class="kw">await</span><span class="question-mark">?</span>,
-        SubCommand::Apply(apply) =&gt; apply_migrations(migrator, apply).<span class="kw">await</span><span class="question-mark">?</span>,
-        SubCommand::Revert(revert) =&gt; revert_migrations(migrator, revert).<span class="kw">await</span><span class="question-mark">?</span>,
-    }
+    args.sub_command.handle_subcommand(migrator).<span class="kw">await</span><span class="question-mark">?</span>;
     <span class="prelude-val">Ok</span>(())
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="sqlx_migrator" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (32e613bba 2022-12-02)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="sqlx_migrator" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (53e4b9dd7 2022-12-04)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
