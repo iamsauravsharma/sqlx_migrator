@@ -11,17 +11,43 @@ struct Args {
 }
 
 #[derive(Subcommand, Debug)]
-enum SubCommand {
+/// Subcommand for sqlx migrator cli
+pub enum SubCommand {
+    /// List migrations along with their status
     #[command(about = "List migrations along with their status")]
     List,
+    /// Apply migrations
     #[command(about = "Apply migrations")]
     Apply(Apply),
+    /// Revert migrations
     #[command(about = "Revert migrations")]
     Revert(Revert),
 }
 
+impl SubCommand {
+    /// Handle all subcommand operations
+    ///
+    /// # Errors
+    ///  If any subcommand operations fail running
+    pub async fn handle_subcommand<DB>(
+        self,
+        migrator: Box<dyn MigratorTrait<DB>>,
+    ) -> Result<(), Error>
+    where
+        DB: sqlx::Database,
+    {
+        match self {
+            SubCommand::List => list_migrations(migrator).await?,
+            SubCommand::Apply(apply) => apply_migrations(migrator, apply).await?,
+            SubCommand::Revert(revert) => revert_migrations(migrator, revert).await?,
+        }
+        Ok(())
+    }
+}
+
 #[derive(Parser, Debug)]
-struct Apply {
+/// CLI struct for apply subcommand
+pub struct Apply {
     #[arg(long = "plan", short = 'p', help = "Show plan")]
     plan: bool,
     #[arg(long = "check", short = 'c', help = "Check for pending migration")]
@@ -46,7 +72,8 @@ struct Apply {
 }
 
 #[derive(Parser, Debug)]
-struct Revert {
+/// CLI struct for revert subcommand
+pub struct Revert {
     #[arg(long = "plan", short = 'p', help = "Show plan")]
     plan: bool,
     #[arg(long = "all", short = 'a', help = "Revert all migration")]
@@ -93,6 +120,7 @@ where
     );
 
     println!("{:^full_width$}", "-".repeat(full_width));
+
     for migration in migrator.generate_migration_plan(Plan::Full).await? {
         let applied_migration_info = applied_migrations
             .iter()
@@ -217,7 +245,8 @@ where
     Ok(())
 }
 
-/// Run cli by parsing args with help of migrator
+/// Run full cli by parsing args with help of migrator. If you only need to add
+/// subcommand to your app than use `SubCommand` enum `handle_subcommand` function
 ///
 /// # Errors
 /// When command fails to run
@@ -226,10 +255,6 @@ where
     DB: sqlx::Database,
 {
     let args = Args::parse();
-    match args.sub_command {
-        SubCommand::List => list_migrations(migrator).await?,
-        SubCommand::Apply(apply) => apply_migrations(migrator, apply).await?,
-        SubCommand::Revert(revert) => revert_migrations(migrator, revert).await?,
-    }
+    args.sub_command.handle_subcommand(migrator).await?;
     Ok(())
 }

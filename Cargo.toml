@@ -54,5 +54,5 @@ path = "examples/mysql/main.rs"
 required-features = ["mysql", "runtime-tokio-native-tls"]
 
 [package.metadata.docs.rs]
-features = ["postgres", "sqlite", "mysql", "runtime-tokio-native-tls"]
+features = ["postgres", "sqlite", "mysql", "any", "runtime-tokio-native-tls"]
 rustdoc-args = ["--cfg", "docsrs"]
