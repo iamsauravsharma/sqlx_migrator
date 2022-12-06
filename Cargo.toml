@@ -1,6 +1,6 @@
 [package]
 name = "sqlx_migrator"
-version = "0.3.2"
+version = "0.3.3"
 edition = "2021"
 authors = ["Saurav Sharma <appdroiddeveloper@gmail.com>"]
 homepage = "https://github.com/iamsauravsharma/sqlx_migrator"
