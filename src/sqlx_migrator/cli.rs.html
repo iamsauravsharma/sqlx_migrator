@@ -291,7 +291,7 @@
     /// # Errors
     ///  If any subcommand operations fail running
     </span><span class="kw">pub async fn </span>handle_subcommand&lt;DB&gt;(
-        <span class="self">self</span>,
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
         migrator: Box&lt;<span class="kw">dyn </span>MigratorTrait&lt;DB&gt;&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt;
     <span class="kw">where
@@ -412,15 +412,15 @@
 
 <span class="kw">async fn </span>apply_migrations&lt;DB&gt;(
     migrator: Box&lt;<span class="kw">dyn </span>MigratorTrait&lt;DB&gt;&gt;,
-    apply: Apply,
+    apply: <span class="kw-2">&amp;</span>Apply,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt;
 <span class="kw">where
     </span>DB: sqlx::Database,
 {
     <span class="kw">let </span>migrations = migrator
         .generate_migration_plan(Plan::Apply {
-            app: apply.app,
-            name: apply.name,
+            app: apply.app.clone(),
+            name: apply.name.clone(),
         })
         .<span class="kw">await</span><span class="question-mark">?</span>;
     <span class="kw">if </span>apply.check &amp;&amp; !migrations.is_empty() {
@@ -457,7 +457,7 @@
 
 <span class="kw">async fn </span>revert_migrations&lt;DB&gt;(
     migrator: Box&lt;<span class="kw">dyn </span>MigratorTrait&lt;DB&gt;&gt;,
-    revert: Revert,
+    revert: <span class="kw-2">&amp;</span>Revert,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt;
 <span class="kw">where
     </span>DB: sqlx::Database,
@@ -465,8 +465,8 @@
     <span class="kw">let </span>app_is_some = revert.app.is_some();
     <span class="kw">let </span>revert_plan = migrator
         .generate_migration_plan(Plan::Revert {
-            app: revert.app,
-            name: revert.name,
+            app: revert.app.clone(),
+            name: revert.name.clone(),
         })
         .<span class="kw">await</span><span class="question-mark">?</span>;
     <span class="kw">let </span>revert_migrations;
@@ -521,4 +521,4 @@
     <span class="prelude-val">Ok</span>(())
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="sqlx_migrator" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (53e4b9dd7 2022-12-04)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="sqlx_migrator" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (e1d819583 2022-12-05)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
