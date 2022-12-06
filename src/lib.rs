@@ -1,4 +1,4 @@
-#![warn(bare_trait_objects, missing_docs, unreachable_pub)]
+#![warn(missing_docs, unreachable_pub)]
 #![deny(unsafe_code)]
 #![deny(clippy::all)]
 #![warn(clippy::pedantic)]

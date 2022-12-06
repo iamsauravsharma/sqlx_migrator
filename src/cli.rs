@@ -30,7 +30,7 @@ impl SubCommand {
     /// # Errors
     ///  If any subcommand operations fail running
     pub async fn handle_subcommand<DB>(
-        self,
+        &self,
         migrator: Box<dyn MigratorTrait<DB>>,
     ) -> Result<(), Error>
     where
@@ -151,15 +151,15 @@ where
 
 async fn apply_migrations<DB>(
     migrator: Box<dyn MigratorTrait<DB>>,
-    apply: Apply,
+    apply: &Apply,
 ) -> Result<(), Error>
 where
     DB: sqlx::Database,
 {
     let migrations = migrator
         .generate_migration_plan(Plan::Apply {
-            app: apply.app,
-            name: apply.name,
+            app: apply.app.clone(),
+            name: apply.name.clone(),
         })
         .await?;
     if apply.check && !migrations.is_empty() {
@@ -196,7 +196,7 @@ where
 
 async fn revert_migrations<DB>(
     migrator: Box<dyn MigratorTrait<DB>>,
-    revert: Revert,
+    revert: &Revert,
 ) -> Result<(), Error>
 where
     DB: sqlx::Database,
@@ -204,8 +204,8 @@ where
     let app_is_some = revert.app.is_some();
     let revert_plan = migrator
         .generate_migration_plan(Plan::Revert {
-            app: revert.app,
-            name: revert.name,
+            app: revert.app.clone(),
+            name: revert.name.clone(),
         })
         .await?;
     let revert_migrations;
