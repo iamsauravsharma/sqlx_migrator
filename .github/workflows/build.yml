@@ -25,7 +25,7 @@ jobs:
              rust-version: "nightly"
     runs-on: ${{ matrix.os }}
     env:
-      MAKE_FEATURES_FLAG: "--features postgres,sqlite,mysql,any,runtime-tokio-native-tls"
+      MAKE_FEATURES_FLAG: "--features postgres,sqlite,mysql,any,runtime-tokio-rustls"
     defaults:
       run:
         shell: bash

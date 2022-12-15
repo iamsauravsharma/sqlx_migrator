@@ -2,21 +2,13 @@
 RUST_BACKTRACE = "full"
 
 [env.FEATURES_FLAG]
-value = "--features runtime-tokio-native-tls,sqlite,postgres,mysql,any"
+value = "--features runtime-tokio-rustls,sqlite,postgres,mysql,any"
 condition = { env_not_set = ["FEATURES_FLAG"] }
-
-[env.VERBOSE_FLAG]
-value = ""
-condition = { env_not_set = ["VERBOSE_FLAG"] }
-
-[env.TARGET_TRIPLE_FLAG]
-value = ""
-condition = { env_not_set = ["TARGET_TRIPLE_FLAG"] }
 
 [tasks.clean]
 description = "Clean target directory"
 command = "cargo"
-args = ["clean", "@@remove-empty(VERBOSE_FLAG)"]
+args = ["clean"]
 
 [tasks.build]
 description = "Run cargo build"
@@ -24,16 +16,14 @@ command = "cargo"
 args = [
     "build",
     "--workspace",
-    "@@split(FEATURES_FLAG, )",
-    "@@remove-empty(VERBOSE_FLAG)",
-    "@@split(TARGET_TRIPLE_FLAG, )",
+    "@@split(FEATURES_FLAG, )"
 ]
 
 [tasks.fmt]
 condition = { channels = ["nightly"] }
 description = "Check whether rust code is properly formatted or not"
 command = "cargo"
-args = ["fmt", "@@remove-empty(VERBOSE_FLAG)", "--", "--check"]
+args = ["fmt", "--", "--check"]
 
 [tasks.clippy]
 condition = { channels = ["nightly"] }
@@ -43,8 +33,6 @@ args = [
     "clippy",
     "--workspace",
     "@@split(FEATURES_FLAG, )",
-    "@@remove-empty(VERBOSE_FLAG)",
-    "@@split(TARGET_TRIPLE_FLAG, )",
     "--",
     "-D",
     "warnings",
@@ -57,8 +45,7 @@ args = [
     "test",
     "--workspace",
     "@@split(FEATURES_FLAG, )",
-    "@@remove-empty(VERBOSE_FLAG)",
-    "@@split(TARGET_TRIPLE_FLAG, )",
+
 ]
 
 [tasks.doc]
@@ -69,8 +56,7 @@ args = [
     "--workspace",
     "--no-deps",
     "@@split(FEATURES_FLAG, )",
-    "@@remove-empty(VERBOSE_FLAG)",
-    "@@split(TARGET_TRIPLE_FLAG, )",
+
 ]
 
 [tasks.rustdoc]
@@ -79,8 +65,6 @@ command = "cargo"
 args = [
     "rustdoc",
     "@@split(FEATURES_FLAG, )",
-    "@@remove-empty(VERBOSE_FLAG)",
-    "@@split(TARGET_TRIPLE_FLAG, )",
     "--",
     "--cfg",
     "docsrs",
