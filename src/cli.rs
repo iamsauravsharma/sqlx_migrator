@@ -104,7 +104,7 @@ where
     migrator.ensure_migration_table_exists().await?;
     let applied_migrations = migrator.fetch_applied_migration_from_db().await?;
 
-    let widths = [5, 10, 30, 10, 20];
+    let widths = [5, 10, 50, 10, 40];
     let full_width = widths.iter().sum::<usize>() + widths.len() * 3;
 
     let first_width = widths[0];
@@ -167,7 +167,7 @@ where
     }
     if apply.plan {
         let first_width = 10;
-        let second_width = 30;
+        let second_width = 50;
         let full_width = first_width + second_width + 3;
         println!("{:^first_width$} | {:^second_width$}", "App", "Name");
         println!("{:^full_width$}", "-".repeat(full_width));
@@ -218,7 +218,7 @@ where
     }
     if revert.plan {
         let first_width = 10;
-        let second_width = 30;
+        let second_width = 50;
         let full_width = first_width + second_width + 3;
         println!("{:^first_width$} | {:^second_width$}", "App", "Name");
         println!("{:^full_width$}", "-".repeat(full_width));
