@@ -1015,7 +1015,7 @@
 <span class="attr">#[cfg(feature = <span class="string">&quot;postgres&quot;</span>)]
 </span><span class="kw">fn </span>postgres_ensure() -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str {
     <span class="string">&quot;CREATE TABLE IF NOT EXISTS _sqlx_migrator_migrations (
-        id SERIAL PRIMARY KEY,
+        id INT PRIMARY KEY NOT NULL GENERATED ALWAYS AS IDENTITY,
         app TEXT NOT NULL,
         name TEXT NOT NULL,
         applied_time TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -1029,7 +1029,7 @@
 <span class="attr">#[cfg(feature = <span class="string">&quot;sqlite&quot;</span>)]
 </span><span class="kw">fn </span>sqlite_ensure() -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str {
     <span class="string">&quot;CREATE TABLE IF NOT EXISTS _sqlx_migrator_migrations (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id INTEGER PRIMARY KEY NOT NULL AUTOINCREMENT,
         app TEXT NOT NULL,
         name TEXT NOT NULL,
         applied_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -1043,7 +1043,7 @@
 <span class="attr">#[cfg(feature = <span class="string">&quot;mysql&quot;</span>)]
 </span><span class="kw">fn </span>mysql_ensure() -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str {
     <span class="string">&quot;CREATE TABLE IF NOT EXISTS _sqlx_migrator_migrations (
-        id SERIAL PRIMARY KEY,
+        id INT PRIMARY KEY NOT NULL AUTO_INCREMENT,
         app VARCHAR(384) NOT NULL,
         name VARCHAR(384) NOT NULL,
         applied_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
