@@ -471,7 +471,7 @@ fn sqlite_ensure() -> &'static str {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         app TEXT NOT NULL,
         name TEXT NOT NULL,
-        applied_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        applied_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
         UNIQUE (app, name)
     )"
 }
