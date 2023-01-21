@@ -1,3 +1,6 @@
+# Rust related
 /target
 /Cargo.lock
-.vscode
+
+# MacOS related
+.DS_Store
