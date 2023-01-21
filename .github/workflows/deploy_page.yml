@@ -4,9 +4,10 @@ on:
   push:
     branches:
       - master
+permissions:
+  contents: write
 
 jobs:
-
   deploy_page:
     name: Deploy Github page
     runs-on: ubuntu-latest
@@ -15,13 +16,11 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Setup rust toolchain
-        uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: nightly
+        uses: dtolnay/rust-toolchain@nightly
       - name: Install cargo make
         uses: davidB/rust-cargo-make@v1
       - name: Create env file
-        uses: iamsauravsharma/create-dotenv@v1.2.1
+        uses: iamsauravsharma/create-dotenv@v1.2.2
         with:
           env-prefix: 'MAKE_'
       - name: Generate documentation
@@ -30,13 +29,7 @@ jobs:
       - name: Generate index page
         run: |
           echo "<meta http-equiv=refresh content=0;url=sqlx_migrator/index.html>" > target/doc/index.html
-      - name: Install SSH Client
-        uses: webfactory/ssh-agent@v0.4.1
-        with:
-          ssh-private-key: ${{ secrets.DEPLOY_KEY }}
       - name: Deploy GitHub Page
-        uses: JamesIves/github-pages-deploy-action@3.7.1
+        uses: JamesIves/github-pages-deploy-action@v4
         with:
-          SSH: true
-          BRANCH: gh-pages
-          FOLDER: target/doc
+          folder: target/doc

@@ -454,7 +454,7 @@ macro_rules! implement_migrator_trait {
 #[cfg(feature = "postgres")]
 fn postgres_ensure() -> &'static str {
     "CREATE TABLE IF NOT EXISTS _sqlx_migrator_migrations (
-        id SERIAL PRIMARY KEY,
+        id INT PRIMARY KEY NOT NULL GENERATED ALWAYS AS IDENTITY,
         app TEXT NOT NULL,
         name TEXT NOT NULL,
         applied_time TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -468,7 +468,7 @@ implement_migrator_trait!(Postgres, postgres_ensure());
 #[cfg(feature = "sqlite")]
 fn sqlite_ensure() -> &'static str {
     "CREATE TABLE IF NOT EXISTS _sqlx_migrator_migrations (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id INTEGER PRIMARY KEY NOT NULL AUTOINCREMENT,
         app TEXT NOT NULL,
         name TEXT NOT NULL,
         applied_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -482,7 +482,7 @@ implement_migrator_trait!(Sqlite, sqlite_ensure());
 #[cfg(feature = "mysql")]
 fn mysql_ensure() -> &'static str {
     "CREATE TABLE IF NOT EXISTS _sqlx_migrator_migrations (
-        id SERIAL PRIMARY KEY,
+        id INT PRIMARY KEY NOT NULL AUTO_INCREMENT,
         app VARCHAR(384) NOT NULL,
         name VARCHAR(384) NOT NULL,
         applied_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
