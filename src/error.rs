@@ -23,4 +23,20 @@ pub enum Error {
     /// Error when migration name is only present but not app name
     #[error("App name required. Only migration name present")]
     AppNameRequired,
+
+    /// Error when provided app name doesn't exists
+    #[error("Provided app {app} doesn't exists")]
+    AppNameNotExists {
+        /// Name of app
+        app: String,
+    },
+
+    /// Error when provided migration name doesn't exists for app
+    #[error("Provided migration {migration} doesn't exists for app {app}")]
+    MigrationNameNotExists {
+        /// Name of app
+        app: String,
+        /// Name of migration
+        migration: String,
+    },
 }
