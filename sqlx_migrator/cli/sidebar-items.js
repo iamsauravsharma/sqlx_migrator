@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":[["SubCommand","Subcommand for sqlx migrator cli"]],"fn":[["run","Run full cli by parsing args with help of migrator. If you only need to add subcommand to your app than use `SubCommand` enum `handle_subcommand` function"]],"struct":[["Apply","CLI struct for apply subcommand"],["Revert","CLI struct for revert subcommand"]]};
+window.SIDEBAR_ITEMS = {"enum":["SubCommand"],"fn":["run"],"struct":["Apply","Revert"]};
