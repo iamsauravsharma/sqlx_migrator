@@ -48,53 +48,49 @@ impl SubCommand {
 #[derive(Parser, Debug)]
 /// CLI struct for apply subcommand
 pub struct Apply {
-    #[arg(long = "plan", short = 'p', help = "Show plan")]
+    #[arg(long, short, help = "Show plan")]
     plan: bool,
-    #[arg(long = "check", short = 'c', help = "Check for pending migration")]
+    #[arg(long, short, help = "Check for pending migration")]
     check: bool,
-    #[arg(
-        long = "fake",
-        short = 'f',
-        help = "Make migration applied without applying"
-    )]
+    #[arg(long, short, help = "Make migration applied without applying")]
     fake: bool,
     #[arg(
-        long = "app",
+        long,
+        short,
         help = "Apply migration till all app migration are applied"
     )]
     app: Option<String>,
     #[arg(
-        long = "name",
+        long,
+        short,
         help = "Apply migration till provided migration",
         requires = "app"
     )]
-    name: Option<String>,
+    migration: Option<String>,
 }
 
 #[derive(Parser, Debug)]
 /// CLI struct for revert subcommand
 pub struct Revert {
-    #[arg(long = "plan", short = 'p', help = "Show plan")]
+    #[arg(long, short, help = "Show plan")]
     plan: bool,
-    #[arg(long = "all", short = 'a', help = "Revert all migration")]
+    #[arg(long, short, help = "Revert all migration")]
     all: bool,
-    #[arg(
-        long = "fake",
-        short = 'f',
-        help = "Make migration reverted without reverting"
-    )]
+    #[arg(long, short, help = "Make migration reverted without reverting")]
     fake: bool,
     #[arg(
-        long = "app",
+        long,
+        short,
         help = "Revert migration till all app migration are reverted"
     )]
     app: Option<String>,
     #[arg(
-        long = "name",
+        long,
+        short,
         help = "Revert migration till provided migration",
         requires = "app"
     )]
-    name: Option<String>,
+    migration: Option<String>,
 }
 
 async fn list_migrations<DB>(migrator: Box<dyn MigratorTrait<DB>>) -> Result<(), Error>
@@ -121,7 +117,10 @@ where
 
     println!("{:^full_width$}", "-".repeat(full_width));
 
-    for migration in migrator.generate_migration_plan(Plan::Full).await? {
+    for migration in migrator
+        .generate_migration_plan(Plan::new(crate::migrator::PlanType::All, None, None)?)
+        .await?
+    {
         let applied_migration_info = applied_migrations
             .iter()
             .find(|&applied_migration| applied_migration == migration);
@@ -157,10 +156,11 @@ where
     DB: sqlx::Database,
 {
     let migrations = migrator
-        .generate_migration_plan(Plan::Apply {
-            app: apply.app.clone(),
-            name: apply.name.clone(),
-        })
+        .generate_migration_plan(Plan::new(
+            crate::migrator::PlanType::Apply,
+            apply.app.clone(),
+            apply.migration.clone(),
+        )?)
         .await?;
     if apply.check && !migrations.is_empty() {
         return Err(Error::PendingMigrationPresent);
@@ -203,10 +203,11 @@ where
 {
     let app_is_some = revert.app.is_some();
     let revert_plan = migrator
-        .generate_migration_plan(Plan::Revert {
-            app: revert.app.clone(),
-            name: revert.name.clone(),
-        })
+        .generate_migration_plan(Plan::new(
+            crate::migrator::PlanType::Revert,
+            revert.app.clone(),
+            revert.migration.clone(),
+        )?)
         .await?;
     let revert_migrations;
     if revert.all || app_is_some {

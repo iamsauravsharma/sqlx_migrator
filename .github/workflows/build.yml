@@ -11,18 +11,18 @@ jobs:
   build:
     name: Build
     strategy:
-       matrix:
-         include:
-           - os: "ubuntu-latest"
-             rust-version: "stable"
-           - os: "macos-latest"
-             rust-version: "stable"
-           - os: "windows-latest"
-             rust-version: "stable"
-           - os: "ubuntu-latest"
-             rust-version: "beta"
-           - os: "ubuntu-latest"
-             rust-version: "nightly"
+      matrix:
+        include:
+          - os: "ubuntu-latest"
+            rust-version: "stable"
+          - os: "macos-latest"
+            rust-version: "stable"
+          - os: "windows-latest"
+            rust-version: "stable"
+          - os: "ubuntu-latest"
+            rust-version: "beta"
+          - os: "ubuntu-latest"
+            rust-version: "nightly"
     runs-on: ${{ matrix.os }}
     env:
       MAKE_FEATURES_FLAG: "--features postgres,sqlite,mysql,any,runtime-tokio-rustls"
@@ -31,18 +31,18 @@ jobs:
         shell: bash
 
     steps:
-     - uses: actions/checkout@v3
-     - name: Setup rust toolchain
-       uses: dtolnay/rust-toolchain@master
-       with:
-         toolchain: ${{ matrix.rust-version }}
-         components: rustfmt, clippy
-     - name: Install cargo make
-       uses: davidB/rust-cargo-make@v1
-     - name: Create env file
-       uses: iamsauravsharma/create-dotenv@v1.2.2
-       with:
-         env-prefix: 'MAKE_'
-     - name: Run tests
-       run: |
-        cargo make full --env-file=.env
+      - uses: actions/checkout@v3
+      - name: Setup rust toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ matrix.rust-version }}
+          components: rustfmt, clippy
+      - name: Install cargo make
+        uses: davidB/rust-cargo-make@v1
+      - name: Create env file
+        uses: iamsauravsharma/create-dotenv@v1.2.2
+        with:
+          env-prefix: "MAKE_"
+      - name: Run tests
+        run: |
+          cargo make full --env-file=.env

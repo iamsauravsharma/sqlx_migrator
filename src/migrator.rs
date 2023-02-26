@@ -3,7 +3,7 @@
 //! It contains common enum and trait for implementing migrator for sqlx
 //! supported database
 //!
-//! Currently project supports Postgres and Sqlite Database only
+//! Currently project supports Postgres, Sqlite and Mysql Database only
 use std::collections::{HashMap, HashSet};
 
 #[cfg(feature = "mysql")]
@@ -24,27 +24,44 @@ use crate::migration::{AppliedMigrationSqlRow, MigrationTrait};
 
 type MigrationTraitVecResult<'a, DB> = Result<Vec<&'a Box<dyn MigrationTrait<DB>>>, Error>;
 
-/// Type of plan used to generate migrations
+/// Type of plan which needs to be generate
 #[derive(Debug)]
-pub enum Plan {
-    /// Full generation plan. Plan containing all migrations according to order
-    Full,
-    /// Apply generation plan. Plan containing migrations which can be applied
-    Apply {
-        /// Migration app name which migration needs to be applied
+pub enum PlanType {
+    /// Plan type used when listing all migration in chronological order
+    All,
+    /// Plan type used when listing migrations which can be applied
+    Apply,
+    /// Plan type when listing migrations which can be reverted
+    Revert,
+}
+
+/// Struct which determine type of plan to use
+#[derive(Debug)]
+pub struct Plan {
+    plan_type: PlanType,
+    app: Option<String>,
+    migration: Option<String>,
+}
+
+impl Plan {
+    /// Create new plan using plan type, app name and migration name
+    ///
+    /// # Errors
+    /// When app value is none and migration value is some value
+    pub fn new(
+        plan_type: PlanType,
         app: Option<String>,
-        /// Migration name till which migration needs to be applied. app should
-        /// be Some if it is Some value
-        name: Option<String>,
-    },
-    /// Revert generation plan. Plan containing migrations which can be reverted
-    Revert {
-        /// Migration app name which migration needs to be reverted
-        app: Option<String>,
-        /// Migration name till which migration needs to be reverted. app should
-        /// be Some if it is Some value
-        name: Option<String>,
-    },
+        migration: Option<String>,
+    ) -> Result<Self, Error> {
+        if migration.is_some() && app.is_none() {
+            return Err(Error::AppNameRequired);
+        }
+        Ok(Self {
+            plan_type,
+            app,
+            migration,
+        })
+    }
 }
 
 /// Migrator trait which needs to be implemented for supported database for
@@ -215,40 +232,41 @@ where
         }
 
         // Modify migration plan according to plan type
-        let (migration_app, migration_name) = match plan {
-            Plan::Full => (None, None),
-            Plan::Apply { app, name } => {
+        match plan.plan_type {
+            PlanType::Apply => {
                 migration_plan.retain(|migration| !applied_migrations.contains(migration));
-                (app, name)
             }
-            Plan::Revert { app, name } => {
+            PlanType::Revert => {
                 migration_plan.retain(|migration| applied_migrations.contains(migration));
                 migration_plan.reverse();
-                (app, name)
             }
+            PlanType::All => {}
         };
 
-        // Error if only migration name present and app name not present
-        if migration_name.is_some() && migration_app.is_none() {
-            return Err(Error::AppNameRequired);
-        }
-
-        // Find position of last element and truncate till that position
-        if let Some(app) = migration_app {
-            let position = if let Some(name) = migration_name {
-                migration_plan
+        if let Some(app) = plan.app {
+            // Find position last migration which maps provided app and migration name
+            let position = if let Some(name) = plan.migration {
+                let Some(pos) =  migration_plan
                     .iter()
-                    .rposition(|migration| migration.app() == app && migration.name() == name)
+                    .rposition(
+                        |migration| migration.app() == app && migration.name() == name
+                    )
+                    else {
+                        if migration_plan.iter().any(|migration| migration.app() == app) {
+                            return Err(Error::MigrationNameNotExists { app, migration: name });
+                        }
+                        return Err(Error::AppNameNotExists { app });
+                    };
+                pos
             } else {
-                migration_plan
+                let Some(pos) = migration_plan
                     .iter()
-                    .rposition(|migration| migration.app() == app)
+                    .rposition(|migration| migration.app() == app) else {
+                        return Err(Error::AppNameNotExists { app })
+                    };
+                pos
             };
-            if let Some(pos) = position {
-                migration_plan.truncate(pos + 1);
-            } else {
-                migration_plan.clear();
-            }
+            migration_plan.truncate(position + 1);
         }
         Ok(migration_plan)
     }
@@ -262,10 +280,7 @@ where
             tracing::info!("Applying all migration");
         }
         for migration in self
-            .generate_migration_plan(Plan::Apply {
-                app: None,
-                name: None,
-            })
+            .generate_migration_plan(Plan::new(PlanType::Apply, None, None)?)
             .await?
         {
             self.apply_migration(migration).await?;
@@ -311,10 +326,7 @@ where
             tracing::info!("Reverting all migration");
         }
         for migration in self
-            .generate_migration_plan(Plan::Revert {
-                app: None,
-                name: None,
-            })
+            .generate_migration_plan(Plan::new(PlanType::Revert, None, None)?)
             .await?
         {
             self.revert_migration(migration).await?;

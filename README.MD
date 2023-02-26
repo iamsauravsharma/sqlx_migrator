@@ -1,19 +1,22 @@
 # SQLX migrator
+
 Migrator for writing sqlx migration using Rust instead of SQL
 
-| License | Crates Version | Docs |
-| :---: | :---: | :---: |
+|                    License                     |              Crates Version               |                 Docs                 |
+| :--------------------------------------------: | :---------------------------------------: | :----------------------------------: |
 | [![License: MIT][license_badge]][license_link] | [![Crate][cratesio_badge]][cratesio_link] | [![Docs][docsrs_badge]][docsrs_link] |
 
 Supported Databases:
-- [X] PostgreSQL
-- [X] SQLite
-- [X] MySql
-- [X] Any
+
+- [x] PostgreSQL
+- [x] SQLite
+- [x] MySql
+- [x] Any
 
 ## Installation
 
 To use postgres migrator along with tokio-native-tls runtime you can configure Cargo.toml
+
 ```toml
 sqlx_migrator = { version = "0.4.0", features=["postgres", "runtime-tokio-rustls"] }
 ```
@@ -21,6 +24,7 @@ sqlx_migrator = { version = "0.4.0", features=["postgres", "runtime-tokio-rustls
 # Usage
 
 To use sqlx_migrator first you need to implement OperationTrait trait to write your sqlx operation
+
 ```rust
 use sqlx_migrator::error::Error;
 use sqlx_migrator::operation::OperationTrait;
@@ -79,6 +83,7 @@ impl MigrationTrait<sqlx::Postgres> for FirstMigration {
 ```
 
 Now at last you need to create migrator for your database to run migrations
+
 ```rust
 use sqlx_migrator::migrator::{Migrator, MigratorTrait};
 use sqlx_migrator::sqlx;
@@ -93,34 +98,44 @@ fn main() {
 
 Now you can use two ways to run migrator either directly running migration or creating cli from migrator
 For directly run
+
 ```rust
 // use apply all to apply all pending migration
 migrator.apply_all().await.unwrap();
 // or use revert all to revert all applied migrations
 migrator.revert_all().await.unwrap();
 ```
+
 Or you can create cli
+
 ```rust
 sqlx_migrator::cli::run(Box::new(migrator)).await.unwrap();
 ```
 
 # Migrate from sqlx default sql based migration
+
 To migrate from sqlx sql based migration you have two alternative:
+
 1. Write all sql migration as rust operation
 2. Write single rust based operation which apply and revert all sqlx sql based migration
 
 #### Option: 1
+
 Can be easily applied by following above usage docs where you only need to write your sql based migration as sqlx query
 Then you can create cli for migrator
+
 ```rust
 sqlx_migrator::cli::run(Box::new(migrator)).await.unwrap();
 ```
+
 and run fake apply cli command
 `<COMMAND_NAME> apply --fake`
 which actually doesn't apply migration query but only update migration table
 
 #### Option: 2
+
 To run all sqlx sql based migration as single command create new operation
+
 ```rust
 use sqlx_migrator::error::Error;
 use sqlx_migrator::operation::OperationTrait;
@@ -144,9 +159,7 @@ impl OperationTrait<sqlx::Postgres> for SqlxOperation {
 
 [license_badge]: https://img.shields.io/github/license/iamsauravsharma/sqlx_migrator.svg?style=for-the-badge
 [license_link]: LICENSE
-
 [cratesio_badge]: https://img.shields.io/crates/v/sqlx_migrator.svg?style=for-the-badge
 [cratesio_link]: https://crates.io/crates/sqlx_migrator
-
 [docsrs_badge]: https://img.shields.io/docsrs/sqlx_migrator/latest?style=for-the-badge
 [docsrs_link]: https://docs.rs/sqlx_migrator
