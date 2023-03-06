@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/cli.rs`."><title>cli.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-e5308b57e507db71.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../static.files/light-d59023bfa12059d2.css"><link rel="stylesheet" disabled href="../../static.files/dark-1ca41bb1e10af075.css"><link rel="stylesheet" disabled href="../../static.files/ayu-18b4181a2f3fb862.css"><script src="../../static.files/storage-3891ce972e3a2bf8.js"></script><script defer src="../../static.files/source-script-ea63cb6500f71309.js"></script><script defer src="../../source-files.js"></script><script defer src="../../static.files/main-98a684e84ae5b08b.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../sqlx_migrator/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/cli.rs`."><title>cli.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-c4dbdcde0fbd8430.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../static.files/light-db279b6232be9c13.css"><link rel="stylesheet" disabled href="../../static.files/dark-cf923f49f397b216.css"><link rel="stylesheet" disabled href="../../static.files/ayu-be46fdc453a55015.css"><script src="../../static.files/storage-3891ce972e3a2bf8.js"></script><script defer src="../../static.files/source-script-1b95b7cca98b26e5.js"></script><script defer src="../../source-files.js"></script><script defer src="../../static.files/main-98a684e84ae5b08b.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../sqlx_migrator/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -260,8 +260,25 @@
 <a href="#260" id="260">260</a>
 <a href="#261" id="261">261</a>
 <a href="#262" id="262">262</a>
+<a href="#263" id="263">263</a>
+<a href="#264" id="264">264</a>
+<a href="#265" id="265">265</a>
+<a href="#266" id="266">266</a>
+<a href="#267" id="267">267</a>
+<a href="#268" id="268">268</a>
+<a href="#269" id="269">269</a>
+<a href="#270" id="270">270</a>
+<a href="#271" id="271">271</a>
+<a href="#272" id="272">272</a>
+<a href="#273" id="273">273</a>
+<a href="#274" id="274">274</a>
+<a href="#275" id="275">275</a>
+<a href="#276" id="276">276</a>
+<a href="#277" id="277">277</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Module for creating and running cli with help of migrator
-</span><span class="kw">use </span>clap::{Parser, Subcommand};
+</span><span class="kw">use </span>std::ops::Not;
+
+<span class="kw">use </span>clap::{Parser, Subcommand};
 
 <span class="kw">use </span><span class="kw">crate</span>::error::Error;
 <span class="kw">use </span><span class="kw">crate</span>::migrator::{MigratorTrait, Plan};
@@ -275,14 +292,17 @@
 <span class="attr">#[derive(Subcommand, Debug)]
 </span><span class="doccomment">/// Subcommand for sqlx migrator cli
 </span><span class="kw">pub enum </span>SubCommand {
-    <span class="doccomment">/// List migrations along with their status
-    </span><span class="attr">#[command(about = <span class="string">&quot;List migrations along with their status&quot;</span>)]
-    </span>List,
     <span class="doccomment">/// Apply migrations
-    </span><span class="attr">#[command(about = <span class="string">&quot;Apply migrations&quot;</span>)]
+    </span><span class="attr">#[command()]
     </span>Apply(Apply),
+    <span class="doccomment">/// Drop sqlx information migrations table. Needs all migrations to be
+    /// reverted
+    </span>Drop,
+    <span class="doccomment">/// List migrations along with their status
+    </span><span class="attr">#[command()]
+    </span>List,
     <span class="doccomment">/// Revert migrations
-    </span><span class="attr">#[command(about = <span class="string">&quot;Revert migrations&quot;</span>)]
+    </span><span class="attr">#[command()]
     </span>Revert(Revert),
 }
 
@@ -299,60 +319,32 @@
         </span>DB: sqlx::Database,
     {
         <span class="kw">match </span><span class="self">self </span>{
+            SubCommand::Apply(apply) =&gt; apply.run(migrator).<span class="kw">await</span><span class="question-mark">?</span>,
+            SubCommand::Drop =&gt; drop_migrations(migrator).<span class="kw">await</span><span class="question-mark">?</span>,
             SubCommand::List =&gt; list_migrations(migrator).<span class="kw">await</span><span class="question-mark">?</span>,
-            SubCommand::Apply(apply) =&gt; apply_migrations(migrator, apply).<span class="kw">await</span><span class="question-mark">?</span>,
-            SubCommand::Revert(revert) =&gt; revert_migrations(migrator, revert).<span class="kw">await</span><span class="question-mark">?</span>,
+            SubCommand::Revert(revert) =&gt; revert.run(migrator).<span class="kw">await</span><span class="question-mark">?</span>,
         }
         <span class="prelude-val">Ok</span>(())
     }
 }
 
-<span class="attr">#[derive(Parser, Debug)]
-</span><span class="doccomment">/// CLI struct for apply subcommand
-</span><span class="kw">pub struct </span>Apply {
-    <span class="attr">#[arg(long, short, help = <span class="string">&quot;Show plan&quot;</span>)]
-    </span>plan: bool,
-    <span class="attr">#[arg(long, short, help = <span class="string">&quot;Check for pending migration&quot;</span>)]
-    </span>check: bool,
-    <span class="attr">#[arg(long, short, help = <span class="string">&quot;Make migration applied without applying&quot;</span>)]
-    </span>fake: bool,
-    <span class="attr">#[arg(
-        long,
-        short,
-        help = <span class="string">&quot;Apply migration till all app migration are applied&quot;
-    </span>)]
-    </span>app: <span class="prelude-ty">Option</span>&lt;String&gt;,
-    <span class="attr">#[arg(
-        long,
-        short,
-        help = <span class="string">&quot;Apply migration till provided migration&quot;</span>,
-        requires = <span class="string">&quot;app&quot;
-    </span>)]
-    </span>migration: <span class="prelude-ty">Option</span>&lt;String&gt;,
-}
+<span class="kw">async fn </span>drop_migrations&lt;DB&gt;(migrator: Box&lt;<span class="kw">dyn </span>MigratorTrait&lt;DB&gt;&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt;
+<span class="kw">where
+    </span>DB: sqlx::Database,
+{
+    migrator.ensure_migration_table_exists().<span class="kw">await</span><span class="question-mark">?</span>;
+    <span class="kw">if </span>migrator
+        .fetch_applied_migration_from_db()
+        .<span class="kw">await</span><span class="question-mark">?
+        </span>.is_empty()
+        .not()
+    {
+        <span class="kw">return </span><span class="prelude-val">Err</span>(Error::AppliedMigrationExists);
+    }
 
-<span class="attr">#[derive(Parser, Debug)]
-</span><span class="doccomment">/// CLI struct for revert subcommand
-</span><span class="kw">pub struct </span>Revert {
-    <span class="attr">#[arg(long, short, help = <span class="string">&quot;Show plan&quot;</span>)]
-    </span>plan: bool,
-    <span class="attr">#[arg(long, short, help = <span class="string">&quot;Revert all migration&quot;</span>)]
-    </span>all: bool,
-    <span class="attr">#[arg(long, short, help = <span class="string">&quot;Make migration reverted without reverting&quot;</span>)]
-    </span>fake: bool,
-    <span class="attr">#[arg(
-        long,
-        short,
-        help = <span class="string">&quot;Revert migration till all app migration are reverted&quot;
-    </span>)]
-    </span>app: <span class="prelude-ty">Option</span>&lt;String&gt;,
-    <span class="attr">#[arg(
-        long,
-        short,
-        help = <span class="string">&quot;Revert migration till provided migration&quot;</span>,
-        requires = <span class="string">&quot;app&quot;
-    </span>)]
-    </span>migration: <span class="prelude-ty">Option</span>&lt;String&gt;,
+    migrator.drop_migration_table_if_exists().<span class="kw">await</span><span class="question-mark">?</span>;
+    <span class="macro">println!</span>(<span class="string">&quot;Dropped migrations table&quot;</span>);
+    <span class="prelude-val">Ok</span>(())
 }
 
 <span class="kw">async fn </span>list_migrations&lt;DB&gt;(migrator: Box&lt;<span class="kw">dyn </span>MigratorTrait&lt;DB&gt;&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt;
@@ -410,102 +402,140 @@
     <span class="prelude-val">Ok</span>(())
 }
 
-<span class="kw">async fn </span>apply_migrations&lt;DB&gt;(
-    migrator: Box&lt;<span class="kw">dyn </span>MigratorTrait&lt;DB&gt;&gt;,
-    apply: <span class="kw-2">&amp;</span>Apply,
-) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt;
-<span class="kw">where
-    </span>DB: sqlx::Database,
-{
-    <span class="kw">let </span>migrations = migrator
-        .generate_migration_plan(Plan::new(
-            <span class="kw">crate</span>::migrator::PlanType::Apply,
-            apply.app.clone(),
-            apply.migration.clone(),
-        )<span class="question-mark">?</span>)
-        .<span class="kw">await</span><span class="question-mark">?</span>;
-    <span class="kw">if </span>apply.check &amp;&amp; !migrations.is_empty() {
-        <span class="kw">return </span><span class="prelude-val">Err</span>(Error::PendingMigrationPresent);
+<span class="attr">#[derive(Parser, Debug)]
+</span><span class="doccomment">/// CLI struct for apply subcommand
+</span><span class="kw">pub struct </span>Apply {
+    <span class="doccomment">/// Apply migration till all app migration are applied
+    </span><span class="attr">#[arg(long, short)]
+    </span>app: <span class="prelude-ty">Option</span>&lt;String&gt;,
+    <span class="doccomment">/// Check for pending migration
+    </span><span class="attr">#[arg(long, short)]
+    </span>check: bool,
+    <span class="doccomment">/// Make migration applied without applying
+    </span><span class="attr">#[arg(long, short)]
+    </span>fake: bool,
+    <span class="doccomment">/// Apply migration till provided migration. Requires app options to be
+    /// present
+    </span><span class="attr">#[arg(long, short, requires = <span class="string">&quot;app&quot;</span>)]
+    </span>migration: <span class="prelude-ty">Option</span>&lt;String&gt;,
+    <span class="doccomment">/// Show plan
+    </span><span class="attr">#[arg(long, short)]
+    </span>plan: bool,
+}
+<span class="kw">impl </span>Apply {
+    <span class="kw">async fn </span>run&lt;DB&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, migrator: Box&lt;<span class="kw">dyn </span>MigratorTrait&lt;DB&gt;&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt;
+    <span class="kw">where
+        </span>DB: sqlx::Database,
+    {
+        <span class="kw">let </span>migrations = migrator
+            .generate_migration_plan(Plan::new(
+                <span class="kw">crate</span>::migrator::PlanType::Apply,
+                <span class="self">self</span>.app.clone(),
+                <span class="self">self</span>.migration.clone(),
+            )<span class="question-mark">?</span>)
+            .<span class="kw">await</span><span class="question-mark">?</span>;
+        <span class="kw">if </span><span class="self">self</span>.check &amp;&amp; !migrations.is_empty() {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(Error::PendingMigrationPresent);
+        }
+        <span class="kw">if </span><span class="self">self</span>.plan {
+            <span class="kw">let </span>first_width = <span class="number">10</span>;
+            <span class="kw">let </span>second_width = <span class="number">50</span>;
+            <span class="kw">let </span>full_width = first_width + second_width + <span class="number">3</span>;
+            <span class="macro">println!</span>(<span class="string">&quot;{:^first_width$} | {:^second_width$}&quot;</span>, <span class="string">&quot;App&quot;</span>, <span class="string">&quot;Name&quot;</span>);
+            <span class="macro">println!</span>(<span class="string">&quot;{:^full_width$}&quot;</span>, <span class="string">&quot;-&quot;</span>.repeat(full_width));
+            <span class="kw">for </span>migration <span class="kw">in </span>migrations {
+                <span class="macro">println!</span>(
+                    <span class="string">&quot;{:^first_width$} | {:^second_width$}&quot;</span>,
+                    migration.app(),
+                    migration.name(),
+                );
+            }
+        } <span class="kw">else if </span><span class="self">self</span>.fake {
+            <span class="kw">let </span><span class="kw-2">mut </span>connection = migrator.pool().acquire().<span class="kw">await</span><span class="question-mark">?</span>;
+            <span class="kw">for </span>migration <span class="kw">in </span>migrations {
+                migrator
+                    .add_migration_to_db_table(migration, <span class="kw-2">&amp;mut </span>connection)
+                    .<span class="kw">await</span><span class="question-mark">?</span>;
+            }
+        } <span class="kw">else </span>{
+            <span class="kw">for </span>migration <span class="kw">in </span>migrations {
+                migrator.apply_migration(migration).<span class="kw">await</span><span class="question-mark">?</span>;
+                <span class="macro">println!</span>(<span class="string">&quot;Applied {} : {}&quot;</span>, migration.app(), migration.name());
+            }
+        }
+        <span class="prelude-val">Ok</span>(())
     }
-    <span class="kw">if </span>apply.plan {
-        <span class="kw">let </span>first_width = <span class="number">10</span>;
-        <span class="kw">let </span>second_width = <span class="number">50</span>;
-        <span class="kw">let </span>full_width = first_width + second_width + <span class="number">3</span>;
-        <span class="macro">println!</span>(<span class="string">&quot;{:^first_width$} | {:^second_width$}&quot;</span>, <span class="string">&quot;App&quot;</span>, <span class="string">&quot;Name&quot;</span>);
-        <span class="macro">println!</span>(<span class="string">&quot;{:^full_width$}&quot;</span>, <span class="string">&quot;-&quot;</span>.repeat(full_width));
-        <span class="kw">for </span>migration <span class="kw">in </span>migrations {
-            <span class="macro">println!</span>(
-                <span class="string">&quot;{:^first_width$} | {:^second_width$}&quot;</span>,
-                migration.app(),
-                migration.name(),
-            );
-        }
-    } <span class="kw">else if </span>apply.fake {
-        <span class="kw">let </span><span class="kw-2">mut </span>connection = migrator.pool().acquire().<span class="kw">await</span><span class="question-mark">?</span>;
-        <span class="kw">for </span>migration <span class="kw">in </span>migrations {
-            migrator
-                .add_migration_to_db_table(migration, <span class="kw-2">&amp;mut </span>connection)
-                .<span class="kw">await</span><span class="question-mark">?</span>;
-        }
-    } <span class="kw">else </span>{
-        <span class="kw">for </span>migration <span class="kw">in </span>migrations {
-            migrator.apply_migration(migration).<span class="kw">await</span><span class="question-mark">?</span>;
-            <span class="macro">println!</span>(<span class="string">&quot;Applied {} : {}&quot;</span>, migration.app(), migration.name());
-        }
-    }
-    <span class="prelude-val">Ok</span>(())
 }
 
-<span class="kw">async fn </span>revert_migrations&lt;DB&gt;(
-    migrator: Box&lt;<span class="kw">dyn </span>MigratorTrait&lt;DB&gt;&gt;,
-    revert: <span class="kw-2">&amp;</span>Revert,
-) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt;
-<span class="kw">where
-    </span>DB: sqlx::Database,
-{
-    <span class="kw">let </span>app_is_some = revert.app.is_some();
-    <span class="kw">let </span>revert_plan = migrator
-        .generate_migration_plan(Plan::new(
-            <span class="kw">crate</span>::migrator::PlanType::Revert,
-            revert.app.clone(),
-            revert.migration.clone(),
-        )<span class="question-mark">?</span>)
-        .<span class="kw">await</span><span class="question-mark">?</span>;
-    <span class="kw">let </span>revert_migrations;
-    <span class="kw">if </span>revert.all || app_is_some {
-        revert_migrations = revert_plan;
-    } <span class="kw">else if let </span><span class="prelude-val">Some</span>(latest_migration) = revert_plan.first() {
-        revert_migrations = <span class="macro">vec!</span>[latest_migration];
-    } <span class="kw">else </span>{
-        revert_migrations = <span class="macro">vec!</span>[];
+<span class="attr">#[derive(Parser, Debug)]
+</span><span class="doccomment">/// CLI struct for revert subcommand
+</span><span class="kw">pub struct </span>Revert {
+    <span class="doccomment">/// Revert all migration
+    </span><span class="attr">#[arg(long, short)]
+    </span>all: bool,
+    <span class="doccomment">/// Revert migration till all app migration are reverted
+    </span><span class="attr">#[arg(long, short)]
+    </span>app: <span class="prelude-ty">Option</span>&lt;String&gt;,
+    <span class="doccomment">/// Make migration reverted without reverting
+    </span><span class="attr">#[arg(long, short)]
+    </span>fake: bool,
+    <span class="doccomment">/// Revert migration till provided migration. Requires app options to be
+    /// present
+    </span><span class="attr">#[arg(long, short, requires = <span class="string">&quot;app&quot;</span>)]
+    </span>migration: <span class="prelude-ty">Option</span>&lt;String&gt;,
+    <span class="doccomment">/// Show plan
+    </span><span class="attr">#[arg(long, short)]
+    </span>plan: bool,
+}
+<span class="kw">impl </span>Revert {
+    <span class="kw">async fn </span>run&lt;DB&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, migrator: Box&lt;<span class="kw">dyn </span>MigratorTrait&lt;DB&gt;&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt;
+    <span class="kw">where
+        </span>DB: sqlx::Database,
+    {
+        <span class="kw">let </span>app_is_some = <span class="self">self</span>.app.is_some();
+        <span class="kw">let </span>revert_plan = migrator
+            .generate_migration_plan(Plan::new(
+                <span class="kw">crate</span>::migrator::PlanType::Revert,
+                <span class="self">self</span>.app.clone(),
+                <span class="self">self</span>.migration.clone(),
+            )<span class="question-mark">?</span>)
+            .<span class="kw">await</span><span class="question-mark">?</span>;
+        <span class="kw">let </span>revert_migrations;
+        <span class="kw">if </span><span class="self">self</span>.all || app_is_some {
+            revert_migrations = revert_plan;
+        } <span class="kw">else if let </span><span class="prelude-val">Some</span>(latest_migration) = revert_plan.first() {
+            revert_migrations = <span class="macro">vec!</span>[latest_migration];
+        } <span class="kw">else </span>{
+            revert_migrations = <span class="macro">vec!</span>[];
+        }
+        <span class="kw">if </span><span class="self">self</span>.plan {
+            <span class="kw">let </span>first_width = <span class="number">10</span>;
+            <span class="kw">let </span>second_width = <span class="number">50</span>;
+            <span class="kw">let </span>full_width = first_width + second_width + <span class="number">3</span>;
+            <span class="macro">println!</span>(<span class="string">&quot;{:^first_width$} | {:^second_width$}&quot;</span>, <span class="string">&quot;App&quot;</span>, <span class="string">&quot;Name&quot;</span>);
+            <span class="macro">println!</span>(<span class="string">&quot;{:^full_width$}&quot;</span>, <span class="string">&quot;-&quot;</span>.repeat(full_width));
+            <span class="kw">for </span>migration <span class="kw">in </span>revert_migrations {
+                <span class="macro">println!</span>(
+                    <span class="string">&quot;{:^first_width$} | {:^second_width$}&quot;</span>,
+                    migration.app(),
+                    migration.name(),
+                );
+            }
+        } <span class="kw">else if </span><span class="self">self</span>.fake {
+            <span class="kw">let </span><span class="kw-2">mut </span>connection = migrator.pool().acquire().<span class="kw">await</span><span class="question-mark">?</span>;
+            <span class="kw">for </span>migration <span class="kw">in </span>revert_migrations {
+                migrator
+                    .delete_migration_from_db_table(migration, <span class="kw-2">&amp;mut </span>connection)
+                    .<span class="kw">await</span><span class="question-mark">?</span>;
+            }
+        } <span class="kw">else </span>{
+            <span class="kw">for </span>migration <span class="kw">in </span>revert_migrations {
+                migrator.revert_migration(migration).<span class="kw">await</span><span class="question-mark">?</span>;
+                <span class="macro">println!</span>(<span class="string">&quot;Reverted {} : {}&quot;</span>, migration.app(), migration.name());
+            }
+        }
+        <span class="prelude-val">Ok</span>(())
     }
-    <span class="kw">if </span>revert.plan {
-        <span class="kw">let </span>first_width = <span class="number">10</span>;
-        <span class="kw">let </span>second_width = <span class="number">50</span>;
-        <span class="kw">let </span>full_width = first_width + second_width + <span class="number">3</span>;
-        <span class="macro">println!</span>(<span class="string">&quot;{:^first_width$} | {:^second_width$}&quot;</span>, <span class="string">&quot;App&quot;</span>, <span class="string">&quot;Name&quot;</span>);
-        <span class="macro">println!</span>(<span class="string">&quot;{:^full_width$}&quot;</span>, <span class="string">&quot;-&quot;</span>.repeat(full_width));
-        <span class="kw">for </span>migration <span class="kw">in </span>revert_migrations {
-            <span class="macro">println!</span>(
-                <span class="string">&quot;{:^first_width$} | {:^second_width$}&quot;</span>,
-                migration.app(),
-                migration.name(),
-            );
-        }
-    } <span class="kw">else if </span>revert.fake {
-        <span class="kw">let </span><span class="kw-2">mut </span>connection = migrator.pool().acquire().<span class="kw">await</span><span class="question-mark">?</span>;
-        <span class="kw">for </span>migration <span class="kw">in </span>revert_migrations {
-            migrator
-                .delete_migration_from_db_table(migration, <span class="kw-2">&amp;mut </span>connection)
-                .<span class="kw">await</span><span class="question-mark">?</span>;
-        }
-    } <span class="kw">else </span>{
-        <span class="kw">for </span>migration <span class="kw">in </span>revert_migrations {
-            migrator.revert_migration(migration).<span class="kw">await</span><span class="question-mark">?</span>;
-            <span class="macro">println!</span>(<span class="string">&quot;Reverted {} : {}&quot;</span>, migration.app(), migration.name());
-        }
-    }
-    <span class="prelude-val">Ok</span>(())
 }
 
 <span class="doccomment">/// Run full cli by parsing args with help of migrator. If you only need to add
@@ -523,4 +553,4 @@
     <span class="prelude-val">Ok</span>(())
 }
 </code></pre></div>
-</section></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="sqlx_migrator" data-themes="" data-resource-suffix="" data-rustdoc-version="1.69.0-nightly (34e6673a0 2023-02-25)" data-search-js="search-14421e1532aead08.js" data-settings-js="settings-f0c5c39777a9a2f6.js" data-settings-css="settings-0bcba95ff279c1db.css" ></div></body></html>
+</section></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="sqlx_migrator" data-themes="" data-resource-suffix="" data-rustdoc-version="1.70.0-nightly (7820b62d2 2023-03-05)" data-search-js="search-8a59a8356673ec1f.js" data-settings-js="settings-f0c5c39777a9a2f6.js" data-settings-css="settings-0bcba95ff279c1db.css" ></div></body></html>
