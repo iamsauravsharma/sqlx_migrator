@@ -1,4 +1,6 @@
 //! Module for creating and running cli with help of migrator
+use std::ops::Not;
+
 use clap::{Parser, Subcommand};
 
 use crate::error::Error;
@@ -13,14 +15,17 @@ struct Args {
 #[derive(Subcommand, Debug)]
 /// Subcommand for sqlx migrator cli
 pub enum SubCommand {
-    /// List migrations along with their status
-    #[command(about = "List migrations along with their status")]
-    List,
     /// Apply migrations
-    #[command(about = "Apply migrations")]
+    #[command()]
     Apply(Apply),
+    /// Drop sqlx information migrations table. Needs all migrations to be
+    /// reverted
+    Drop,
+    /// List migrations along with their status
+    #[command()]
+    List,
     /// Revert migrations
-    #[command(about = "Revert migrations")]
+    #[command()]
     Revert(Revert),
 }
 
@@ -37,60 +42,32 @@ impl SubCommand {
         DB: sqlx::Database,
     {
         match self {
+            SubCommand::Apply(apply) => apply.run(migrator).await?,
+            SubCommand::Drop => drop_migrations(migrator).await?,
             SubCommand::List => list_migrations(migrator).await?,
-            SubCommand::Apply(apply) => apply_migrations(migrator, apply).await?,
-            SubCommand::Revert(revert) => revert_migrations(migrator, revert).await?,
+            SubCommand::Revert(revert) => revert.run(migrator).await?,
         }
         Ok(())
     }
 }
 
-#[derive(Parser, Debug)]
-/// CLI struct for apply subcommand
-pub struct Apply {
-    #[arg(long, short, help = "Show plan")]
-    plan: bool,
-    #[arg(long, short, help = "Check for pending migration")]
-    check: bool,
-    #[arg(long, short, help = "Make migration applied without applying")]
-    fake: bool,
-    #[arg(
-        long,
-        short,
-        help = "Apply migration till all app migration are applied"
-    )]
-    app: Option<String>,
-    #[arg(
-        long,
-        short,
-        help = "Apply migration till provided migration",
-        requires = "app"
-    )]
-    migration: Option<String>,
-}
+async fn drop_migrations<DB>(migrator: Box<dyn MigratorTrait<DB>>) -> Result<(), Error>
+where
+    DB: sqlx::Database,
+{
+    migrator.ensure_migration_table_exists().await?;
+    if migrator
+        .fetch_applied_migration_from_db()
+        .await?
+        .is_empty()
+        .not()
+    {
+        return Err(Error::AppliedMigrationExists);
+    }
 
-#[derive(Parser, Debug)]
-/// CLI struct for revert subcommand
-pub struct Revert {
-    #[arg(long, short, help = "Show plan")]
-    plan: bool,
-    #[arg(long, short, help = "Revert all migration")]
-    all: bool,
-    #[arg(long, short, help = "Make migration reverted without reverting")]
-    fake: bool,
-    #[arg(
-        long,
-        short,
-        help = "Revert migration till all app migration are reverted"
-    )]
-    app: Option<String>,
-    #[arg(
-        long,
-        short,
-        help = "Revert migration till provided migration",
-        requires = "app"
-    )]
-    migration: Option<String>,
+    migrator.drop_migration_table_if_exists().await?;
+    println!("Dropped migrations table");
+    Ok(())
 }
 
 async fn list_migrations<DB>(migrator: Box<dyn MigratorTrait<DB>>) -> Result<(), Error>
@@ -148,102 +125,140 @@ where
     Ok(())
 }
 
-async fn apply_migrations<DB>(
-    migrator: Box<dyn MigratorTrait<DB>>,
-    apply: &Apply,
-) -> Result<(), Error>
-where
-    DB: sqlx::Database,
-{
-    let migrations = migrator
-        .generate_migration_plan(Plan::new(
-            crate::migrator::PlanType::Apply,
-            apply.app.clone(),
-            apply.migration.clone(),
-        )?)
-        .await?;
-    if apply.check && !migrations.is_empty() {
-        return Err(Error::PendingMigrationPresent);
+#[derive(Parser, Debug)]
+/// CLI struct for apply subcommand
+pub struct Apply {
+    /// Apply migration till all app migration are applied
+    #[arg(long, short)]
+    app: Option<String>,
+    /// Check for pending migration
+    #[arg(long, short)]
+    check: bool,
+    /// Make migration applied without applying
+    #[arg(long, short)]
+    fake: bool,
+    /// Apply migration till provided migration. Requires app options to be
+    /// present
+    #[arg(long, short, requires = "app")]
+    migration: Option<String>,
+    /// Show plan
+    #[arg(long, short)]
+    plan: bool,
+}
+impl Apply {
+    async fn run<DB>(&self, migrator: Box<dyn MigratorTrait<DB>>) -> Result<(), Error>
+    where
+        DB: sqlx::Database,
+    {
+        let migrations = migrator
+            .generate_migration_plan(Plan::new(
+                crate::migrator::PlanType::Apply,
+                self.app.clone(),
+                self.migration.clone(),
+            )?)
+            .await?;
+        if self.check && !migrations.is_empty() {
+            return Err(Error::PendingMigrationPresent);
+        }
+        if self.plan {
+            let first_width = 10;
+            let second_width = 50;
+            let full_width = first_width + second_width + 3;
+            println!("{:^first_width$} | {:^second_width$}", "App", "Name");
+            println!("{:^full_width$}", "-".repeat(full_width));
+            for migration in migrations {
+                println!(
+                    "{:^first_width$} | {:^second_width$}",
+                    migration.app(),
+                    migration.name(),
+                );
+            }
+        } else if self.fake {
+            let mut connection = migrator.pool().acquire().await?;
+            for migration in migrations {
+                migrator
+                    .add_migration_to_db_table(migration, &mut connection)
+                    .await?;
+            }
+        } else {
+            for migration in migrations {
+                migrator.apply_migration(migration).await?;
+                println!("Applied {} : {}", migration.app(), migration.name());
+            }
+        }
+        Ok(())
     }
-    if apply.plan {
-        let first_width = 10;
-        let second_width = 50;
-        let full_width = first_width + second_width + 3;
-        println!("{:^first_width$} | {:^second_width$}", "App", "Name");
-        println!("{:^full_width$}", "-".repeat(full_width));
-        for migration in migrations {
-            println!(
-                "{:^first_width$} | {:^second_width$}",
-                migration.app(),
-                migration.name(),
-            );
-        }
-    } else if apply.fake {
-        let mut connection = migrator.pool().acquire().await?;
-        for migration in migrations {
-            migrator
-                .add_migration_to_db_table(migration, &mut connection)
-                .await?;
-        }
-    } else {
-        for migration in migrations {
-            migrator.apply_migration(migration).await?;
-            println!("Applied {} : {}", migration.app(), migration.name());
-        }
-    }
-    Ok(())
 }
 
-async fn revert_migrations<DB>(
-    migrator: Box<dyn MigratorTrait<DB>>,
-    revert: &Revert,
-) -> Result<(), Error>
-where
-    DB: sqlx::Database,
-{
-    let app_is_some = revert.app.is_some();
-    let revert_plan = migrator
-        .generate_migration_plan(Plan::new(
-            crate::migrator::PlanType::Revert,
-            revert.app.clone(),
-            revert.migration.clone(),
-        )?)
-        .await?;
-    let revert_migrations;
-    if revert.all || app_is_some {
-        revert_migrations = revert_plan;
-    } else if let Some(latest_migration) = revert_plan.first() {
-        revert_migrations = vec![latest_migration];
-    } else {
-        revert_migrations = vec![];
+#[derive(Parser, Debug)]
+/// CLI struct for revert subcommand
+pub struct Revert {
+    /// Revert all migration
+    #[arg(long, short)]
+    all: bool,
+    /// Revert migration till all app migration are reverted
+    #[arg(long, short)]
+    app: Option<String>,
+    /// Make migration reverted without reverting
+    #[arg(long, short)]
+    fake: bool,
+    /// Revert migration till provided migration. Requires app options to be
+    /// present
+    #[arg(long, short, requires = "app")]
+    migration: Option<String>,
+    /// Show plan
+    #[arg(long, short)]
+    plan: bool,
+}
+impl Revert {
+    async fn run<DB>(&self, migrator: Box<dyn MigratorTrait<DB>>) -> Result<(), Error>
+    where
+        DB: sqlx::Database,
+    {
+        let app_is_some = self.app.is_some();
+        let revert_plan = migrator
+            .generate_migration_plan(Plan::new(
+                crate::migrator::PlanType::Revert,
+                self.app.clone(),
+                self.migration.clone(),
+            )?)
+            .await?;
+        let revert_migrations;
+        if self.all || app_is_some {
+            revert_migrations = revert_plan;
+        } else if let Some(latest_migration) = revert_plan.first() {
+            revert_migrations = vec![latest_migration];
+        } else {
+            revert_migrations = vec![];
+        }
+        if self.plan {
+            let first_width = 10;
+            let second_width = 50;
+            let full_width = first_width + second_width + 3;
+            println!("{:^first_width$} | {:^second_width$}", "App", "Name");
+            println!("{:^full_width$}", "-".repeat(full_width));
+            for migration in revert_migrations {
+                println!(
+                    "{:^first_width$} | {:^second_width$}",
+                    migration.app(),
+                    migration.name(),
+                );
+            }
+        } else if self.fake {
+            let mut connection = migrator.pool().acquire().await?;
+            for migration in revert_migrations {
+                migrator
+                    .delete_migration_from_db_table(migration, &mut connection)
+                    .await?;
+            }
+        } else {
+            for migration in revert_migrations {
+                migrator.revert_migration(migration).await?;
+                println!("Reverted {} : {}", migration.app(), migration.name());
+            }
+        }
+        Ok(())
     }
-    if revert.plan {
-        let first_width = 10;
-        let second_width = 50;
-        let full_width = first_width + second_width + 3;
-        println!("{:^first_width$} | {:^second_width$}", "App", "Name");
-        println!("{:^full_width$}", "-".repeat(full_width));
-        for migration in revert_migrations {
-            println!(
-                "{:^first_width$} | {:^second_width$}",
-                migration.app(),
-                migration.name(),
-            );
-        }
-    } else if revert.fake {
-        let mut connection = migrator.pool().acquire().await?;
-        for migration in revert_migrations {
-            migrator
-                .delete_migration_from_db_table(migration, &mut connection)
-                .await?;
-        }
-    } else {
-        for migration in revert_migrations {
-            migrator.revert_migration(migration).await?;
-            println!("Reverted {} : {}", migration.app(), migration.name());
-        }
-    }
-    Ok(())
 }
 
 /// Run full cli by parsing args with help of migrator. If you only need to add

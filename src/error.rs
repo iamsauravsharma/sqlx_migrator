@@ -39,4 +39,8 @@ pub enum Error {
         /// Name of migration
         migration: String,
     },
+
+    /// Error when applied migrations exists
+    #[error("Applied migrations exists. Revert all using revert subcommand")]
+    AppliedMigrationExists,
 }

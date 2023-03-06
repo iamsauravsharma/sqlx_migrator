@@ -90,6 +90,9 @@ where
     /// create one
     async fn ensure_migration_table_exists(&self) -> Result<(), Error>;
 
+    /// Drop migration table if table exists
+    async fn drop_migration_table_if_exists(&self) -> Result<(), Error>;
+
     /// Add migration to migration table
     #[allow(clippy::borrowed_box)]
     async fn add_migration_to_db_table(
@@ -423,6 +426,13 @@ macro_rules! implement_migrator_trait {
                 Ok(())
             }
 
+            async fn drop_migration_table_if_exists(&self) -> Result<(), Error> {
+                sqlx::query("DROP TABLE IF EXISTS _sqlx_migrator_migrations")
+                    .execute(self.pool())
+                    .await?;
+                Ok(())
+            }
+
             async fn add_migration_to_db_table(
                 &self,
                 migration: &Box<dyn MigrationTrait<$db>>,
@@ -480,7 +490,7 @@ implement_migrator_trait!(Postgres, postgres_ensure());
 #[cfg(feature = "sqlite")]
 fn sqlite_ensure() -> &'static str {
     "CREATE TABLE IF NOT EXISTS _sqlx_migrator_migrations (
-        id INTEGER PRIMARY KEY NOT NULL AUTOINCREMENT,
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
         app TEXT NOT NULL,
         name TEXT NOT NULL,
         applied_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -534,6 +544,13 @@ impl MigratorTrait<Any> for Migrator<Any> {
             AnyKind::MySql => mysql_ensure(),
         };
         sqlx::query(sql_query).execute(pool).await?;
+        Ok(())
+    }
+
+    async fn drop_migration_table_if_exists(&self) -> Result<(), Error> {
+        sqlx::query("DROP TABLE IF EXISTS _sqlx_migrator_migrations")
+            .execute(self.pool())
+            .await?;
         Ok(())
     }
 

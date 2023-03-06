@@ -41,7 +41,7 @@ where
     /// implemented than operation is irreversible operation.
     async fn down(&self, connection: &mut <DB as sqlx::Database>::Connection) -> Result<(), Error> {
         // use connection from parameter for default implementation
-        let _ = connection;
+        let _: &mut <DB as sqlx::Database>::Connection = connection;
         return Err(Error::IrreversibleOperation);
     }
 }
