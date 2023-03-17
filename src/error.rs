@@ -12,6 +12,11 @@ pub enum Error {
     #[error("Failed to create migrations plan")]
     FailedToCreateMigrationPlan,
 
+    /// Error when migration plan has applied replaces migrations as well as
+    /// current migration
+    #[error("Both replace migrations and current migration are applied")]
+    BothMigrationTypeApplied,
+
     /// Error for irreversible operation
     #[error("Operation is irreversible")]
     IrreversibleOperation,

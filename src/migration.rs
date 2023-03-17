@@ -60,14 +60,10 @@ pub trait MigrationTrait<DB>: Send + Sync {
 
     /// Parents of migration (migrations that should be applied before this
     /// migration)
-    fn parents(&self) -> Vec<Box<dyn MigrationTrait<DB>>> {
-        vec![]
-    }
+    fn parents(&self) -> Vec<Box<dyn MigrationTrait<DB>>>;
 
     /// Operation performed for migration (create, drop, etc.)
-    fn operations(&self) -> Vec<Box<dyn OperationTrait<DB>>> {
-        vec![]
-    }
+    fn operations(&self) -> Vec<Box<dyn OperationTrait<DB>>>;
 
     /// Replace certain migrations. If any one of listed migration is applied
     /// than migration will not be applied else migration will apply instead of

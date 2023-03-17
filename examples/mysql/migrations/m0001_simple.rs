@@ -33,6 +33,10 @@ impl MigrationTrait<MySql> for M0001Migration {
         "m0001_simple"
     }
 
+    fn parents(&self) -> Vec<Box<dyn MigrationTrait<MySql>>> {
+        vec![]
+    }
+
     fn operations(&self) -> Vec<Box<dyn OperationTrait<MySql>>> {
         vec![Box::new(M0001Operation)]
     }

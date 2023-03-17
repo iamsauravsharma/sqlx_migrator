@@ -19,8 +19,8 @@ sqlx = { version = "0.6.2", default-features = false, features = [
 async-trait = "0.1.66"
 tracing = { version = "0.1.37", optional = true }
 thiserror = "1.0.39"
-clap = { version = "4.1.8", features = ["derive"], optional = true }
-chrono = "0.4.23"
+clap = { version = "4.1.9", features = ["derive"], optional = true }
+chrono = "0.4.24"
 
 [dev-dependencies]
 tokio = { version = "1.26.0", features = ["rt-multi-thread", "macros"] }

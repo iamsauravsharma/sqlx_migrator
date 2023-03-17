@@ -33,6 +33,10 @@ impl MigrationTrait<Postgres> for M0001Migration {
         "m0001_simple"
     }
 
+    fn parents(&self) -> Vec<Box<dyn MigrationTrait<Postgres>>> {
+        vec![]
+    }
+
     fn operations(&self) -> Vec<Box<dyn OperationTrait<Postgres>>> {
         vec![Box::new(M0001Operation)]
     }

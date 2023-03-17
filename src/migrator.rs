@@ -90,7 +90,7 @@ where
     /// create one
     async fn ensure_migration_table_exists(&self) -> Result<(), Error>;
 
-    /// Drop migration table if table exists
+    /// Drop migration table if migration table exists
     async fn drop_migration_table_if_exists(&self) -> Result<(), Error>;
 
     /// Add migration to migration table
@@ -101,7 +101,7 @@ where
         connection: &mut <DB as sqlx::Database>::Connection,
     ) -> Result<(), Error>;
 
-    /// Delete migration from table
+    /// Delete migration from migration table
     #[allow(clippy::borrowed_box)]
     async fn delete_migration_from_db_table(
         &self,
@@ -121,10 +121,20 @@ where
 
     /// Add single migration to migrator object
     fn add_migration(&mut self, migration: Box<dyn MigrationTrait<DB>>) {
-        for parent in migration.parents() {
-            self.add_migration(parent);
+        let migration_parents = migration.parents();
+        let migration_replaces = migration.replaces();
+        let is_new_value = self.migrations_mut().insert(migration);
+        // Only add parents and replaces if migrations was added first time. This can
+        // increase performance of recursive addition by ignoring parent and replace
+        // migration recursive addition
+        if is_new_value {
+            for parent in migration_parents {
+                self.add_migration(parent);
+            }
+            for replace in migration_replaces {
+                self.add_migration(replace);
+            }
         }
-        self.migrations_mut().insert(migration);
     }
 
     /// List all applied migrations. Returns a vector of migration
@@ -210,25 +220,27 @@ where
             }
         }
 
-        // Clone migration plan as temp migration plan to support mutate migration plan
-        // inside
-        let temp_migration_plan = migration_plan.clone();
-
         // Remove migration from migration plan
-        for migration in &temp_migration_plan {
+        for migration in migration_plan.clone() {
             if !migration.replaces().is_empty() {
                 // Check if any replaces migration are applied for not
                 let replaces_applied = migration
                     .replaces()
                     .iter()
-                    .any(|migration| applied_migrations.contains(&migration));
+                    .any(|replace_migration| applied_migrations.contains(&replace_migration));
 
+                // If any one of replaced migrations is applied than do not add current
+                // migration to migration plan else add only current migration to migration plan
                 if replaces_applied {
-                    migration_plan.retain(|plan_migration| migration != plan_migration);
+                    // Error if current migration as well as replace migration both are applied
+                    if applied_migrations.contains(&migration) {
+                        return Err(Error::BothMigrationTypeApplied);
+                    }
+                    migration_plan.retain(|&plan_migration| migration != plan_migration);
                 } else {
                     for replaced_migration in migration.replaces() {
                         migration_plan
-                            .retain(|plan_migration| &&replaced_migration != plan_migration);
+                            .retain(|&plan_migration| &replaced_migration != plan_migration);
                     }
                 }
             }
@@ -247,7 +259,8 @@ where
         };
 
         if let Some(app) = plan.app {
-            // Find position last migration which maps provided app and migration name
+            // Find position of last migration which matches condition of provided app and
+            // migration name
             let position = if let Some(name) = plan.migration {
                 let Some(pos) =  migration_plan
                     .iter()

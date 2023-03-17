@@ -73,6 +73,11 @@ impl MigrationTrait<sqlx::Postgres> for FirstMigration {
         "first_migration"
     }
 
+    // use parents function to add parents of a migrations.
+    fn parents(&self) -> Vec<Box<dyn MigrationTrait<DB>>> {
+        vec![]
+    }
+
     // use operations function to add operation part of migration
     fn operations(&self) -> Vec<Box<dyn OperationTrait<sqlx::Postgres>>> {
         vec![Box::new(FirstOperation)]

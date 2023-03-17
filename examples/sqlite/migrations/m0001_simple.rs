@@ -33,6 +33,10 @@ impl MigrationTrait<Sqlite> for M0001Migration {
         "m0001_simple"
     }
 
+    fn parents(&self) -> Vec<Box<dyn MigrationTrait<Sqlite>>> {
+        vec![]
+    }
+
     fn operations(&self) -> Vec<Box<dyn OperationTrait<Sqlite>>> {
         vec![Box::new(M0001Operation)]
     }
