@@ -16,10 +16,10 @@ sqlx = { version = "0.6.2", default-features = false, features = [
     "macros",
     "chrono",
 ] }
-async-trait = "0.1.66"
+async-trait = "0.1.67"
 tracing = { version = "0.1.37", optional = true }
-thiserror = "1.0.39"
-clap = { version = "4.1.9", features = ["derive"], optional = true }
+thiserror = "1.0.40"
+clap = { version = "4.1.11", features = ["derive"], optional = true }
 chrono = "0.4.24"
 
 [dev-dependencies]
