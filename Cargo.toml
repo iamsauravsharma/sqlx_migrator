@@ -1,6 +1,6 @@
 [package]
 name = "sqlx_migrator"
-version = "0.4.0"
+version = "0.5.0"
 edition = "2021"
 authors = ["Saurav Sharma <appdroiddeveloper@gmail.com>"]
 homepage = "https://github.com/iamsauravsharma/sqlx_migrator"
@@ -12,14 +12,14 @@ keywords = ["sqlx", "sqlx_migrations", "rust_migrations"]
 categories = ["database"]
 
 [dependencies]
-sqlx = { version = "0.6.2", default-features = false, features = [
+sqlx = { version = "0.6.3", default-features = false, features = [
     "macros",
     "chrono",
 ] }
 async-trait = "0.1.67"
 tracing = { version = "0.1.37", optional = true }
 thiserror = "1.0.40"
-clap = { version = "4.1.11", features = ["derive"], optional = true }
+clap = { version = "4.1.13", features = ["derive"], optional = true }
 chrono = "0.4.24"
 
 [dev-dependencies]
