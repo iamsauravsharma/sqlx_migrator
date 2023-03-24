@@ -20,6 +20,7 @@ pub enum SubCommand {
     Apply(Apply),
     /// Drop sqlx information migrations table. Needs all migrations to be
     /// reverted
+    #[command()]
     Drop,
     /// List migrations along with their status
     #[command()]
