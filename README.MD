@@ -97,7 +97,7 @@ fn main() {
     let uri = std::env::var("DATABASE_URL").unwrap();
     let pool = sqlx::Pool::<sqlx::Postgres>::connect(&uri).await.unwrap();
     let mut migrator = Migrator::new(&pool);
-    migrator.add_migration(Box::new(FirstMigrationTrait));
+    migrator.add_migration(Box::new(FirstMigration));
 }
 ```
 
