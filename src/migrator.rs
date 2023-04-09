@@ -112,6 +112,12 @@ where
     /// List all applied migrations from database as struct
     async fn fetch_applied_migration_from_db(&self) -> Result<Vec<AppliedMigrationSqlRow>, Error>;
 
+    /// Lock database while doing migrations so no two migrations run together
+    async fn lock(&self) -> Result<(), Error>;
+
+    /// Unlock locked database
+    async fn unlock(&self) -> Result<(), Error>;
+
     /// Add vector of migrations to Migrator object
     fn add_migrations(&mut self, migrations: Vec<Box<dyn MigrationTrait<DB>>>) {
         for migration in migrations {
@@ -295,12 +301,14 @@ where
         if cfg!(feature = "tracing") {
             tracing::info!("Applying all migration");
         }
+        self.lock().await?;
         for migration in self
             .generate_migration_plan(Plan::new(PlanType::Apply, None, None)?)
             .await?
         {
             self.apply_migration(migration).await?;
         }
+        self.unlock().await?;
         Ok(())
     }
 
@@ -341,12 +349,14 @@ where
         if cfg!(feature = "tracing") {
             tracing::info!("Reverting all migration");
         }
+        self.lock().await?;
         for migration in self
             .generate_migration_plan(Plan::new(PlanType::Revert, None, None)?)
             .await?
         {
             self.revert_migration(migration).await?;
         }
+        self.unlock().await?;
         Ok(())
     }
 
@@ -409,85 +419,8 @@ where
     }
 }
 
-/// Create migrator trait for database. Implement migrator trait for non any
-/// migrations
-///
-/// Required 2 parameter.
-/// First parameter is Database which implements `sqlx::Database`.
-///
-/// Second parameter is sqlx query for creating an database with fields id: i32,
-/// app: String, name: String and `applied_time`: `DateTime`<Utc> with app and
-/// name unique together
-macro_rules! implement_migrator_trait {
-    ($db:ident, $ensure:expr) => {
-        #[async_trait::async_trait]
-        impl MigratorTrait<$db> for Migrator<$db> {
-            fn migrations(&self) -> &HashSet<Box<dyn MigrationTrait<$db>>> {
-                &self.migrations
-            }
-
-            fn migrations_mut(&mut self) -> &mut HashSet<Box<dyn MigrationTrait<$db>>> {
-                &mut self.migrations
-            }
-
-            fn pool(&self) -> &Pool<$db> {
-                &self.pool
-            }
-
-            async fn ensure_migration_table_exists(&self) -> Result<(), Error> {
-                sqlx::query($ensure).execute(self.pool()).await?;
-                Ok(())
-            }
-
-            async fn drop_migration_table_if_exists(&self) -> Result<(), Error> {
-                sqlx::query("DROP TABLE IF EXISTS _sqlx_migrator_migrations")
-                    .execute(self.pool())
-                    .await?;
-                Ok(())
-            }
-
-            async fn add_migration_to_db_table(
-                &self,
-                migration: &Box<dyn MigrationTrait<$db>>,
-                connection: &mut <$db as sqlx::Database>::Connection,
-            ) -> Result<(), Error> {
-                sqlx::query("INSERT INTO _sqlx_migrator_migrations(app, name) VALUES ($1, $2)")
-                    .bind(migration.app())
-                    .bind(migration.name())
-                    .execute(connection)
-                    .await?;
-                Ok(())
-            }
-
-            async fn delete_migration_from_db_table(
-                &self,
-                migration: &Box<dyn MigrationTrait<$db>>,
-                connection: &mut <$db as sqlx::Database>::Connection,
-            ) -> Result<(), Error> {
-                sqlx::query("DELETE FROM _sqlx_migrator_migrations WHERE app = $1 AND name = $2")
-                    .bind(migration.app())
-                    .bind(migration.name())
-                    .execute(connection)
-                    .await?;
-                Ok(())
-            }
-
-            async fn fetch_applied_migration_from_db(
-                &self,
-            ) -> Result<Vec<AppliedMigrationSqlRow>, Error> {
-                let rows = sqlx::query_as(
-                    "SELECT id, app, name, applied_time FROM _sqlx_migrator_migrations",
-                )
-                .fetch_all(self.pool())
-                .await?;
-                Ok(rows)
-            }
-        }
-    };
-}
-
 #[cfg(feature = "postgres")]
-fn postgres_ensure() -> &'static str {
+fn postgres_create_migrator_table() -> &'static str {
     "CREATE TABLE IF NOT EXISTS _sqlx_migrator_migrations (
         id INT PRIMARY KEY NOT NULL GENERATED ALWAYS AS IDENTITY,
         app TEXT NOT NULL,
@@ -498,10 +431,101 @@ fn postgres_ensure() -> &'static str {
 }
 
 #[cfg(feature = "postgres")]
-implement_migrator_trait!(Postgres, postgres_ensure());
+async fn postgres_lock(pool: &Pool<Postgres>) -> Result<(), Error> {
+    let database = pool.connect_options().get_database().unwrap_or_default();
+    let lock_id = i64::from(crc32fast::hash(database.as_bytes()));
+    sqlx::query("SELECT pg_advisory_lock($1)")
+        .bind(lock_id)
+        .execute(pool)
+        .await?;
+    Ok(())
+}
+
+#[cfg(feature = "postgres")]
+async fn postgres_unlock(pool: &Pool<Postgres>) -> Result<(), Error> {
+    let database = pool.connect_options().get_database().unwrap_or_default();
+    let lock_id = i64::from(crc32fast::hash(database.as_bytes()));
+    sqlx::query("SELECT pg_advisory_unlock($1)")
+        .bind(lock_id)
+        .execute(pool)
+        .await?;
+    Ok(())
+}
+
+#[cfg(feature = "postgres")]
+#[async_trait::async_trait]
+impl MigratorTrait<Postgres> for Migrator<Postgres> {
+    fn migrations(&self) -> &HashSet<Box<dyn MigrationTrait<Postgres>>> {
+        &self.migrations
+    }
+
+    fn migrations_mut(&mut self) -> &mut HashSet<Box<dyn MigrationTrait<Postgres>>> {
+        &mut self.migrations
+    }
+
+    fn pool(&self) -> &Pool<Postgres> {
+        &self.pool
+    }
+
+    async fn ensure_migration_table_exists(&self) -> Result<(), Error> {
+        sqlx::query(postgres_create_migrator_table())
+            .execute(self.pool())
+            .await?;
+        Ok(())
+    }
+
+    async fn drop_migration_table_if_exists(&self) -> Result<(), Error> {
+        sqlx::query("DROP TABLE IF EXISTS _sqlx_migrator_migrations")
+            .execute(self.pool())
+            .await?;
+        Ok(())
+    }
+
+    async fn add_migration_to_db_table(
+        &self,
+        migration: &Box<dyn MigrationTrait<Postgres>>,
+        connection: &mut <Postgres as sqlx::Database>::Connection,
+    ) -> Result<(), Error> {
+        sqlx::query("INSERT INTO _sqlx_migrator_migrations(app, name) VALUES ($1, $2)")
+            .bind(migration.app())
+            .bind(migration.name())
+            .execute(connection)
+            .await?;
+        Ok(())
+    }
+
+    async fn delete_migration_from_db_table(
+        &self,
+        migration: &Box<dyn MigrationTrait<Postgres>>,
+        connection: &mut <Postgres as sqlx::Database>::Connection,
+    ) -> Result<(), Error> {
+        sqlx::query("DELETE FROM _sqlx_migrator_migrations WHERE app = $1 AND name = $2")
+            .bind(migration.app())
+            .bind(migration.name())
+            .execute(connection)
+            .await?;
+        Ok(())
+    }
+
+    async fn fetch_applied_migration_from_db(&self) -> Result<Vec<AppliedMigrationSqlRow>, Error> {
+        let rows =
+            sqlx::query_as("SELECT id, app, name, applied_time FROM _sqlx_migrator_migrations")
+                .fetch_all(self.pool())
+                .await?;
+        Ok(rows)
+    }
+
+    async fn lock(&self) -> Result<(), Error> {
+        postgres_lock(self.pool()).await
+    }
+
+    async fn unlock(&self) -> Result<(), Error> {
+        postgres_unlock(self.pool()).await
+    }
+}
 
 #[cfg(feature = "sqlite")]
-fn sqlite_ensure() -> &'static str {
+fn sqlite_create_migrator_table() -> &'static str {
     "CREATE TABLE IF NOT EXISTS _sqlx_migrator_migrations (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         app TEXT NOT NULL,
@@ -512,10 +536,79 @@ fn sqlite_ensure() -> &'static str {
 }
 
 #[cfg(feature = "sqlite")]
-implement_migrator_trait!(Sqlite, sqlite_ensure());
+#[async_trait::async_trait]
+impl MigratorTrait<Sqlite> for Migrator<Sqlite> {
+    fn migrations(&self) -> &HashSet<Box<dyn MigrationTrait<Sqlite>>> {
+        &self.migrations
+    }
+
+    fn migrations_mut(&mut self) -> &mut HashSet<Box<dyn MigrationTrait<Sqlite>>> {
+        &mut self.migrations
+    }
+
+    fn pool(&self) -> &Pool<Sqlite> {
+        &self.pool
+    }
+
+    async fn ensure_migration_table_exists(&self) -> Result<(), Error> {
+        sqlx::query(sqlite_create_migrator_table())
+            .execute(self.pool())
+            .await?;
+        Ok(())
+    }
+
+    async fn drop_migration_table_if_exists(&self) -> Result<(), Error> {
+        sqlx::query("DROP TABLE IF EXISTS _sqlx_migrator_migrations")
+            .execute(self.pool())
+            .await?;
+        Ok(())
+    }
+
+    async fn add_migration_to_db_table(
+        &self,
+        migration: &Box<dyn MigrationTrait<Sqlite>>,
+        connection: &mut <Sqlite as sqlx::Database>::Connection,
+    ) -> Result<(), Error> {
+        sqlx::query("INSERT INTO _sqlx_migrator_migrations(app, name) VALUES ($1, $2)")
+            .bind(migration.app())
+            .bind(migration.name())
+            .execute(connection)
+            .await?;
+        Ok(())
+    }
+
+    async fn delete_migration_from_db_table(
+        &self,
+        migration: &Box<dyn MigrationTrait<Sqlite>>,
+        connection: &mut <Sqlite as sqlx::Database>::Connection,
+    ) -> Result<(), Error> {
+        sqlx::query("DELETE FROM _sqlx_migrator_migrations WHERE app = $1 AND name = $2")
+            .bind(migration.app())
+            .bind(migration.name())
+            .execute(connection)
+            .await?;
+        Ok(())
+    }
+
+    async fn fetch_applied_migration_from_db(&self) -> Result<Vec<AppliedMigrationSqlRow>, Error> {
+        let rows =
+            sqlx::query_as("SELECT id, app, name, applied_time FROM _sqlx_migrator_migrations")
+                .fetch_all(self.pool())
+                .await?;
+        Ok(rows)
+    }
+
+    async fn lock(&self) -> Result<(), Error> {
+        Ok(())
+    }
+
+    async fn unlock(&self) -> Result<(), Error> {
+        Ok(())
+    }
+}
 
 #[cfg(feature = "mysql")]
-fn mysql_ensure() -> &'static str {
+fn mysql_create_migrator_table() -> &'static str {
     "CREATE TABLE IF NOT EXISTS _sqlx_migrator_migrations (
         id INT PRIMARY KEY NOT NULL AUTO_INCREMENT,
         app VARCHAR(384) NOT NULL,
@@ -526,7 +619,98 @@ fn mysql_ensure() -> &'static str {
 }
 
 #[cfg(feature = "mysql")]
-implement_migrator_trait!(MySql, mysql_ensure());
+async fn mysql_lock(pool: &Pool<MySql>) -> Result<(), Error> {
+    let row: (String,) = sqlx::query_as("SELECT DATABASE()").fetch_one(pool).await?;
+    let lock_id = crc32fast::hash(row.0.as_bytes()).to_string();
+    sqlx::query("SELECT GET_LOCK($1, -1)")
+        .bind(lock_id)
+        .execute(pool)
+        .await?;
+    Ok(())
+}
+
+#[cfg(feature = "mysql")]
+async fn mysql_unlock(pool: &Pool<MySql>) -> Result<(), Error> {
+    let row: (String,) = sqlx::query_as("SELECT DATABASE()").fetch_one(pool).await?;
+    let lock_id = crc32fast::hash(row.0.as_bytes()).to_string();
+    sqlx::query("SELECT RELEASE_LOCK($1)")
+        .bind(lock_id)
+        .execute(pool)
+        .await?;
+    Ok(())
+}
+
+#[cfg(feature = "mysql")]
+#[async_trait::async_trait]
+impl MigratorTrait<MySql> for Migrator<MySql> {
+    fn migrations(&self) -> &HashSet<Box<dyn MigrationTrait<MySql>>> {
+        &self.migrations
+    }
+
+    fn migrations_mut(&mut self) -> &mut HashSet<Box<dyn MigrationTrait<MySql>>> {
+        &mut self.migrations
+    }
+
+    fn pool(&self) -> &Pool<MySql> {
+        &self.pool
+    }
+
+    async fn ensure_migration_table_exists(&self) -> Result<(), Error> {
+        sqlx::query(mysql_create_migrator_table())
+            .execute(self.pool())
+            .await?;
+        Ok(())
+    }
+
+    async fn drop_migration_table_if_exists(&self) -> Result<(), Error> {
+        sqlx::query("DROP TABLE IF EXISTS _sqlx_migrator_migrations")
+            .execute(self.pool())
+            .await?;
+        Ok(())
+    }
+
+    async fn add_migration_to_db_table(
+        &self,
+        migration: &Box<dyn MigrationTrait<MySql>>,
+        connection: &mut <MySql as sqlx::Database>::Connection,
+    ) -> Result<(), Error> {
+        sqlx::query("INSERT INTO _sqlx_migrator_migrations(app, name) VALUES ($1, $2)")
+            .bind(migration.app())
+            .bind(migration.name())
+            .execute(connection)
+            .await?;
+        Ok(())
+    }
+
+    async fn delete_migration_from_db_table(
+        &self,
+        migration: &Box<dyn MigrationTrait<MySql>>,
+        connection: &mut <MySql as sqlx::Database>::Connection,
+    ) -> Result<(), Error> {
+        sqlx::query("DELETE FROM _sqlx_migrator_migrations WHERE app = $1 AND name = $2")
+            .bind(migration.app())
+            .bind(migration.name())
+            .execute(connection)
+            .await?;
+        Ok(())
+    }
+
+    async fn fetch_applied_migration_from_db(&self) -> Result<Vec<AppliedMigrationSqlRow>, Error> {
+        let rows =
+            sqlx::query_as("SELECT id, app, name, applied_time FROM _sqlx_migrator_migrations")
+                .fetch_all(self.pool())
+                .await?;
+        Ok(rows)
+    }
+
+    async fn lock(&self) -> Result<(), Error> {
+        mysql_lock(self.pool()).await
+    }
+
+    async fn unlock(&self) -> Result<(), Error> {
+        mysql_unlock(self.pool()).await
+    }
+}
 
 #[cfg(all(
     any(feature = "postgres", feature = "mysql", feature = "sqlite"),
@@ -550,11 +734,11 @@ impl MigratorTrait<Any> for Migrator<Any> {
         let pool = self.pool();
         let sql_query = match pool.any_kind() {
             #[cfg(feature = "postgres")]
-            AnyKind::Postgres => postgres_ensure(),
+            AnyKind::Postgres => postgres_create_migrator_table(),
             #[cfg(feature = "sqlite")]
-            AnyKind::Sqlite => sqlite_ensure(),
+            AnyKind::Sqlite => sqlite_create_migrator_table(),
             #[cfg(feature = "mysql")]
-            AnyKind::MySql => mysql_ensure(),
+            AnyKind::MySql => mysql_create_migrator_table(),
         };
         sqlx::query(sql_query).execute(pool).await?;
         Ok(())
@@ -599,5 +783,59 @@ impl MigratorTrait<Any> for Migrator<Any> {
                 .fetch_all(self.pool())
                 .await?;
         Ok(rows)
+    }
+
+    async fn lock(&self) -> Result<(), Error> {
+        let connect_options = self.pool().connect_options();
+        match connect_options.kind() {
+            #[cfg(feature = "postgres")]
+            AnyKind::Postgres => {
+                let connect_options = connect_options
+                    .as_postgres()
+                    .ok_or(Error::FailedDatabaseConversion)?
+                    .clone();
+                let postgres_pool = Pool::connect_with(connect_options).await?;
+                postgres_lock(&postgres_pool).await?;
+            }
+            #[cfg(feature = "sqlite")]
+            AnyKind::Sqlite => {}
+            #[cfg(feature = "mysql")]
+            AnyKind::MySql => {
+                let connect_options = connect_options
+                    .as_mysql()
+                    .ok_or(Error::FailedDatabaseConversion)?
+                    .clone();
+                let mysql_pool = Pool::connect_with(connect_options).await?;
+                mysql_lock(&mysql_pool).await?;
+            }
+        };
+        Ok(())
+    }
+
+    async fn unlock(&self) -> Result<(), Error> {
+        let connect_options = self.pool().connect_options();
+        match connect_options.kind() {
+            #[cfg(feature = "postgres")]
+            AnyKind::Postgres => {
+                let connect_options = connect_options
+                    .as_postgres()
+                    .ok_or(Error::FailedDatabaseConversion)?
+                    .clone();
+                let postgres_pool = Pool::connect_with(connect_options).await?;
+                postgres_unlock(&postgres_pool).await?;
+            }
+            #[cfg(feature = "sqlite")]
+            AnyKind::Sqlite => {}
+            #[cfg(feature = "mysql")]
+            AnyKind::MySql => {
+                let connect_options = connect_options
+                    .as_mysql()
+                    .ok_or(Error::FailedDatabaseConversion)?
+                    .clone();
+                let mysql_pool = Pool::connect_with(connect_options).await?;
+                mysql_unlock(&mysql_pool).await?;
+            }
+        };
+        Ok(())
     }
 }

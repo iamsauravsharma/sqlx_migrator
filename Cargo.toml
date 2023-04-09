@@ -21,6 +21,7 @@ tracing = { version = "0.1.37", optional = true }
 thiserror = "1.0.40"
 clap = { version = "4.2.1", features = ["derive"], optional = true }
 chrono = "0.4.24"
+crc32fast = { version = "1.3.2", optional = true }
 
 [dev-dependencies]
 tokio = { version = "1.27.0", features = ["rt-multi-thread", "macros"] }
@@ -28,9 +29,9 @@ tokio = { version = "1.27.0", features = ["rt-multi-thread", "macros"] }
 [features]
 default = ["cli", "tracing"]
 tracing = ["dep:tracing"]
-postgres = ["sqlx/postgres"]
+postgres = ["sqlx/postgres", "dep:crc32fast"]
 sqlite = ["sqlx/sqlite"]
-mysql = ["sqlx/mysql"]
+mysql = ["sqlx/mysql", "dep:crc32fast"]
 any = ["sqlx/any"]
 cli = ["dep:clap"]
 runtime-async-std-native-tls = ["sqlx/runtime-async-std-native-tls"]
