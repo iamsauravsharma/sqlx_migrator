@@ -1,4 +1,4 @@
-use sqlx_migrator::migrator::{Migrator, MigratorTrait};
+use sqlx_migrator::migrator::{Info, Migrator};
 use sqlx_migrator::sqlx::MySql;
 
 mod migrations;

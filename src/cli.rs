@@ -4,7 +4,7 @@ use std::ops::Not;
 use clap::{Parser, Subcommand};
 
 use crate::error::Error;
-use crate::migrator::{MigratorTrait, Plan};
+use crate::migrator::{Migrate, Plan};
 
 #[derive(Parser, Debug)]
 struct Args {
@@ -35,10 +35,7 @@ impl SubCommand {
     ///
     /// # Errors
     ///  If any subcommand operations fail running
-    pub async fn handle_subcommand<DB>(
-        &self,
-        migrator: Box<dyn MigratorTrait<DB>>,
-    ) -> Result<(), Error>
+    pub async fn handle_subcommand<DB>(&self, migrator: Box<dyn Migrate<DB>>) -> Result<(), Error>
     where
         DB: sqlx::Database,
     {
@@ -52,7 +49,7 @@ impl SubCommand {
     }
 }
 
-async fn drop_migrations<DB>(migrator: Box<dyn MigratorTrait<DB>>) -> Result<(), Error>
+async fn drop_migrations<DB>(migrator: Box<dyn Migrate<DB>>) -> Result<(), Error>
 where
     DB: sqlx::Database,
 {
@@ -71,7 +68,7 @@ where
     Ok(())
 }
 
-async fn list_migrations<DB>(migrator: Box<dyn MigratorTrait<DB>>) -> Result<(), Error>
+async fn list_migrations<DB>(migrator: Box<dyn Migrate<DB>>) -> Result<(), Error>
 where
     DB: sqlx::Database,
 {
@@ -147,7 +144,7 @@ pub struct Apply {
     plan: bool,
 }
 impl Apply {
-    async fn run<DB>(&self, migrator: Box<dyn MigratorTrait<DB>>) -> Result<(), Error>
+    async fn run<DB>(&self, migrator: Box<dyn Migrate<DB>>) -> Result<(), Error>
     where
         DB: sqlx::Database,
     {
@@ -214,7 +211,7 @@ pub struct Revert {
     plan: bool,
 }
 impl Revert {
-    async fn run<DB>(&self, migrator: Box<dyn MigratorTrait<DB>>) -> Result<(), Error>
+    async fn run<DB>(&self, migrator: Box<dyn Migrate<DB>>) -> Result<(), Error>
     where
         DB: sqlx::Database,
     {
@@ -272,7 +269,7 @@ impl Revert {
 ///
 /// # Errors
 /// When command fails to run
-pub async fn run<DB>(migrator: Box<dyn MigratorTrait<DB>>) -> Result<(), Error>
+pub async fn run<DB>(migrator: Box<dyn Migrate<DB>>) -> Result<(), Error>
 where
     DB: sqlx::Database,
 {

@@ -90,12 +90,12 @@ impl MigrationTrait<sqlx::Postgres> for FirstMigration {
 Now at last you need to create migrator for your database to run migrations
 
 ```rust
-use sqlx_migrator::migrator::{Migrator, MigratorTrait};
-use sqlx_migrator::sqlx;
+use sqlx_migrator::migrator::{Info, Migrate, Migrator};
+use sqlx_migrator::sqlx::Postgres;
 
 fn main() {
     let uri = std::env::var("DATABASE_URL").unwrap();
-    let pool = sqlx::Pool::<sqlx::Postgres>::connect(&uri).await.unwrap();
+    let pool = sqlx::Pool::<Postgres>::connect(&uri).await.unwrap();
     let mut migrator = Migrator::new(&pool);
     migrator.add_migration(Box::new(FirstMigration));
 }
