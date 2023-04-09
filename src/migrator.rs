@@ -64,16 +64,11 @@ impl Plan {
     }
 }
 
-/// Migrator trait which needs to be implemented for supported database for
-/// support of migration
-///
-/// For support only some required trait methods need to be implemented. It is
-/// best if you do not override provided methods as such method are database
-/// agnostic and perform some complex tasks its rarely needs to be custom
-/// implemented
-#[allow(clippy::module_name_repetitions)]
-#[async_trait::async_trait]
-pub trait MigratorTrait<DB>: Send + Sync
+/// Info trait which implements some of database agnostic methods to
+/// return data. Only required methods needs to be implemented if you want to
+/// create your own migrator struct. This trait implements methods which doesn't
+/// depends on Database Operation trait methods
+pub trait Info<DB>: Send + Sync
 where
     DB: sqlx::Database,
 {
@@ -86,6 +81,40 @@ where
     /// Return pool of database
     fn pool(&self) -> &Pool<DB>;
 
+    /// Add vector of migrations to Migrator object
+    fn add_migrations(&mut self, migrations: Vec<Box<dyn MigrationTrait<DB>>>) {
+        for migration in migrations {
+            self.add_migration(migration);
+        }
+    }
+
+    /// Add single migration to migrator object
+    fn add_migration(&mut self, migration: Box<dyn MigrationTrait<DB>>) {
+        let migration_parents = migration.parents();
+        let migration_replaces = migration.replaces();
+        let is_new_value = self.migrations_mut().insert(migration);
+        // Only add parents and replaces if migrations was added first time. This can
+        // increase performance of recursive addition by ignoring parent and replace
+        // migration recursive addition
+        if is_new_value {
+            for parent in migration_parents {
+                self.add_migration(parent);
+            }
+            for replace in migration_replaces {
+                self.add_migration(replace);
+            }
+        }
+    }
+}
+
+/// Trait which is implemented for database for performing database related
+/// actions on database. Usually this trait is implemented for database to
+/// support certain database along with info trait
+#[async_trait::async_trait]
+pub trait DatabaseOperation<DB>
+where
+    DB: sqlx::Database,
+{
     /// Ensure migration table is created before running migrations. If not
     /// create one
     async fn ensure_migration_table_exists(&self) -> Result<(), Error>;
@@ -117,32 +146,17 @@ where
 
     /// Unlock locked database
     async fn unlock(&self) -> Result<(), Error>;
+}
 
-    /// Add vector of migrations to Migrator object
-    fn add_migrations(&mut self, migrations: Vec<Box<dyn MigrationTrait<DB>>>) {
-        for migration in migrations {
-            self.add_migration(migration);
-        }
-    }
-
-    /// Add single migration to migrator object
-    fn add_migration(&mut self, migration: Box<dyn MigrationTrait<DB>>) {
-        let migration_parents = migration.parents();
-        let migration_replaces = migration.replaces();
-        let is_new_value = self.migrations_mut().insert(migration);
-        // Only add parents and replaces if migrations was added first time. This can
-        // increase performance of recursive addition by ignoring parent and replace
-        // migration recursive addition
-        if is_new_value {
-            for parent in migration_parents {
-                self.add_migration(parent);
-            }
-            for replace in migration_replaces {
-                self.add_migration(replace);
-            }
-        }
-    }
-
+/// Migrate trait which migrate a database according to requirements. This trait
+/// implements all methods which depends on DatabaseOperation trait. This trait
+/// is not required to implement any method since all have provided
+/// implementation and good to go for database agnostic case
+#[async_trait::async_trait]
+pub trait Migrate<DB>: Info<DB> + DatabaseOperation<DB>
+where
+    DB: sqlx::Database,
+{
     /// List all applied migrations. Returns a vector of migration
     async fn list_applied_migrations(&self) -> MigrationTraitVecResult<DB> {
         if cfg!(feature = "tracing") {
@@ -419,6 +433,23 @@ where
     }
 }
 
+impl<DB> Info<DB> for Migrator<DB>
+where
+    DB: sqlx::Database,
+{
+    fn migrations(&self) -> &HashSet<Box<dyn MigrationTrait<DB>>> {
+        &self.migrations
+    }
+
+    fn migrations_mut(&mut self) -> &mut HashSet<Box<dyn MigrationTrait<DB>>> {
+        &mut self.migrations
+    }
+
+    fn pool(&self) -> &Pool<DB> {
+        &self.pool
+    }
+}
+
 #[cfg(feature = "postgres")]
 fn postgres_create_migrator_table() -> &'static str {
     "CREATE TABLE IF NOT EXISTS _sqlx_migrator_migrations (
@@ -454,29 +485,17 @@ async fn postgres_unlock(pool: &Pool<Postgres>) -> Result<(), Error> {
 
 #[cfg(feature = "postgres")]
 #[async_trait::async_trait]
-impl MigratorTrait<Postgres> for Migrator<Postgres> {
-    fn migrations(&self) -> &HashSet<Box<dyn MigrationTrait<Postgres>>> {
-        &self.migrations
-    }
-
-    fn migrations_mut(&mut self) -> &mut HashSet<Box<dyn MigrationTrait<Postgres>>> {
-        &mut self.migrations
-    }
-
-    fn pool(&self) -> &Pool<Postgres> {
-        &self.pool
-    }
-
+impl DatabaseOperation<Postgres> for Migrator<Postgres> {
     async fn ensure_migration_table_exists(&self) -> Result<(), Error> {
         sqlx::query(postgres_create_migrator_table())
-            .execute(self.pool())
+            .execute(&self.pool)
             .await?;
         Ok(())
     }
 
     async fn drop_migration_table_if_exists(&self) -> Result<(), Error> {
         sqlx::query("DROP TABLE IF EXISTS _sqlx_migrator_migrations")
-            .execute(self.pool())
+            .execute(&self.pool)
             .await?;
         Ok(())
     }
@@ -510,19 +529,21 @@ impl MigratorTrait<Postgres> for Migrator<Postgres> {
     async fn fetch_applied_migration_from_db(&self) -> Result<Vec<AppliedMigrationSqlRow>, Error> {
         let rows =
             sqlx::query_as("SELECT id, app, name, applied_time FROM _sqlx_migrator_migrations")
-                .fetch_all(self.pool())
+                .fetch_all(&self.pool)
                 .await?;
         Ok(rows)
     }
 
     async fn lock(&self) -> Result<(), Error> {
-        postgres_lock(self.pool()).await
+        postgres_lock(&self.pool).await
     }
 
     async fn unlock(&self) -> Result<(), Error> {
-        postgres_unlock(self.pool()).await
+        postgres_unlock(&self.pool).await
     }
 }
+
+impl Migrate<Postgres> for Migrator<Postgres> {}
 
 #[cfg(feature = "sqlite")]
 fn sqlite_create_migrator_table() -> &'static str {
@@ -537,29 +558,17 @@ fn sqlite_create_migrator_table() -> &'static str {
 
 #[cfg(feature = "sqlite")]
 #[async_trait::async_trait]
-impl MigratorTrait<Sqlite> for Migrator<Sqlite> {
-    fn migrations(&self) -> &HashSet<Box<dyn MigrationTrait<Sqlite>>> {
-        &self.migrations
-    }
-
-    fn migrations_mut(&mut self) -> &mut HashSet<Box<dyn MigrationTrait<Sqlite>>> {
-        &mut self.migrations
-    }
-
-    fn pool(&self) -> &Pool<Sqlite> {
-        &self.pool
-    }
-
+impl DatabaseOperation<Sqlite> for Migrator<Sqlite> {
     async fn ensure_migration_table_exists(&self) -> Result<(), Error> {
         sqlx::query(sqlite_create_migrator_table())
-            .execute(self.pool())
+            .execute(&self.pool)
             .await?;
         Ok(())
     }
 
     async fn drop_migration_table_if_exists(&self) -> Result<(), Error> {
         sqlx::query("DROP TABLE IF EXISTS _sqlx_migrator_migrations")
-            .execute(self.pool())
+            .execute(&self.pool)
             .await?;
         Ok(())
     }
@@ -593,7 +602,7 @@ impl MigratorTrait<Sqlite> for Migrator<Sqlite> {
     async fn fetch_applied_migration_from_db(&self) -> Result<Vec<AppliedMigrationSqlRow>, Error> {
         let rows =
             sqlx::query_as("SELECT id, app, name, applied_time FROM _sqlx_migrator_migrations")
-                .fetch_all(self.pool())
+                .fetch_all(&self.pool)
                 .await?;
         Ok(rows)
     }
@@ -606,6 +615,8 @@ impl MigratorTrait<Sqlite> for Migrator<Sqlite> {
         Ok(())
     }
 }
+
+impl Migrate<Sqlite> for Migrator<Sqlite> {}
 
 #[cfg(feature = "mysql")]
 fn mysql_create_migrator_table() -> &'static str {
@@ -642,29 +653,17 @@ async fn mysql_unlock(pool: &Pool<MySql>) -> Result<(), Error> {
 
 #[cfg(feature = "mysql")]
 #[async_trait::async_trait]
-impl MigratorTrait<MySql> for Migrator<MySql> {
-    fn migrations(&self) -> &HashSet<Box<dyn MigrationTrait<MySql>>> {
-        &self.migrations
-    }
-
-    fn migrations_mut(&mut self) -> &mut HashSet<Box<dyn MigrationTrait<MySql>>> {
-        &mut self.migrations
-    }
-
-    fn pool(&self) -> &Pool<MySql> {
-        &self.pool
-    }
-
+impl DatabaseOperation<MySql> for Migrator<MySql> {
     async fn ensure_migration_table_exists(&self) -> Result<(), Error> {
         sqlx::query(mysql_create_migrator_table())
-            .execute(self.pool())
+            .execute(&self.pool)
             .await?;
         Ok(())
     }
 
     async fn drop_migration_table_if_exists(&self) -> Result<(), Error> {
         sqlx::query("DROP TABLE IF EXISTS _sqlx_migrator_migrations")
-            .execute(self.pool())
+            .execute(&self.pool)
             .await?;
         Ok(())
     }
@@ -698,40 +697,30 @@ impl MigratorTrait<MySql> for Migrator<MySql> {
     async fn fetch_applied_migration_from_db(&self) -> Result<Vec<AppliedMigrationSqlRow>, Error> {
         let rows =
             sqlx::query_as("SELECT id, app, name, applied_time FROM _sqlx_migrator_migrations")
-                .fetch_all(self.pool())
+                .fetch_all(&self.pool)
                 .await?;
         Ok(rows)
     }
 
     async fn lock(&self) -> Result<(), Error> {
-        mysql_lock(self.pool()).await
+        mysql_lock(&self.pool).await
     }
 
     async fn unlock(&self) -> Result<(), Error> {
-        mysql_unlock(self.pool()).await
+        mysql_unlock(&self.pool).await
     }
 }
+
+impl Migrate<MySql> for Migrator<MySql> {}
 
 #[cfg(all(
     any(feature = "postgres", feature = "mysql", feature = "sqlite"),
     feature = "any"
 ))]
 #[async_trait::async_trait]
-impl MigratorTrait<Any> for Migrator<Any> {
-    fn migrations(&self) -> &HashSet<Box<dyn MigrationTrait<Any>>> {
-        &self.migrations
-    }
-
-    fn migrations_mut(&mut self) -> &mut HashSet<Box<dyn MigrationTrait<Any>>> {
-        &mut self.migrations
-    }
-
-    fn pool(&self) -> &Pool<Any> {
-        &self.pool
-    }
-
+impl DatabaseOperation<Any> for Migrator<Any> {
     async fn ensure_migration_table_exists(&self) -> Result<(), Error> {
-        let pool = self.pool();
+        let pool = &self.pool;
         let sql_query = match pool.any_kind() {
             #[cfg(feature = "postgres")]
             AnyKind::Postgres => postgres_create_migrator_table(),
@@ -746,7 +735,7 @@ impl MigratorTrait<Any> for Migrator<Any> {
 
     async fn drop_migration_table_if_exists(&self) -> Result<(), Error> {
         sqlx::query("DROP TABLE IF EXISTS _sqlx_migrator_migrations")
-            .execute(self.pool())
+            .execute(&self.pool)
             .await?;
         Ok(())
     }
@@ -780,13 +769,13 @@ impl MigratorTrait<Any> for Migrator<Any> {
     async fn fetch_applied_migration_from_db(&self) -> Result<Vec<AppliedMigrationSqlRow>, Error> {
         let rows =
             sqlx::query_as("SELECT id, app, name, applied_time FROM _sqlx_migrator_migrations")
-                .fetch_all(self.pool())
+                .fetch_all(&self.pool)
                 .await?;
         Ok(rows)
     }
 
     async fn lock(&self) -> Result<(), Error> {
-        let connect_options = self.pool().connect_options();
+        let connect_options = self.pool.connect_options();
         match connect_options.kind() {
             #[cfg(feature = "postgres")]
             AnyKind::Postgres => {
@@ -813,7 +802,7 @@ impl MigratorTrait<Any> for Migrator<Any> {
     }
 
     async fn unlock(&self) -> Result<(), Error> {
-        let connect_options = self.pool().connect_options();
+        let connect_options = self.pool.connect_options();
         match connect_options.kind() {
             #[cfg(feature = "postgres")]
             AnyKind::Postgres => {
@@ -839,3 +828,5 @@ impl MigratorTrait<Any> for Migrator<Any> {
         Ok(())
     }
 }
+
+impl Migrate<Any> for Migrator<Any> {}
