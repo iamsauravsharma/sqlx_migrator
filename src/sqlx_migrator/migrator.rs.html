@@ -900,7 +900,7 @@
 /// return data. Only required methods needs to be implemented if you want to
 /// create your own migrator struct. This trait implements methods which doesn&#39;t
 /// depends on Database Operation trait methods
-</span><span class="kw">pub trait </span>Info&lt;DB&gt;: Send + Sync
+</span><span class="kw">pub trait </span>Info&lt;DB&gt;
 <span class="kw">where
     </span>DB: sqlx::Database,
 {
@@ -985,7 +985,7 @@
 /// is not required to implement any method since all have provided
 /// implementation and good to go for database agnostic case
 </span><span class="attr">#[async_trait::async_trait]
-</span><span class="kw">pub trait </span>Migrate&lt;DB&gt;: Info&lt;DB&gt; + DatabaseOperation&lt;DB&gt;
+</span><span class="kw">pub trait </span>Migrate&lt;DB&gt;: Info&lt;DB&gt; + DatabaseOperation&lt;DB&gt; + Send + Sync
 <span class="kw">where
     </span>DB: sqlx::Database,
 {
