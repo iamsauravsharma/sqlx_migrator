@@ -68,7 +68,7 @@ impl Plan {
 /// return data. Only required methods needs to be implemented if you want to
 /// create your own migrator struct. This trait implements methods which doesn't
 /// depends on Database Operation trait methods
-pub trait Info<DB>: Send + Sync
+pub trait Info<DB>
 where
     DB: sqlx::Database,
 {
@@ -153,7 +153,7 @@ where
 /// is not required to implement any method since all have provided
 /// implementation and good to go for database agnostic case
 #[async_trait::async_trait]
-pub trait Migrate<DB>: Info<DB> + DatabaseOperation<DB>
+pub trait Migrate<DB>: Info<DB> + DatabaseOperation<DB> + Send + Sync
 where
     DB: sqlx::Database,
 {
