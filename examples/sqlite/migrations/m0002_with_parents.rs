@@ -1,13 +1,13 @@
 use sqlx::SqliteConnection;
 use sqlx_migrator::error::Error;
-use sqlx_migrator::migration::MigrationTrait;
-use sqlx_migrator::operation::OperationTrait;
+use sqlx_migrator::migration::Migration;
+use sqlx_migrator::operation::Operation;
 use sqlx_migrator::sqlx::Sqlite;
 
 pub(crate) struct M0002Operation;
 
 #[async_trait::async_trait]
-impl OperationTrait<Sqlite> for M0002Operation {
+impl Operation<Sqlite> for M0002Operation {
     async fn up(&self, connection: &mut SqliteConnection) -> Result<(), Error> {
         sqlx::query("INSERT INTO sample (id, name) VALUES (99, 'Some text') ")
             .execute(connection)
@@ -26,7 +26,7 @@ impl OperationTrait<Sqlite> for M0002Operation {
 pub(crate) struct M0002Migration;
 
 #[async_trait::async_trait]
-impl MigrationTrait<Sqlite> for M0002Migration {
+impl Migration<Sqlite> for M0002Migration {
     fn app(&self) -> &str {
         "main"
     }
@@ -35,11 +35,11 @@ impl MigrationTrait<Sqlite> for M0002Migration {
         "m0002_with_parents"
     }
 
-    fn parents(&self) -> Vec<Box<dyn MigrationTrait<Sqlite>>> {
+    fn parents(&self) -> Vec<Box<dyn Migration<Sqlite>>> {
         vec![Box::new(crate::migrations::m0001_simple::M0001Migration)]
     }
 
-    fn operations(&self) -> Vec<Box<dyn OperationTrait<Sqlite>>> {
+    fn operations(&self) -> Vec<Box<dyn Operation<Sqlite>>> {
         vec![Box::new(M0002Operation)]
     }
 }

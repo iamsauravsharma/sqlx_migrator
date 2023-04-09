@@ -23,18 +23,18 @@ sqlx_migrator = { version = "0.5.1", features=["postgres", "runtime-tokio-rustls
 
 # Usage
 
-To use sqlx_migrator first you need to implement OperationTrait trait to write your sqlx operation
+To use sqlx_migrator first you need to implement Operation trait to write your sqlx operation
 
 ```rust
 use sqlx_migrator::error::Error;
-use sqlx_migrator::operation::OperationTrait;
+use sqlx_migrator::operation::Operation;
 // Its better to use sqlx imported from sqlx_migrator
 use sqlx_migrator::sqlx;
 
 pub(crate) struct FirstOperation;
 
 #[async_trait::async_trait]
-impl OperationTrait<sqlx::Postgres> for FirstOperation {
+impl Operation<sqlx::Postgres> for FirstOperation {
     // Up function runs apply migration
     async fn up(&self, connection: &mut sqlx::PgConnection) -> Result<(), Error> {
         sqlx::query("CREATE TABLE sample (id INTEGER PRIMARY KEY, name TEXT)")
@@ -55,13 +55,13 @@ After creation of operation you can implement Migration struct to create single 
 
 ```rust
 use sqlx_migrator::error::Error;
-use sqlx_migrator::migration::MigrationTrait;
-use sqlx_migrator::operation::OperationTrait;
+use sqlx_migrator::migration::Migration;
+use sqlx_migrator::operation::Operation;
 use sqlx_migrator::sqlx;
 
 pub(crate) struct FirstMigration;
 
-impl MigrationTrait<sqlx::Postgres> for FirstMigration {
+impl Migration<sqlx::Postgres> for FirstMigration {
     // app where migration lies can be any value
     fn app(&self) -> &str {
         "main"
@@ -74,16 +74,16 @@ impl MigrationTrait<sqlx::Postgres> for FirstMigration {
     }
 
     // use parents function to add parents of a migrations.
-    fn parents(&self) -> Vec<Box<dyn MigrationTrait<DB>>> {
+    fn parents(&self) -> Vec<Box<dyn Migration<DB>>> {
         vec![]
     }
 
     // use operations function to add operation part of migration
-    fn operations(&self) -> Vec<Box<dyn OperationTrait<sqlx::Postgres>>> {
+    fn operations(&self) -> Vec<Box<dyn Operation<sqlx::Postgres>>> {
         vec![Box::new(FirstOperation)]
     }
 
-    // MigrationTrait trait also have multiple other function see docs for usage
+    // Migration trait also have multiple other function see docs for usage
 }
 ```
 
@@ -143,13 +143,13 @@ To run all sqlx sql based migration as single command create new operation
 
 ```rust
 use sqlx_migrator::error::Error;
-use sqlx_migrator::operation::OperationTrait;
+use sqlx_migrator::operation::Operation;
 use sqlx_migrator::sqlx;
 
 pub(crate) struct SqlxOperation;
 
 #[async_trait::async_trait]
-impl OperationTrait<sqlx::Postgres> for SqlxOperation {
+impl Operation<sqlx::Postgres> for SqlxOperation {
     async fn up(&self, connection: &mut sqlx::PgConnection) -> Result<(), Error> {
         sqlx::migrate!("db/migrations").run(connection).await?;
         Ok(())
