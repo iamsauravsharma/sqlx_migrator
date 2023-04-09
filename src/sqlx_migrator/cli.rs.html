@@ -277,16 +277,13 @@
 <a href="#277" id="277">277</a>
 <a href="#278" id="278">278</a>
 <a href="#279" id="279">279</a>
-<a href="#280" id="280">280</a>
-<a href="#281" id="281">281</a>
-<a href="#282" id="282">282</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Module for creating and running cli with help of migrator
 </span><span class="kw">use </span>std::ops::Not;
 
 <span class="kw">use </span>clap::{Parser, Subcommand};
 
 <span class="kw">use </span><span class="kw">crate</span>::error::Error;
-<span class="kw">use </span><span class="kw">crate</span>::migrator::{MigratorTrait, Plan};
+<span class="kw">use </span><span class="kw">crate</span>::migrator::{Migrate, Plan};
 
 <span class="attr">#[derive(Parser, Debug)]
 </span><span class="kw">struct </span>Args {
@@ -317,10 +314,7 @@
     ///
     /// # Errors
     ///  If any subcommand operations fail running
-    </span><span class="kw">pub async fn </span>handle_subcommand&lt;DB&gt;(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        migrator: Box&lt;<span class="kw">dyn </span>MigratorTrait&lt;DB&gt;&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt;
+    </span><span class="kw">pub async fn </span>handle_subcommand&lt;DB&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, migrator: Box&lt;<span class="kw">dyn </span>Migrate&lt;DB&gt;&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt;
     <span class="kw">where
         </span>DB: sqlx::Database,
     {
@@ -334,7 +328,7 @@
     }
 }
 
-<span class="kw">async fn </span>drop_migrations&lt;DB&gt;(migrator: Box&lt;<span class="kw">dyn </span>MigratorTrait&lt;DB&gt;&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt;
+<span class="kw">async fn </span>drop_migrations&lt;DB&gt;(migrator: Box&lt;<span class="kw">dyn </span>Migrate&lt;DB&gt;&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt;
 <span class="kw">where
     </span>DB: sqlx::Database,
 {
@@ -353,7 +347,7 @@
     <span class="prelude-val">Ok</span>(())
 }
 
-<span class="kw">async fn </span>list_migrations&lt;DB&gt;(migrator: Box&lt;<span class="kw">dyn </span>MigratorTrait&lt;DB&gt;&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt;
+<span class="kw">async fn </span>list_migrations&lt;DB&gt;(migrator: Box&lt;<span class="kw">dyn </span>Migrate&lt;DB&gt;&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt;
 <span class="kw">where
     </span>DB: sqlx::Database,
 {
@@ -429,7 +423,7 @@
     </span>plan: bool,
 }
 <span class="kw">impl </span>Apply {
-    <span class="kw">async fn </span>run&lt;DB&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, migrator: Box&lt;<span class="kw">dyn </span>MigratorTrait&lt;DB&gt;&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt;
+    <span class="kw">async fn </span>run&lt;DB&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, migrator: Box&lt;<span class="kw">dyn </span>Migrate&lt;DB&gt;&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt;
     <span class="kw">where
         </span>DB: sqlx::Database,
     {
@@ -496,7 +490,7 @@
     </span>plan: bool,
 }
 <span class="kw">impl </span>Revert {
-    <span class="kw">async fn </span>run&lt;DB&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, migrator: Box&lt;<span class="kw">dyn </span>MigratorTrait&lt;DB&gt;&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt;
+    <span class="kw">async fn </span>run&lt;DB&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, migrator: Box&lt;<span class="kw">dyn </span>Migrate&lt;DB&gt;&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt;
     <span class="kw">where
         </span>DB: sqlx::Database,
     {
@@ -554,7 +548,7 @@
 ///
 /// # Errors
 /// When command fails to run
-</span><span class="kw">pub async fn </span>run&lt;DB&gt;(migrator: Box&lt;<span class="kw">dyn </span>MigratorTrait&lt;DB&gt;&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt;
+</span><span class="kw">pub async fn </span>run&lt;DB&gt;(migrator: Box&lt;<span class="kw">dyn </span>Migrate&lt;DB&gt;&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt;
 <span class="kw">where
     </span>DB: sqlx::Database,
 {
