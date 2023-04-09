@@ -151,6 +151,7 @@ impl Apply {
     where
         DB: sqlx::Database,
     {
+        migrator.lock().await?;
         let migrations = migrator
             .generate_migration_plan(Plan::new(
                 crate::migrator::PlanType::Apply,
@@ -187,6 +188,7 @@ impl Apply {
                 println!("Applied {} : {}", migration.app(), migration.name());
             }
         }
+        migrator.unlock().await?;
         Ok(())
     }
 }
@@ -216,6 +218,7 @@ impl Revert {
     where
         DB: sqlx::Database,
     {
+        migrator.lock().await?;
         let app_is_some = self.app.is_some();
         let revert_plan = migrator
             .generate_migration_plan(Plan::new(
@@ -258,6 +261,7 @@ impl Revert {
                 println!("Reverted {} : {}", migration.app(), migration.name());
             }
         }
+        migrator.unlock().await?;
         Ok(())
     }
 }
