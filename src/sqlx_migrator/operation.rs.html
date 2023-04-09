@@ -53,12 +53,12 @@
 //!
 //! ```rust,no_run
 //! use sqlx_migrator::error::Error;
-//! use sqlx_migrator::operation::OperationTrait;
+//! use sqlx_migrator::operation::Operation;
 //! use sqlx_migrator::sqlx::Sqlite;
 //!
 //! struct ExampleOperation;
 //! #[async_trait::async_trait]
-//! impl OperationTrait&lt;Sqlite&gt; for ExampleOperation {
+//! impl Operation&lt;Sqlite&gt; for ExampleOperation {
 //!     async fn up(&amp;self, connection: &amp;mut sqlx::SqliteConnection) -&gt; Result&lt;(), Error&gt; {
 //!         // Do some operations
 //!         Ok(())
@@ -78,7 +78,7 @@
 <span class="doccomment">/// Trait for operation
 </span><span class="attr">#[allow(clippy::module_name_repetitions)]
 #[async_trait::async_trait]
-</span><span class="kw">pub trait </span>OperationTrait&lt;DB&gt;: Send + Sync
+</span><span class="kw">pub trait </span>Operation&lt;DB&gt;: Send + Sync
 <span class="kw">where
     </span>DB: sqlx::Database,
 {

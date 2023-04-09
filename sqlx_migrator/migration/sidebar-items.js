@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["AppliedMigrationSqlRow"],"trait":["MigrationTrait"]};
+window.SIDEBAR_ITEMS = {"struct":["AppliedMigrationSqlRow"],"trait":["Migration"]};

@@ -146,12 +146,12 @@
 //!
 //! ```rust,no_run
 //! use sqlx_migrator::error::Error;
-//! use sqlx_migrator::migration::MigrationTrait;
-//! use sqlx_migrator::operation::OperationTrait;
+//! use sqlx_migrator::migration::Migration;
+//! use sqlx_migrator::operation::Operation;
 //! use sqlx_migrator::sqlx::Sqlite;
 //!
 //! struct ExampleMigration;
-//! impl MigrationTrait&lt;Sqlite&gt; for ExampleMigration {
+//! impl Migration&lt;Sqlite&gt; for ExampleMigration {
 //!     fn app(&amp;self) -&gt; &amp;str {
 //!         &quot;example&quot;
 //!     }
@@ -160,19 +160,19 @@
 //!         &quot;first_migration&quot;
 //!     }
 //!
-//!     fn parents(&amp;self) -&gt; Vec&lt;Box&lt;dyn MigrationTrait&lt;Sqlite&gt;&gt;&gt; {
+//!     fn parents(&amp;self) -&gt; Vec&lt;Box&lt;dyn Migration&lt;Sqlite&gt;&gt;&gt; {
 //!         vec![]
 //!     }
 //!
-//!     fn operations(&amp;self) -&gt; Vec&lt;Box&lt;dyn OperationTrait&lt;Sqlite&gt;&gt;&gt; {
+//!     fn operations(&amp;self) -&gt; Vec&lt;Box&lt;dyn Operation&lt;Sqlite&gt;&gt;&gt; {
 //!         vec![]
 //!     }
 //!
-//!     fn replaces(&amp;self) -&gt; Vec&lt;Box&lt;dyn MigrationTrait&lt;Sqlite&gt;&gt;&gt; {
+//!     fn replaces(&amp;self) -&gt; Vec&lt;Box&lt;dyn Migration&lt;Sqlite&gt;&gt;&gt; {
 //!         vec![]
 //!     }
 //!
-//!     fn run_before(&amp;self) -&gt; Vec&lt;Box&lt;dyn MigrationTrait&lt;Sqlite&gt;&gt;&gt; {
+//!     fn run_before(&amp;self) -&gt; Vec&lt;Box&lt;dyn Migration&lt;Sqlite&gt;&gt;&gt; {
 //!         vec![]
 //!     }
 //!
@@ -186,11 +186,11 @@
 
 <span class="kw">use </span>chrono::{DateTime, Utc};
 
-<span class="kw">use </span><span class="kw">crate</span>::operation::OperationTrait;
+<span class="kw">use </span><span class="kw">crate</span>::operation::Operation;
 
 <span class="doccomment">/// Trait for migration
 </span><span class="attr">#[allow(clippy::module_name_repetitions)]
-</span><span class="kw">pub trait </span>MigrationTrait&lt;DB&gt;: Send + Sync {
+</span><span class="kw">pub trait </span>Migration&lt;DB&gt;: Send + Sync {
     <span class="doccomment">/// Migration app name. Can be name of folder or library where migration is
     /// located
     </span><span class="kw">fn </span>app(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>str;
@@ -200,21 +200,21 @@
 
     <span class="doccomment">/// Parents of migration (migrations that should be applied before this
     /// migration)
-    </span><span class="kw">fn </span>parents(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;Box&lt;<span class="kw">dyn </span>MigrationTrait&lt;DB&gt;&gt;&gt;;
+    </span><span class="kw">fn </span>parents(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;Box&lt;<span class="kw">dyn </span>Migration&lt;DB&gt;&gt;&gt;;
 
     <span class="doccomment">/// Operation performed for migration (create, drop, etc.)
-    </span><span class="kw">fn </span>operations(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;Box&lt;<span class="kw">dyn </span>OperationTrait&lt;DB&gt;&gt;&gt;;
+    </span><span class="kw">fn </span>operations(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;Box&lt;<span class="kw">dyn </span>Operation&lt;DB&gt;&gt;&gt;;
 
     <span class="doccomment">/// Replace certain migrations. If any one of listed migration is applied
     /// than migration will not be applied else migration will apply instead of
     /// applying those migration.
-    </span><span class="kw">fn </span>replaces(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;Box&lt;<span class="kw">dyn </span>MigrationTrait&lt;DB&gt;&gt;&gt; {
+    </span><span class="kw">fn </span>replaces(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;Box&lt;<span class="kw">dyn </span>Migration&lt;DB&gt;&gt;&gt; {
         <span class="macro">vec!</span>[]
     }
 
     <span class="doccomment">/// Run before certain migration. This can be helpful in condition where
     /// other library migration need to be applied after this migration
-    </span><span class="kw">fn </span>run_before(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;Box&lt;<span class="kw">dyn </span>MigrationTrait&lt;DB&gt;&gt;&gt; {
+    </span><span class="kw">fn </span>run_before(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;Box&lt;<span class="kw">dyn </span>Migration&lt;DB&gt;&gt;&gt; {
         <span class="macro">vec!</span>[]
     }
 
@@ -224,7 +224,7 @@
     </span>}
 }
 
-<span class="kw">impl</span>&lt;DB&gt; PartialEq <span class="kw">for dyn </span>MigrationTrait&lt;DB&gt;
+<span class="kw">impl</span>&lt;DB&gt; PartialEq <span class="kw">for dyn </span>Migration&lt;DB&gt;
 <span class="kw">where
     </span>DB: sqlx::Database,
 {
@@ -233,9 +233,9 @@
     }
 }
 
-<span class="kw">impl</span>&lt;DB&gt; Eq <span class="kw">for dyn </span>MigrationTrait&lt;DB&gt; <span class="kw">where </span>DB: sqlx::Database {}
+<span class="kw">impl</span>&lt;DB&gt; Eq <span class="kw">for dyn </span>Migration&lt;DB&gt; <span class="kw">where </span>DB: sqlx::Database {}
 
-<span class="kw">impl</span>&lt;DB&gt; Hash <span class="kw">for dyn </span>MigrationTrait&lt;DB&gt;
+<span class="kw">impl</span>&lt;DB&gt; Hash <span class="kw">for dyn </span>Migration&lt;DB&gt;
 <span class="kw">where
     </span>DB: sqlx::Database,
 {
@@ -270,11 +270,11 @@
     }
 }
 
-<span class="kw">impl</span>&lt;DB&gt; PartialEq&lt;Box&lt;<span class="kw">dyn </span>MigrationTrait&lt;DB&gt;&gt;&gt; <span class="kw">for </span>AppliedMigrationSqlRow
+<span class="kw">impl</span>&lt;DB&gt; PartialEq&lt;Box&lt;<span class="kw">dyn </span>Migration&lt;DB&gt;&gt;&gt; <span class="kw">for </span>AppliedMigrationSqlRow
 <span class="kw">where
     </span>DB: sqlx::Database,
 {
-    <span class="kw">fn </span>eq(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span>Box&lt;<span class="kw">dyn </span>MigrationTrait&lt;DB&gt;&gt;) -&gt; bool {
+    <span class="kw">fn </span>eq(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span>Box&lt;<span class="kw">dyn </span>Migration&lt;DB&gt;&gt;) -&gt; bool {
         <span class="self">self</span>.app == other.app() &amp;&amp; <span class="self">self</span>.name == other.name()
     }
 }
