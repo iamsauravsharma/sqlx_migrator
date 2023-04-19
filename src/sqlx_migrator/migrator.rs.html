@@ -866,6 +866,13 @@
 <a href="#866" id="866">866</a>
 <a href="#867" id="867">867</a>
 <a href="#868" id="868">868</a>
+<a href="#869" id="869">869</a>
+<a href="#870" id="870">870</a>
+<a href="#871" id="871">871</a>
+<a href="#872" id="872">872</a>
+<a href="#873" id="873">873</a>
+<a href="#874" id="874">874</a>
+<a href="#875" id="875">875</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! migrator module
 //!
 //! It contains common enum and trait for implementing migrator for sqlx
@@ -1428,7 +1435,8 @@
     </span>}
 }
 
-<span class="kw">impl </span>Migrate&lt;Postgres&gt; <span class="kw">for </span>Migrator&lt;Postgres&gt; {}
+<span class="attr">#[cfg(feature = <span class="string">&quot;postgres&quot;</span>)]
+</span><span class="kw">impl </span>Migrate&lt;Postgres&gt; <span class="kw">for </span>Migrator&lt;Postgres&gt; {}
 
 <span class="attr">#[cfg(feature = <span class="string">&quot;sqlite&quot;</span>)]
 </span><span class="kw">fn </span>sqlite_create_migrator_table() -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str {
@@ -1498,7 +1506,8 @@
     }
 }
 
-<span class="kw">impl </span>Migrate&lt;Sqlite&gt; <span class="kw">for </span>Migrator&lt;Sqlite&gt; {}
+<span class="attr">#[cfg(feature = <span class="string">&quot;sqlite&quot;</span>)]
+</span><span class="kw">impl </span>Migrate&lt;Sqlite&gt; <span class="kw">for </span>Migrator&lt;Sqlite&gt; {}
 
 <span class="attr">#[cfg(feature = <span class="string">&quot;mysql&quot;</span>)]
 </span><span class="kw">fn </span>mysql_create_migrator_table() -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str {
@@ -1525,7 +1534,7 @@
 </span><span class="kw">async fn </span>mysql_lock(pool: <span class="kw-2">&amp;</span>Pool&lt;MySql&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
     <span class="kw">let </span>row: (String,) = sqlx::query_as(<span class="string">&quot;SELECT DATABASE()&quot;</span>).fetch_one(pool).<span class="kw">await</span><span class="question-mark">?</span>;
     <span class="kw">let </span>lock_id = crc32fast::hash(row.<span class="number">0</span>.as_bytes()).to_string();
-    sqlx::query(<span class="string">&quot;SELECT GET_LOCK($1, -1)&quot;</span>)
+    sqlx::query(<span class="string">&quot;SELECT GET_LOCK(?, -1)&quot;</span>)
         .bind(lock_id)
         .execute(pool)
         .<span class="kw">await</span><span class="question-mark">?</span>;
@@ -1536,7 +1545,7 @@
 </span><span class="kw">async fn </span>mysql_unlock(pool: <span class="kw-2">&amp;</span>Pool&lt;MySql&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
     <span class="kw">let </span>row: (String,) = sqlx::query_as(<span class="string">&quot;SELECT DATABASE()&quot;</span>).fetch_one(pool).<span class="kw">await</span><span class="question-mark">?</span>;
     <span class="kw">let </span>lock_id = crc32fast::hash(row.<span class="number">0</span>.as_bytes()).to_string();
-    sqlx::query(<span class="string">&quot;SELECT RELEASE_LOCK($1)&quot;</span>)
+    sqlx::query(<span class="string">&quot;SELECT RELEASE_LOCK(?)&quot;</span>)
         .bind(lock_id)
         .execute(pool)
         .<span class="kw">await</span><span class="question-mark">?</span>;
@@ -1600,7 +1609,8 @@
     </span>}
 }
 
-<span class="kw">impl </span>Migrate&lt;MySql&gt; <span class="kw">for </span>Migrator&lt;MySql&gt; {}
+<span class="attr">#[cfg(feature = <span class="string">&quot;mysql&quot;</span>)]
+</span><span class="kw">impl </span>Migrate&lt;MySql&gt; <span class="kw">for </span>Migrator&lt;MySql&gt; {}
 
 <span class="attr">#[cfg(all(
     any(feature = <span class="string">&quot;postgres&quot;</span>, feature = <span class="string">&quot;mysql&quot;</span>, feature = <span class="string">&quot;sqlite&quot;</span>),
@@ -1733,5 +1743,9 @@
     }
 }
 
-<span class="kw">impl </span>Migrate&lt;Any&gt; <span class="kw">for </span>Migrator&lt;Any&gt; {}
+<span class="attr">#[cfg(all(
+    any(feature = <span class="string">&quot;postgres&quot;</span>, feature = <span class="string">&quot;mysql&quot;</span>, feature = <span class="string">&quot;sqlite&quot;</span>),
+    feature = <span class="string">&quot;any&quot;
+</span>))]
+</span><span class="kw">impl </span>Migrate&lt;Any&gt; <span class="kw">for </span>Migrator&lt;Any&gt; {}
 </code></pre></div></section></main></body></html>

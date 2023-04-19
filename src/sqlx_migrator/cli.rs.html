@@ -406,20 +406,20 @@
 </span><span class="doccomment">/// CLI struct for apply subcommand
 </span><span class="kw">pub struct </span>Apply {
     <span class="doccomment">/// Apply migration till all app migration are applied
-    </span><span class="attr">#[arg(long, short)]
+    </span><span class="attr">#[arg(long)]
     </span>app: <span class="prelude-ty">Option</span>&lt;String&gt;,
     <span class="doccomment">/// Check for pending migration
-    </span><span class="attr">#[arg(long, short)]
+    </span><span class="attr">#[arg(long)]
     </span>check: bool,
     <span class="doccomment">/// Make migration applied without applying
-    </span><span class="attr">#[arg(long, short)]
+    </span><span class="attr">#[arg(long)]
     </span>fake: bool,
     <span class="doccomment">/// Apply migration till provided migration. Requires app options to be
     /// present
-    </span><span class="attr">#[arg(long, short, requires = <span class="string">&quot;app&quot;</span>)]
+    </span><span class="attr">#[arg(long, requires = <span class="string">&quot;app&quot;</span>)]
     </span>migration: <span class="prelude-ty">Option</span>&lt;String&gt;,
     <span class="doccomment">/// Show plan
-    </span><span class="attr">#[arg(long, short)]
+    </span><span class="attr">#[arg(long)]
     </span>plan: bool,
 }
 <span class="kw">impl </span>Apply {
@@ -473,20 +473,20 @@
 </span><span class="doccomment">/// CLI struct for revert subcommand
 </span><span class="kw">pub struct </span>Revert {
     <span class="doccomment">/// Revert all migration
-    </span><span class="attr">#[arg(long, short)]
+    </span><span class="attr">#[arg(long)]
     </span>all: bool,
     <span class="doccomment">/// Revert migration till all app migration are reverted
-    </span><span class="attr">#[arg(long, short)]
+    </span><span class="attr">#[arg(long)]
     </span>app: <span class="prelude-ty">Option</span>&lt;String&gt;,
     <span class="doccomment">/// Make migration reverted without reverting
-    </span><span class="attr">#[arg(long, short)]
+    </span><span class="attr">#[arg(long)]
     </span>fake: bool,
     <span class="doccomment">/// Revert migration till provided migration. Requires app options to be
     /// present
-    </span><span class="attr">#[arg(long, short, requires = <span class="string">&quot;app&quot;</span>)]
+    </span><span class="attr">#[arg(long, requires = <span class="string">&quot;app&quot;</span>)]
     </span>migration: <span class="prelude-ty">Option</span>&lt;String&gt;,
     <span class="doccomment">/// Show plan
-    </span><span class="attr">#[arg(long, short)]
+    </span><span class="attr">#[arg(long)]
     </span>plan: bool,
 }
 <span class="kw">impl </span>Revert {
