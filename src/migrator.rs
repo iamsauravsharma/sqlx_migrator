@@ -450,6 +450,26 @@ where
     }
 }
 
+#[cfg(all(any(feature = "postgres", feature = "mysql", feature = "sqlite")))]
+fn common_drop_table() -> &'static str {
+    "DROP TABLE IF EXISTS _sqlx_migrator_migrations"
+}
+
+#[cfg(all(any(feature = "postgres", feature = "mysql", feature = "sqlite")))]
+fn common_fetch_row() -> &'static str {
+    "SELECT id, app, name, applied_time FROM _sqlx_migrator_migrations"
+}
+
+#[cfg(all(any(feature = "postgres", feature = "sqlite")))]
+fn postgres_sqlite_add_migration() -> &'static str {
+    "INSERT INTO _sqlx_migrator_migrations(app, name) VALUES ($1, $2)"
+}
+
+#[cfg(all(any(feature = "postgres", feature = "sqlite")))]
+fn postgres_sqlite_delete_migration() -> &'static str {
+    "DELETE FROM _sqlx_migrator_migrations WHERE app = $1 AND name = $2"
+}
+
 #[cfg(feature = "postgres")]
 fn postgres_create_migrator_table() -> &'static str {
     "CREATE TABLE IF NOT EXISTS _sqlx_migrator_migrations (
@@ -494,9 +514,7 @@ impl DatabaseOperation<Postgres> for Migrator<Postgres> {
     }
 
     async fn drop_migration_table_if_exists(&self) -> Result<(), Error> {
-        sqlx::query("DROP TABLE IF EXISTS _sqlx_migrator_migrations")
-            .execute(&self.pool)
-            .await?;
+        sqlx::query(common_drop_table()).execute(&self.pool).await?;
         Ok(())
     }
 
@@ -505,7 +523,7 @@ impl DatabaseOperation<Postgres> for Migrator<Postgres> {
         migration: &Box<dyn Migration<Postgres>>,
         connection: &mut <Postgres as sqlx::Database>::Connection,
     ) -> Result<(), Error> {
-        sqlx::query("INSERT INTO _sqlx_migrator_migrations(app, name) VALUES ($1, $2)")
+        sqlx::query(postgres_sqlite_add_migration())
             .bind(migration.app())
             .bind(migration.name())
             .execute(connection)
@@ -518,7 +536,7 @@ impl DatabaseOperation<Postgres> for Migrator<Postgres> {
         migration: &Box<dyn Migration<Postgres>>,
         connection: &mut <Postgres as sqlx::Database>::Connection,
     ) -> Result<(), Error> {
-        sqlx::query("DELETE FROM _sqlx_migrator_migrations WHERE app = $1 AND name = $2")
+        sqlx::query(postgres_sqlite_delete_migration())
             .bind(migration.app())
             .bind(migration.name())
             .execute(connection)
@@ -527,10 +545,9 @@ impl DatabaseOperation<Postgres> for Migrator<Postgres> {
     }
 
     async fn fetch_applied_migration_from_db(&self) -> Result<Vec<AppliedMigrationSqlRow>, Error> {
-        let rows =
-            sqlx::query_as("SELECT id, app, name, applied_time FROM _sqlx_migrator_migrations")
-                .fetch_all(&self.pool)
-                .await?;
+        let rows = sqlx::query_as(common_fetch_row())
+            .fetch_all(&self.pool)
+            .await?;
         Ok(rows)
     }
 
@@ -567,9 +584,7 @@ impl DatabaseOperation<Sqlite> for Migrator<Sqlite> {
     }
 
     async fn drop_migration_table_if_exists(&self) -> Result<(), Error> {
-        sqlx::query("DROP TABLE IF EXISTS _sqlx_migrator_migrations")
-            .execute(&self.pool)
-            .await?;
+        sqlx::query(common_drop_table()).execute(&self.pool).await?;
         Ok(())
     }
 
@@ -578,7 +593,7 @@ impl DatabaseOperation<Sqlite> for Migrator<Sqlite> {
         migration: &Box<dyn Migration<Sqlite>>,
         connection: &mut <Sqlite as sqlx::Database>::Connection,
     ) -> Result<(), Error> {
-        sqlx::query("INSERT INTO _sqlx_migrator_migrations(app, name) VALUES ($1, $2)")
+        sqlx::query(postgres_sqlite_add_migration())
             .bind(migration.app())
             .bind(migration.name())
             .execute(connection)
@@ -591,7 +606,7 @@ impl DatabaseOperation<Sqlite> for Migrator<Sqlite> {
         migration: &Box<dyn Migration<Sqlite>>,
         connection: &mut <Sqlite as sqlx::Database>::Connection,
     ) -> Result<(), Error> {
-        sqlx::query("DELETE FROM _sqlx_migrator_migrations WHERE app = $1 AND name = $2")
+        sqlx::query(postgres_sqlite_delete_migration())
             .bind(migration.app())
             .bind(migration.name())
             .execute(connection)
@@ -600,10 +615,9 @@ impl DatabaseOperation<Sqlite> for Migrator<Sqlite> {
     }
 
     async fn fetch_applied_migration_from_db(&self) -> Result<Vec<AppliedMigrationSqlRow>, Error> {
-        let rows =
-            sqlx::query_as("SELECT id, app, name, applied_time FROM _sqlx_migrator_migrations")
-                .fetch_all(&self.pool)
-                .await?;
+        let rows = sqlx::query_as(common_fetch_row())
+            .fetch_all(&self.pool)
+            .await?;
         Ok(rows)
     }
 
@@ -627,6 +641,16 @@ fn mysql_create_migrator_table() -> &'static str {
         applied_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
         UNIQUE (app, name)
     )"
+}
+
+#[cfg(feature = "mysql")]
+fn mysql_add_migration() -> &'static str {
+    "INSERT INTO _sqlx_migrator_migrations(app, name) VALUES (?, ?)"
+}
+
+#[cfg(feature = "mysql")]
+fn mysql_delete_migration() -> &'static str {
+    "DELETE FROM _sqlx_migrator_migrations WHERE app = ? AND name = ?"
 }
 
 #[cfg(feature = "mysql")]
@@ -662,9 +686,7 @@ impl DatabaseOperation<MySql> for Migrator<MySql> {
     }
 
     async fn drop_migration_table_if_exists(&self) -> Result<(), Error> {
-        sqlx::query("DROP TABLE IF EXISTS _sqlx_migrator_migrations")
-            .execute(&self.pool)
-            .await?;
+        sqlx::query(common_drop_table()).execute(&self.pool).await?;
         Ok(())
     }
 
@@ -673,7 +695,7 @@ impl DatabaseOperation<MySql> for Migrator<MySql> {
         migration: &Box<dyn Migration<MySql>>,
         connection: &mut <MySql as sqlx::Database>::Connection,
     ) -> Result<(), Error> {
-        sqlx::query("INSERT INTO _sqlx_migrator_migrations(app, name) VALUES ($1, $2)")
+        sqlx::query(mysql_add_migration())
             .bind(migration.app())
             .bind(migration.name())
             .execute(connection)
@@ -686,7 +708,7 @@ impl DatabaseOperation<MySql> for Migrator<MySql> {
         migration: &Box<dyn Migration<MySql>>,
         connection: &mut <MySql as sqlx::Database>::Connection,
     ) -> Result<(), Error> {
-        sqlx::query("DELETE FROM _sqlx_migrator_migrations WHERE app = $1 AND name = $2")
+        sqlx::query(mysql_delete_migration())
             .bind(migration.app())
             .bind(migration.name())
             .execute(connection)
@@ -695,10 +717,9 @@ impl DatabaseOperation<MySql> for Migrator<MySql> {
     }
 
     async fn fetch_applied_migration_from_db(&self) -> Result<Vec<AppliedMigrationSqlRow>, Error> {
-        let rows =
-            sqlx::query_as("SELECT id, app, name, applied_time FROM _sqlx_migrator_migrations")
-                .fetch_all(&self.pool)
-                .await?;
+        let rows = sqlx::query_as(common_fetch_row())
+            .fetch_all(&self.pool)
+            .await?;
         Ok(rows)
     }
 
@@ -734,9 +755,7 @@ impl DatabaseOperation<Any> for Migrator<Any> {
     }
 
     async fn drop_migration_table_if_exists(&self) -> Result<(), Error> {
-        sqlx::query("DROP TABLE IF EXISTS _sqlx_migrator_migrations")
-            .execute(&self.pool)
-            .await?;
+        sqlx::query(common_drop_table()).execute(&self.pool).await?;
         Ok(())
     }
 
@@ -745,7 +764,16 @@ impl DatabaseOperation<Any> for Migrator<Any> {
         migration: &Box<dyn Migration<Any>>,
         connection: &mut <Any as sqlx::Database>::Connection,
     ) -> Result<(), Error> {
-        sqlx::query("INSERT INTO _sqlx_migrator_migrations(app, name) VALUES ($1, $2)")
+        let pool = &self.pool;
+        let sql_query = match pool.any_kind() {
+            #[cfg(feature = "postgres")]
+            AnyKind::Postgres => postgres_sqlite_add_migration(),
+            #[cfg(feature = "sqlite")]
+            AnyKind::Sqlite => postgres_sqlite_add_migration(),
+            #[cfg(feature = "mysql")]
+            AnyKind::MySql => mysql_add_migration(),
+        };
+        sqlx::query(sql_query)
             .bind(migration.app())
             .bind(migration.name())
             .execute(connection)
@@ -758,7 +786,16 @@ impl DatabaseOperation<Any> for Migrator<Any> {
         migration: &Box<dyn Migration<Any>>,
         connection: &mut <Any as sqlx::Database>::Connection,
     ) -> Result<(), Error> {
-        sqlx::query("DELETE FROM _sqlx_migrator_migrations WHERE app = $1 AND name = $2")
+        let pool = &self.pool;
+        let sql_query = match pool.any_kind() {
+            #[cfg(feature = "postgres")]
+            AnyKind::Postgres => postgres_sqlite_delete_migration(),
+            #[cfg(feature = "sqlite")]
+            AnyKind::Sqlite => postgres_sqlite_delete_migration(),
+            #[cfg(feature = "mysql")]
+            AnyKind::MySql => mysql_delete_migration(),
+        };
+        sqlx::query(sql_query)
             .bind(migration.app())
             .bind(migration.name())
             .execute(connection)
@@ -767,10 +804,9 @@ impl DatabaseOperation<Any> for Migrator<Any> {
     }
 
     async fn fetch_applied_migration_from_db(&self) -> Result<Vec<AppliedMigrationSqlRow>, Error> {
-        let rows =
-            sqlx::query_as("SELECT id, app, name, applied_time FROM _sqlx_migrator_migrations")
-                .fetch_all(&self.pool)
-                .await?;
+        let rows = sqlx::query_as(common_fetch_row())
+            .fetch_all(&self.pool)
+            .await?;
         Ok(rows)
     }
 
