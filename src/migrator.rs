@@ -560,6 +560,7 @@ impl DatabaseOperation<Postgres> for Migrator<Postgres> {
     }
 }
 
+#[cfg(feature = "postgres")]
 impl Migrate<Postgres> for Migrator<Postgres> {}
 
 #[cfg(feature = "sqlite")]
@@ -630,6 +631,7 @@ impl DatabaseOperation<Sqlite> for Migrator<Sqlite> {
     }
 }
 
+#[cfg(feature = "sqlite")]
 impl Migrate<Sqlite> for Migrator<Sqlite> {}
 
 #[cfg(feature = "mysql")]
@@ -657,7 +659,7 @@ fn mysql_delete_migration() -> &'static str {
 async fn mysql_lock(pool: &Pool<MySql>) -> Result<(), Error> {
     let row: (String,) = sqlx::query_as("SELECT DATABASE()").fetch_one(pool).await?;
     let lock_id = crc32fast::hash(row.0.as_bytes()).to_string();
-    sqlx::query("SELECT GET_LOCK($1, -1)")
+    sqlx::query("SELECT GET_LOCK(?, -1)")
         .bind(lock_id)
         .execute(pool)
         .await?;
@@ -668,7 +670,7 @@ async fn mysql_lock(pool: &Pool<MySql>) -> Result<(), Error> {
 async fn mysql_unlock(pool: &Pool<MySql>) -> Result<(), Error> {
     let row: (String,) = sqlx::query_as("SELECT DATABASE()").fetch_one(pool).await?;
     let lock_id = crc32fast::hash(row.0.as_bytes()).to_string();
-    sqlx::query("SELECT RELEASE_LOCK($1)")
+    sqlx::query("SELECT RELEASE_LOCK(?)")
         .bind(lock_id)
         .execute(pool)
         .await?;
@@ -732,6 +734,7 @@ impl DatabaseOperation<MySql> for Migrator<MySql> {
     }
 }
 
+#[cfg(feature = "mysql")]
 impl Migrate<MySql> for Migrator<MySql> {}
 
 #[cfg(all(
@@ -865,4 +868,8 @@ impl DatabaseOperation<Any> for Migrator<Any> {
     }
 }
 
+#[cfg(all(
+    any(feature = "postgres", feature = "mysql", feature = "sqlite"),
+    feature = "any"
+))]
 impl Migrate<Any> for Migrator<Any> {}

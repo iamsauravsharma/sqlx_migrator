@@ -1,5 +1,4 @@
-name: Publish to crates.io
-
+name: Publish
 on:
   push:
     tags: "v*"
@@ -18,3 +17,25 @@ jobs:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
         run: |
           cargo publish --features postgres,sqlite,mysql,any,runtime-tokio-rustls
+
+  publish_release_note:
+    name: Publish release note
+    runs-on: ubuntu-latest
+    needs: publish_crate
+
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: Generate a changelog
+        uses: orhun/git-cliff-action@v2
+        id: git-cliff
+        with:
+          config: cliff.toml
+          args: -vv --current --strip header
+        env:
+          OUTPUT: CHANGELOG.md
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v1
+        with:
+          body_path: ${{ steps.git-cliff.outputs.changelog }}
