@@ -44,17 +44,17 @@ runtime-tokio-rustls = ["sqlx/runtime-tokio-rustls"]
 [[example]]
 name = "postgres"
 path = "examples/postgres/main.rs"
-required-features = ["postgres", "runtime-tokio-rustls"]
+required-features = ["postgres", "cli"]
 
 [[example]]
 name = "sqlite"
 path = "examples/sqlite/main.rs"
-required-features = ["sqlite", "runtime-tokio-rustls"]
+required-features = ["sqlite", "cli"]
 
 [[example]]
 name = "mysql"
 path = "examples/mysql/main.rs"
-required-features = ["mysql", "runtime-tokio-native-tls"]
+required-features = ["mysql", "cli"]
 
 [package.metadata.docs.rs]
 features = ["postgres", "sqlite", "mysql", "any", "runtime-tokio-rustls"]
