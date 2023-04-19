@@ -54,7 +54,7 @@ required-features = ["sqlite", "runtime-tokio-rustls"]
 [[example]]
 name = "mysql"
 path = "examples/mysql/main.rs"
-required-features = ["mysql", "runtime-tokio-rustls"]
+required-features = ["mysql", "runtime-tokio-native-tls"]
 
 [package.metadata.docs.rs]
 features = ["postgres", "sqlite", "mysql", "any", "runtime-tokio-rustls"]

@@ -127,20 +127,20 @@ where
 /// CLI struct for apply subcommand
 pub struct Apply {
     /// Apply migration till all app migration are applied
-    #[arg(long, short)]
+    #[arg(long)]
     app: Option<String>,
     /// Check for pending migration
-    #[arg(long, short)]
+    #[arg(long)]
     check: bool,
     /// Make migration applied without applying
-    #[arg(long, short)]
+    #[arg(long)]
     fake: bool,
     /// Apply migration till provided migration. Requires app options to be
     /// present
-    #[arg(long, short, requires = "app")]
+    #[arg(long, requires = "app")]
     migration: Option<String>,
     /// Show plan
-    #[arg(long, short)]
+    #[arg(long)]
     plan: bool,
 }
 impl Apply {
@@ -194,20 +194,20 @@ impl Apply {
 /// CLI struct for revert subcommand
 pub struct Revert {
     /// Revert all migration
-    #[arg(long, short)]
+    #[arg(long)]
     all: bool,
     /// Revert migration till all app migration are reverted
-    #[arg(long, short)]
+    #[arg(long)]
     app: Option<String>,
     /// Make migration reverted without reverting
-    #[arg(long, short)]
+    #[arg(long)]
     fake: bool,
     /// Revert migration till provided migration. Requires app options to be
     /// present
-    #[arg(long, short, requires = "app")]
+    #[arg(long, requires = "app")]
     migration: Option<String>,
     /// Show plan
-    #[arg(long, short)]
+    #[arg(long)]
     plan: bool,
 }
 impl Revert {

@@ -1,4 +1,4 @@
-name: Build rust
+name: Build
 
 on:
   push:
@@ -46,3 +46,42 @@ jobs:
       - name: Run tests
         run: |
           cargo make full --env-file=.env
+
+  run_example:
+    name: Run Example
+    runs-on: "ubuntu-latest"
+    needs: build
+    env:
+      SQLITE_DATABASE_URL: sqlite://db.sqlite3
+      POSTGRES_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+      MYSQL_DATABASE_URL: mysql://root:mysql@127.0.0.1:3306/default_db
+    services:
+      postgres:
+        image: postgres
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+      mysql:
+        image: mysql
+        env:
+          MYSQL_ROOT_PASSWORD: mysql
+          MYSQL_DATABASE: default_db
+        ports:
+          - 3306:3306
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup rust toolchain
+        uses: dtolnay/rust-toolchain@nightly
+      - name: Run example
+        run: |
+          cargo run --example=postgres --features=postgres,runtime-tokio-rustls -- apply
+          cargo run --example=postgres --features=postgres,runtime-tokio-rustls -- revert --all
+          touch db.sqlite3
+          cargo run --example=sqlite --features=sqlite,runtime-tokio-rustls -- apply
+          cargo run --example=sqlite --features=sqlite,runtime-tokio-rustls -- revert --all
+          cargo run --example=mysql --features=mysql,runtime-tokio-native-tls -- apply
+          cargo run --example=mysql --features=mysql,runtime-tokio-native-tls -- revert --all

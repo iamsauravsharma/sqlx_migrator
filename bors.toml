@@ -4,16 +4,8 @@ status = [
     "Build (windows-latest, stable)",
     "Build (ubuntu-latest, beta)",
     "Build (ubuntu-latest, nightly)",
+    "Run Example",
 ]
-block_labels = [
-    "invalid",
-    "duplicate",
-    "blocked",
-    "WIP"
-]
-pr_status = [
-    "DCO",
-    "CommitCheck",
-    "WIP"
-]
+block_labels = ["invalid", "duplicate", "blocked", "WIP"]
+pr_status = ["DCO", "CommitCheck", "WIP"]
 delete_merged_branches = true
