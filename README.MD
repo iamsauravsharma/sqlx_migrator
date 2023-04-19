@@ -18,7 +18,7 @@ Supported Databases:
 To use postgres migrator along with tokio-native-tls runtime you can configure Cargo.toml
 
 ```toml
-sqlx_migrator = { version = "0.5.1", features=["postgres", "runtime-tokio-rustls"] }
+sqlx_migrator = { version = "0.6.0", features=["postgres", "runtime-tokio-rustls"] }
 ```
 
 # Usage
