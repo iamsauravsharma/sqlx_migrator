@@ -4,6 +4,7 @@
 //! supported database
 //!
 //! Currently project supports Postgres, Sqlite and Mysql Database only
+use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
 
 #[cfg(feature = "mysql")]
@@ -417,6 +418,7 @@ where
 {
     migrations: HashSet<Box<dyn Migration<DB>>>,
     pool: Pool<DB>,
+    table_name: Option<String>,
 }
 
 impl<DB> Migrator<DB>
@@ -429,7 +431,23 @@ where
         Self {
             migrations: HashSet::new(),
             pool: pool.clone(),
+            table_name: None,
         }
+    }
+
+    fn replace_table_name(&self, query: &'static str) -> Cow<'static, str> {
+        if let Some(table_name) = &self.table_name {
+            query
+                .replace("_sqlx_migrator_migrations", table_name.as_str())
+                .into()
+        } else {
+            query.into()
+        }
+    }
+
+    /// Set custom migrations table name
+    pub fn set_table_name<S: Into<String>>(&mut self, table_name: S) {
+        self.table_name = Some(table_name.into());
     }
 }
 
@@ -507,14 +525,16 @@ async fn postgres_unlock(pool: &Pool<Postgres>) -> Result<(), Error> {
 #[async_trait::async_trait]
 impl DatabaseOperation<Postgres> for Migrator<Postgres> {
     async fn ensure_migration_table_exists(&self) -> Result<(), Error> {
-        sqlx::query(postgres_create_migrator_table())
+        sqlx::query(&self.replace_table_name(postgres_create_migrator_table()))
             .execute(&self.pool)
             .await?;
         Ok(())
     }
 
     async fn drop_migration_table_if_exists(&self) -> Result<(), Error> {
-        sqlx::query(common_drop_table()).execute(&self.pool).await?;
+        sqlx::query(&self.replace_table_name(common_drop_table()))
+            .execute(&self.pool)
+            .await?;
         Ok(())
     }
 
@@ -523,7 +543,7 @@ impl DatabaseOperation<Postgres> for Migrator<Postgres> {
         migration: &Box<dyn Migration<Postgres>>,
         connection: &mut <Postgres as sqlx::Database>::Connection,
     ) -> Result<(), Error> {
-        sqlx::query(postgres_sqlite_add_migration())
+        sqlx::query(&self.replace_table_name(postgres_sqlite_add_migration()))
             .bind(migration.app())
             .bind(migration.name())
             .execute(connection)
@@ -536,7 +556,7 @@ impl DatabaseOperation<Postgres> for Migrator<Postgres> {
         migration: &Box<dyn Migration<Postgres>>,
         connection: &mut <Postgres as sqlx::Database>::Connection,
     ) -> Result<(), Error> {
-        sqlx::query(postgres_sqlite_delete_migration())
+        sqlx::query(&self.replace_table_name(postgres_sqlite_delete_migration()))
             .bind(migration.app())
             .bind(migration.name())
             .execute(connection)
@@ -545,7 +565,7 @@ impl DatabaseOperation<Postgres> for Migrator<Postgres> {
     }
 
     async fn fetch_applied_migration_from_db(&self) -> Result<Vec<AppliedMigrationSqlRow>, Error> {
-        let rows = sqlx::query_as(common_fetch_row())
+        let rows = sqlx::query_as(&self.replace_table_name(common_fetch_row()))
             .fetch_all(&self.pool)
             .await?;
         Ok(rows)
@@ -578,14 +598,16 @@ fn sqlite_create_migrator_table() -> &'static str {
 #[async_trait::async_trait]
 impl DatabaseOperation<Sqlite> for Migrator<Sqlite> {
     async fn ensure_migration_table_exists(&self) -> Result<(), Error> {
-        sqlx::query(sqlite_create_migrator_table())
+        sqlx::query(&self.replace_table_name(sqlite_create_migrator_table()))
             .execute(&self.pool)
             .await?;
         Ok(())
     }
 
     async fn drop_migration_table_if_exists(&self) -> Result<(), Error> {
-        sqlx::query(common_drop_table()).execute(&self.pool).await?;
+        sqlx::query(&self.replace_table_name(common_drop_table()))
+            .execute(&self.pool)
+            .await?;
         Ok(())
     }
 
@@ -594,7 +616,7 @@ impl DatabaseOperation<Sqlite> for Migrator<Sqlite> {
         migration: &Box<dyn Migration<Sqlite>>,
         connection: &mut <Sqlite as sqlx::Database>::Connection,
     ) -> Result<(), Error> {
-        sqlx::query(postgres_sqlite_add_migration())
+        sqlx::query(&self.replace_table_name(postgres_sqlite_add_migration()))
             .bind(migration.app())
             .bind(migration.name())
             .execute(connection)
@@ -607,7 +629,7 @@ impl DatabaseOperation<Sqlite> for Migrator<Sqlite> {
         migration: &Box<dyn Migration<Sqlite>>,
         connection: &mut <Sqlite as sqlx::Database>::Connection,
     ) -> Result<(), Error> {
-        sqlx::query(postgres_sqlite_delete_migration())
+        sqlx::query(&self.replace_table_name(postgres_sqlite_delete_migration()))
             .bind(migration.app())
             .bind(migration.name())
             .execute(connection)
@@ -616,7 +638,7 @@ impl DatabaseOperation<Sqlite> for Migrator<Sqlite> {
     }
 
     async fn fetch_applied_migration_from_db(&self) -> Result<Vec<AppliedMigrationSqlRow>, Error> {
-        let rows = sqlx::query_as(common_fetch_row())
+        let rows = sqlx::query_as(&self.replace_table_name(common_fetch_row()))
             .fetch_all(&self.pool)
             .await?;
         Ok(rows)
@@ -681,14 +703,16 @@ async fn mysql_unlock(pool: &Pool<MySql>) -> Result<(), Error> {
 #[async_trait::async_trait]
 impl DatabaseOperation<MySql> for Migrator<MySql> {
     async fn ensure_migration_table_exists(&self) -> Result<(), Error> {
-        sqlx::query(mysql_create_migrator_table())
+        sqlx::query(&self.replace_table_name(mysql_create_migrator_table()))
             .execute(&self.pool)
             .await?;
         Ok(())
     }
 
     async fn drop_migration_table_if_exists(&self) -> Result<(), Error> {
-        sqlx::query(common_drop_table()).execute(&self.pool).await?;
+        sqlx::query(&self.replace_table_name(common_drop_table()))
+            .execute(&self.pool)
+            .await?;
         Ok(())
     }
 
@@ -697,7 +721,7 @@ impl DatabaseOperation<MySql> for Migrator<MySql> {
         migration: &Box<dyn Migration<MySql>>,
         connection: &mut <MySql as sqlx::Database>::Connection,
     ) -> Result<(), Error> {
-        sqlx::query(mysql_add_migration())
+        sqlx::query(&self.replace_table_name(mysql_add_migration()))
             .bind(migration.app())
             .bind(migration.name())
             .execute(connection)
@@ -710,7 +734,7 @@ impl DatabaseOperation<MySql> for Migrator<MySql> {
         migration: &Box<dyn Migration<MySql>>,
         connection: &mut <MySql as sqlx::Database>::Connection,
     ) -> Result<(), Error> {
-        sqlx::query(mysql_delete_migration())
+        sqlx::query(&self.replace_table_name(mysql_delete_migration()))
             .bind(migration.app())
             .bind(migration.name())
             .execute(connection)
@@ -719,7 +743,7 @@ impl DatabaseOperation<MySql> for Migrator<MySql> {
     }
 
     async fn fetch_applied_migration_from_db(&self) -> Result<Vec<AppliedMigrationSqlRow>, Error> {
-        let rows = sqlx::query_as(common_fetch_row())
+        let rows = sqlx::query_as(&self.replace_table_name(common_fetch_row()))
             .fetch_all(&self.pool)
             .await?;
         Ok(rows)
@@ -747,18 +771,21 @@ impl DatabaseOperation<Any> for Migrator<Any> {
         let pool = &self.pool;
         let sql_query = match pool.any_kind() {
             #[cfg(feature = "postgres")]
-            AnyKind::Postgres => postgres_create_migrator_table(),
+            AnyKind::Postgres => &self.replace_table_name(postgres_create_migrator_table()),
             #[cfg(feature = "sqlite")]
-            AnyKind::Sqlite => sqlite_create_migrator_table(),
+            AnyKind::Sqlite => &self.replace_table_name(sqlite_create_migrator_table()),
             #[cfg(feature = "mysql")]
-            AnyKind::MySql => mysql_create_migrator_table(),
+            AnyKind::MySql => &self.replace_table_name(mysql_create_migrator_table()),
+            _ => {}
         };
         sqlx::query(sql_query).execute(pool).await?;
         Ok(())
     }
 
     async fn drop_migration_table_if_exists(&self) -> Result<(), Error> {
-        sqlx::query(common_drop_table()).execute(&self.pool).await?;
+        sqlx::query(&self.replace_table_name(common_drop_table()))
+            .execute(&self.pool)
+            .await?;
         Ok(())
     }
 
@@ -770,11 +797,11 @@ impl DatabaseOperation<Any> for Migrator<Any> {
         let pool = &self.pool;
         let sql_query = match pool.any_kind() {
             #[cfg(feature = "postgres")]
-            AnyKind::Postgres => postgres_sqlite_add_migration(),
+            AnyKind::Postgres => &self.replace_table_name(postgres_sqlite_add_migration()),
             #[cfg(feature = "sqlite")]
-            AnyKind::Sqlite => postgres_sqlite_add_migration(),
+            AnyKind::Sqlite => &self.replace_table_name(postgres_sqlite_add_migration()),
             #[cfg(feature = "mysql")]
-            AnyKind::MySql => mysql_add_migration(),
+            AnyKind::MySql => &self.replace_table_name(mysql_add_migration()),
         };
         sqlx::query(sql_query)
             .bind(migration.app())
@@ -792,11 +819,11 @@ impl DatabaseOperation<Any> for Migrator<Any> {
         let pool = &self.pool;
         let sql_query = match pool.any_kind() {
             #[cfg(feature = "postgres")]
-            AnyKind::Postgres => postgres_sqlite_delete_migration(),
+            AnyKind::Postgres => &self.replace_table_name(postgres_sqlite_delete_migration()),
             #[cfg(feature = "sqlite")]
-            AnyKind::Sqlite => postgres_sqlite_delete_migration(),
+            AnyKind::Sqlite => &self.replace_table_name(postgres_sqlite_delete_migration()),
             #[cfg(feature = "mysql")]
-            AnyKind::MySql => mysql_delete_migration(),
+            AnyKind::MySql => &self.replace_table_name(mysql_delete_migration()),
         };
         sqlx::query(sql_query)
             .bind(migration.app())
@@ -807,7 +834,7 @@ impl DatabaseOperation<Any> for Migrator<Any> {
     }
 
     async fn fetch_applied_migration_from_db(&self) -> Result<Vec<AppliedMigrationSqlRow>, Error> {
-        let rows = sqlx::query_as(common_fetch_row())
+        let rows = sqlx::query_as(&self.replace_table_name(common_fetch_row()))
             .fetch_all(&self.pool)
             .await?;
         Ok(rows)
