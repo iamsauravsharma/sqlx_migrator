@@ -771,12 +771,11 @@ impl DatabaseOperation<Any> for Migrator<Any> {
         let pool = &self.pool;
         let sql_query = match pool.any_kind() {
             #[cfg(feature = "postgres")]
-            AnyKind::Postgres => &self.replace_table_name(postgres_create_migrator_table()),
+            AnyKind::Postgres => self.replace_table_name(postgres_create_migrator_table()).as_ref(),
             #[cfg(feature = "sqlite")]
-            AnyKind::Sqlite => &self.replace_table_name(sqlite_create_migrator_table()),
+            AnyKind::Sqlite => self.replace_table_name(sqlite_create_migrator_table()).as_ref(),
             #[cfg(feature = "mysql")]
-            AnyKind::MySql => &self.replace_table_name(mysql_create_migrator_table()),
-            _ => {}
+            AnyKind::MySql => self.replace_table_name(mysql_create_migrator_table()).as_ref(),
         };
         sqlx::query(sql_query).execute(pool).await?;
         Ok(())
@@ -797,11 +796,11 @@ impl DatabaseOperation<Any> for Migrator<Any> {
         let pool = &self.pool;
         let sql_query = match pool.any_kind() {
             #[cfg(feature = "postgres")]
-            AnyKind::Postgres => &self.replace_table_name(postgres_sqlite_add_migration()),
+            AnyKind::Postgres => self.replace_table_name(postgres_sqlite_add_migration()).as_ref(),
             #[cfg(feature = "sqlite")]
-            AnyKind::Sqlite => &self.replace_table_name(postgres_sqlite_add_migration()),
+            AnyKind::Sqlite => self.replace_table_name(postgres_sqlite_add_migration()).as_ref(),
             #[cfg(feature = "mysql")]
-            AnyKind::MySql => &self.replace_table_name(mysql_add_migration()),
+            AnyKind::MySql => self.replace_table_name(mysql_add_migration()).as_ref(),
         };
         sqlx::query(sql_query)
             .bind(migration.app())
@@ -819,11 +818,11 @@ impl DatabaseOperation<Any> for Migrator<Any> {
         let pool = &self.pool;
         let sql_query = match pool.any_kind() {
             #[cfg(feature = "postgres")]
-            AnyKind::Postgres => &self.replace_table_name(postgres_sqlite_delete_migration()),
+            AnyKind::Postgres => self.replace_table_name(postgres_sqlite_delete_migration()).as_ref(),
             #[cfg(feature = "sqlite")]
-            AnyKind::Sqlite => &self.replace_table_name(postgres_sqlite_delete_migration()),
+            AnyKind::Sqlite => self.replace_table_name(postgres_sqlite_delete_migration()).as_ref(),
             #[cfg(feature = "mysql")]
-            AnyKind::MySql => &self.replace_table_name(mysql_delete_migration()),
+            AnyKind::MySql => self.replace_table_name(mysql_delete_migration()).as_ref(),
         };
         sqlx::query(sql_query)
             .bind(migration.app())
