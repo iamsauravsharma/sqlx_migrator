@@ -160,6 +160,154 @@ where
 /// implements all methods which depends on DatabaseOperation trait. This trait
 /// is not required to implement any method since all have provided
 /// implementation and good to go for database agnostic case
+///
+/// # Example
+/// Create own custom Migrator which only supports postgres and uses own unique
+/// table name instead of default table name
+///
+/// ```rust,no_run
+/// use std::collections::HashSet;
+///
+/// use sqlx::{Pool, Postgres};
+/// use sqlx_migrator::error::Error;
+/// use sqlx_migrator::migration::{AppliedMigrationSqlRow, Migration};
+/// use sqlx_migrator::migrator::{DatabaseOperation, Info, Migrate};
+///
+/// pub struct CustomMigrator {
+///     migrations: HashSet<Box<dyn Migration<Postgres>>>,
+///     pool: Pool<Postgres>,
+/// }
+///
+/// impl Info<Postgres> for CustomMigrator {
+///     fn migrations(&self) -> &HashSet<Box<dyn Migration<Postgres>>> {
+///         &self.migrations
+///     }
+///
+///     fn migrations_mut(&mut self) -> &mut HashSet<Box<dyn Migration<Postgres>>> {
+///         &mut self.migrations
+///     }
+///
+///     fn pool(&self) -> &Pool<Postgres> {
+///         &self.pool
+///     }
+/// }
+/// #[must_use]
+/// pub(crate) fn create_migrator_table_query() -> &'static str {
+///     "CREATE TABLE IF NOT EXISTS _custom_migrator_table_name (
+///        id INT PRIMARY KEY NOT NULL GENERATED ALWAYS AS IDENTITY,
+///        app TEXT NOT NULL,
+///        name TEXT NOT NULL,
+///        applied_time TIMESTAMPTZ NOT NULL DEFAULT now(),
+///        UNIQUE (app, name)
+///    )"
+/// }
+///
+/// #[must_use]
+/// pub(crate) fn drop_table_query() -> &'static str {
+///     "DROP TABLE IF EXISTS _custom_migrator_table_name"
+/// }
+///
+/// #[must_use]
+/// pub(crate) fn fetch_row_query() -> &'static str {
+///     "SELECT id, app, name, applied_time FROM _custom_migrator_table_name"
+/// }
+///
+/// #[must_use]
+/// pub(crate) fn add_migration_query() -> &'static str {
+///     "INSERT INTO _custom_migrator_table_name(app, name) VALUES ($1, $2)"
+/// }
+///
+/// #[must_use]
+/// pub(crate) fn delete_migration_query() -> &'static str {
+///     "DELETE FROM _custom_migrator_table_name WHERE app = $1 AND name = $2"
+/// }
+///
+/// pub(crate) async fn lock_database(pool: &Pool<Postgres>) -> Result<(), Error> {
+///     let database = pool.connect_options().get_database().unwrap_or_default();
+///     let lock_id = i64::from(crc32fast::hash(database.as_bytes()));
+///     sqlx::query(
+///         "SELECT
+/// pg_advisory_lock($1)",
+///     )
+///     .bind(lock_id)
+///     .execute(pool)
+///     .await?;
+///     Ok(())
+/// }
+///
+/// pub(crate) async fn unlock_database(pool: &Pool<Postgres>) -> Result<(), Error> {
+///     let database = pool.connect_options().get_database().unwrap_or_default();
+///     let lock_id = i64::from(crc32fast::hash(database.as_bytes()));
+///     sqlx::query(
+///         "SELECT
+/// pg_advisory_unlock($1)",
+///     )
+///     .bind(lock_id)
+///     .execute(pool)
+///     .await?;
+///     Ok(())
+/// }
+///
+/// #[async_trait::async_trait]
+/// impl DatabaseOperation<Postgres> for CustomMigrator {
+///     async fn ensure_migration_table_exists(&self) -> Result<(), Error> {
+///         sqlx::query(create_migrator_table_query())
+///             .execute(&self.pool)
+///             .await?;
+///         Ok(())
+///     }
+///
+///     async fn drop_migration_table_if_exists(&self) -> Result<(), Error> {
+///         sqlx::query(drop_table_query()).execute(&self.pool).await?;
+///         Ok(())
+///     }
+///
+///     async fn add_migration_to_db_table(
+///         &self,
+///         migration: &Box<dyn Migration<Postgres>>,
+///         connection: &mut <Postgres as sqlx::Database>::Connection,
+///     ) -> Result<(), Error> {
+///         sqlx::query(add_migration_query())
+///             .bind(migration.app())
+///             .bind(migration.name())
+///             .execute(connection)
+///             .await?;
+///         Ok(())
+///     }
+///
+///     async fn delete_migration_from_db_table(
+///         &self,
+///         migration: &Box<dyn Migration<Postgres>>,
+///         connection: &mut <Postgres as sqlx::Database>::Connection,
+///     ) -> Result<(), Error> {
+///         sqlx::query(delete_migration_query())
+///             .bind(migration.app())
+///             .bind(migration.name())
+///             .execute(connection)
+///             .await?;
+///         Ok(())
+///     }
+///
+///     async fn fetch_applied_migration_from_db(
+///         &self,
+///     ) -> Result<Vec<AppliedMigrationSqlRow>, Error> {
+///         let rows = sqlx::query_as(fetch_row_query())
+///             .fetch_all(&self.pool)
+///             .await?;
+///         Ok(rows)
+///     }
+///
+///     async fn lock(&self) -> Result<(), Error> {
+///         lock_database(&self.pool).await
+///     }
+///
+///     async fn unlock(&self) -> Result<(), Error> {
+///         unlock_database(&self.pool).await
+///     }
+/// }
+///
+/// impl Migrate<Postgres> for CustomMigrator {}
+/// ```
 #[async_trait::async_trait]
 pub trait Migrate<DB>: Info<DB> + DatabaseOperation<DB> + Send + Sync
 where
