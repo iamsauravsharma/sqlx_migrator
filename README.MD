@@ -93,7 +93,8 @@ Now at last you need to create migrator for your database to run migrations
 use sqlx_migrator::migrator::{Info, Migrate, Migrator};
 use sqlx_migrator::sqlx::Postgres;
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let uri = std::env::var("DATABASE_URL").unwrap();
     let pool = sqlx::Pool::<Postgres>::connect(&uri).await.unwrap();
     let mut migrator = Migrator::new(&pool);
