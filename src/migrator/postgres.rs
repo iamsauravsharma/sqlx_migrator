@@ -40,30 +40,26 @@ pub(crate) fn delete_migration_query() -> &'static str {
     "DELETE FROM _sqlx_migrator_migrations WHERE app = $1 AND name = $2"
 }
 
-/// lock database
-/// # Errors
-/// Failed to lock database
-pub(crate) async fn lock_database(pool: &Pool<Postgres>) -> Result<(), Error> {
-    let database = pool.connect_options().get_database().unwrap_or_default();
-    let lock_id = i64::from(crc32fast::hash(database.as_bytes()));
-    sqlx::query("SELECT pg_advisory_lock($1)")
-        .bind(lock_id)
-        .execute(pool)
+/// get lock id
+pub(crate) async fn lock_id(pool: &Pool<Postgres>) -> Result<i64, Error> {
+    let (database,): (String,) = sqlx::query_as("SELECT CURRENT_DATABASE()")
+        .fetch_one(pool)
         .await?;
-    Ok(())
+    Ok(i64::from(crc32fast::hash(database.as_bytes())))
 }
 
-/// unlock database
+/// get lock database query
 /// # Errors
-/// Failed to unlock database
-pub(crate) async fn unlock_database(pool: &Pool<Postgres>) -> Result<(), Error> {
-    let database = pool.connect_options().get_database().unwrap_or_default();
-    let lock_id = i64::from(crc32fast::hash(database.as_bytes()));
-    sqlx::query("SELECT pg_advisory_unlock($1)")
-        .bind(lock_id)
-        .execute(pool)
-        .await?;
-    Ok(())
+/// Failed to lock database
+pub(crate) fn lock_database_query() -> &'static str {
+    "SELECT pg_advisory_lock($1)"
+}
+
+/// get lock database query
+/// # Errors
+/// Failed to lock database
+pub(crate) fn unlock_database_query() -> &'static str {
+    "SELECT pg_advisory_unlock($1)"
 }
 
 #[async_trait::async_trait]
@@ -113,12 +109,28 @@ impl DatabaseOperation<Postgres> for Migrator<Postgres> {
         Ok(rows)
     }
 
-    async fn lock(&self) -> Result<(), Error> {
-        lock_database(&self.pool).await
+    async fn lock(
+        &self,
+        connection: &mut <Postgres as sqlx::Database>::Connection,
+    ) -> Result<(), Error> {
+        let lock_id = lock_id(&self.pool).await?;
+        sqlx::query(lock_database_query())
+            .bind(lock_id)
+            .execute(connection)
+            .await?;
+        Ok(())
     }
 
-    async fn unlock(&self) -> Result<(), Error> {
-        unlock_database(&self.pool).await
+    async fn unlock(
+        &self,
+        connection: &mut <Postgres as sqlx::Database>::Connection,
+    ) -> Result<(), Error> {
+        let lock_id = lock_id(&self.pool).await?;
+        sqlx::query(unlock_database_query())
+            .bind(lock_id)
+            .execute(connection)
+            .await?;
+        Ok(())
     }
 }
 

@@ -87,11 +87,17 @@ impl DatabaseOperation<Sqlite> for Migrator<Sqlite> {
         Ok(rows)
     }
 
-    async fn lock(&self) -> Result<(), Error> {
+    async fn lock(
+        &self,
+        _connection: &mut <Sqlite as sqlx::Database>::Connection,
+    ) -> Result<(), Error> {
         Ok(())
     }
 
-    async fn unlock(&self) -> Result<(), Error> {
+    async fn unlock(
+        &self,
+        _connection: &mut <Sqlite as sqlx::Database>::Connection,
+    ) -> Result<(), Error> {
         Ok(())
     }
 }

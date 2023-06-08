@@ -67,30 +67,19 @@
 //!     "DELETE FROM _custom_migrator_table_name WHERE app = $1 AND name = $2"
 //! }
 //!
-//! pub(crate) async fn lock_database(pool: &Pool<Postgres>) -> Result<(), Error> {
-//!     let database = pool.connect_options().get_database().unwrap_or_default();
-//!     let lock_id = i64::from(crc32fast::hash(database.as_bytes()));
-//!     sqlx::query(
-//!         "SELECT
-//! pg_advisory_lock($1)",
-//!     )
-//!     .bind(lock_id)
-//!     .execute(pool)
-//!     .await?;
-//!     Ok(())
+//! pub(crate) async fn lock_id(pool: &Pool<Postgres>) -> Result<i64, Error> {
+//!     let (database,): (String,) = sqlx::query_as("SELECT CURRENT_DATABASE()")
+//!         .fetch_one(pool)
+//!         .await?;
+//!     Ok(i64::from(crc32fast::hash(database.as_bytes())))
 //! }
 //!
-//! pub(crate) async fn unlock_database(pool: &Pool<Postgres>) -> Result<(), Error> {
-//!     let database = pool.connect_options().get_database().unwrap_or_default();
-//!     let lock_id = i64::from(crc32fast::hash(database.as_bytes()));
-//!     sqlx::query(
-//!         "SELECT
-//! pg_advisory_unlock($1)",
-//!     )
-//!     .bind(lock_id)
-//!     .execute(pool)
-//!     .await?;
-//!     Ok(())
+//! pub(crate) fn lock_database_query() -> &'static str {
+//!     "SELECT pg_advisory_lock($1)"
+//! }
+//!
+//! pub(crate) fn unlock_database_query() -> &'static str {
+//!     "SELECT pg_advisory_unlock($1)"
 //! }
 //!
 //! #[async_trait::async_trait]
@@ -142,12 +131,28 @@
 //!         Ok(rows)
 //!     }
 //!
-//!     async fn lock(&self) -> Result<(), Error> {
-//!         lock_database(&self.pool).await
+//!     async fn lock(
+//!         &self,
+//!         connection: &mut <Postgres as sqlx::Database>::Connection,
+//!     ) -> Result<(), Error> {
+//!         let lock_id = lock_id(&self.pool).await?;
+//!         sqlx::query(lock_database_query())
+//!             .bind(lock_id)
+//!             .execute(connection)
+//!             .await?;
+//!         Ok(())
 //!     }
 //!
-//!     async fn unlock(&self) -> Result<(), Error> {
-//!         unlock_database(&self.pool).await
+//!     async fn unlock(
+//!         &self,
+//!         connection: &mut <Postgres as sqlx::Database>::Connection,
+//!     ) -> Result<(), Error> {
+//!         let lock_id = lock_id(&self.pool).await?;
+//!         sqlx::query(unlock_database_query())
+//!             .bind(lock_id)
+//!             .execute(connection)
+//!             .await?;
+//!         Ok(())
 //!     }
 //! }
 //!
@@ -299,10 +304,13 @@ where
     async fn fetch_applied_migration_from_db(&self) -> Result<Vec<AppliedMigrationSqlRow>, Error>;
 
     /// Lock database while doing migrations so no two migrations run together
-    async fn lock(&self) -> Result<(), Error>;
+    async fn lock(&self, connection: &mut <DB as sqlx::Database>::Connection) -> Result<(), Error>;
 
     /// Unlock locked database
-    async fn unlock(&self) -> Result<(), Error>;
+    async fn unlock(
+        &self,
+        connection: &mut <DB as sqlx::Database>::Connection,
+    ) -> Result<(), Error>;
 }
 
 /// Migrate trait which migrate a database according to requirements. This trait
@@ -472,14 +480,15 @@ where
         if cfg!(feature = "tracing") {
             tracing::info!("Applying all migration");
         }
-        self.lock().await?;
+        let mut connection = self.pool().acquire().await?;
+        self.lock(&mut connection).await?;
         for migration in self
             .generate_migration_plan(Plan::new(PlanType::Apply, None, None)?)
             .await?
         {
             self.apply_migration(migration).await?;
         }
-        self.unlock().await?;
+        self.unlock(&mut connection).await?;
         Ok(())
     }
 
@@ -520,14 +529,15 @@ where
         if cfg!(feature = "tracing") {
             tracing::info!("Reverting all migration");
         }
-        self.lock().await?;
+        let mut connection = self.pool().acquire().await?;
+        self.lock(&mut connection).await?;
         for migration in self
             .generate_migration_plan(Plan::new(PlanType::Revert, None, None)?)
             .await?
         {
             self.revert_migration(migration).await?;
         }
-        self.unlock().await?;
+        self.unlock(&mut connection).await?;
         Ok(())
     }
 

@@ -40,30 +40,24 @@ pub(crate) fn delete_migration_query() -> &'static str {
     "DELETE FROM _sqlx_migrator_migrations WHERE app = ? AND name = ?"
 }
 
-/// Lock database
-/// # Errors
-/// Failed to obtain lock of database
-pub(crate) async fn lock_database(pool: &Pool<MySql>) -> Result<(), Error> {
-    let row: (String,) = sqlx::query_as("SELECT DATABASE()").fetch_one(pool).await?;
-    let lock_id = crc32fast::hash(row.0.as_bytes()).to_string();
-    sqlx::query("SELECT GET_LOCK(?, -1)")
-        .bind(lock_id)
-        .execute(pool)
-        .await?;
-    Ok(())
+/// get lock id
+pub(crate) async fn lock_id(pool: &Pool<MySql>) -> Result<String, Error> {
+    let (database,): (String,) = sqlx::query_as("SELECT DATABASE()").fetch_one(pool).await?;
+    Ok(crc32fast::hash(database.as_bytes()).to_string())
 }
 
-/// unlock database
+/// get lock database query
 /// # Errors
-/// Failed to unlock database
-pub(crate) async fn unlock_database(pool: &Pool<MySql>) -> Result<(), Error> {
-    let row: (String,) = sqlx::query_as("SELECT DATABASE()").fetch_one(pool).await?;
-    let lock_id = crc32fast::hash(row.0.as_bytes()).to_string();
-    sqlx::query("SELECT RELEASE_LOCK(?)")
-        .bind(lock_id)
-        .execute(pool)
-        .await?;
-    Ok(())
+/// Failed to lock database
+pub(crate) fn lock_database_query() -> &'static str {
+    "SELECT GET_LOCK(?, -1)"
+}
+
+/// get lock database query
+/// # Errors
+/// Failed to lock database
+pub(crate) fn unlock_database_query() -> &'static str {
+    "SELECT RELEASE_LOCK(?)"
 }
 
 #[async_trait::async_trait]
@@ -113,12 +107,28 @@ impl DatabaseOperation<MySql> for Migrator<MySql> {
         Ok(rows)
     }
 
-    async fn lock(&self) -> Result<(), Error> {
-        lock_database(&self.pool).await
+    async fn lock(
+        &self,
+        connection: &mut <MySql as sqlx::Database>::Connection,
+    ) -> Result<(), Error> {
+        let lock_id = lock_id(&self.pool).await?;
+        sqlx::query(lock_database_query())
+            .bind(lock_id)
+            .execute(connection)
+            .await?;
+        Ok(())
     }
 
-    async fn unlock(&self) -> Result<(), Error> {
-        unlock_database(&self.pool).await
+    async fn unlock(
+        &self,
+        connection: &mut <MySql as sqlx::Database>::Connection,
+    ) -> Result<(), Error> {
+        let lock_id = lock_id(&self.pool).await?;
+        sqlx::query(unlock_database_query())
+            .bind(lock_id)
+            .execute(connection)
+            .await?;
+        Ok(())
     }
 }
 
