@@ -1,5 +1,5 @@
-use sqlx::any::AnyKind;
-use sqlx::{Any, Pool};
+use sqlx::any::{AnyArguments, AnyKind};
+use sqlx::{Any, Arguments, Pool};
 
 #[cfg(feature = "mysql")]
 use super::mysql;
@@ -99,8 +99,13 @@ impl DatabaseOperation<Any> for Migrator<Any> {
         Ok(rows)
     }
 
-    async fn lock(&self) -> Result<(), Error> {
+    async fn lock(
+        &self,
+        connection: &mut <Any as sqlx::Database>::Connection,
+    ) -> Result<(), Error> {
         let connect_options = self.pool.connect_options();
+        let mut query = None;
+        let mut arguments = AnyArguments::default();
         match connect_options.kind() {
             #[cfg(feature = "postgres")]
             AnyKind::Postgres => {
@@ -108,8 +113,9 @@ impl DatabaseOperation<Any> for Migrator<Any> {
                     .as_postgres()
                     .ok_or(Error::FailedDatabaseConversion)?
                     .clone();
-                let postgres_pool = Pool::connect_with(connect_options).await?;
-                postgres::lock_database(&postgres_pool).await?;
+                let pool = Pool::connect_with(connect_options).await?;
+                query = Some(postgres::lock_database_query());
+                arguments.add(postgres::lock_id(&pool).await?);
             }
             #[cfg(feature = "sqlite")]
             AnyKind::Sqlite => {}
@@ -119,15 +125,24 @@ impl DatabaseOperation<Any> for Migrator<Any> {
                     .as_mysql()
                     .ok_or(Error::FailedDatabaseConversion)?
                     .clone();
-                let mysql_pool = Pool::connect_with(connect_options).await?;
-                mysql::lock_database(&mysql_pool).await?;
+                let pool = Pool::connect_with(connect_options).await?;
+                query = Some(mysql::lock_database_query());
+                arguments.add(mysql::lock_id(&pool).await?);
             }
         };
+        if let Some(sql) = query {
+            sqlx::query_with(sql, arguments).execute(connection).await?;
+        }
         Ok(())
     }
 
-    async fn unlock(&self) -> Result<(), Error> {
+    async fn unlock(
+        &self,
+        connection: &mut <Any as sqlx::Database>::Connection,
+    ) -> Result<(), Error> {
         let connect_options = self.pool.connect_options();
+        let mut query = None;
+        let mut arguments = AnyArguments::default();
         match connect_options.kind() {
             #[cfg(feature = "postgres")]
             AnyKind::Postgres => {
@@ -135,8 +150,9 @@ impl DatabaseOperation<Any> for Migrator<Any> {
                     .as_postgres()
                     .ok_or(Error::FailedDatabaseConversion)?
                     .clone();
-                let postgres_pool = Pool::connect_with(connect_options).await?;
-                postgres::unlock_database(&postgres_pool).await?;
+                let pool = Pool::connect_with(connect_options).await?;
+                query = Some(postgres::unlock_database_query());
+                arguments.add(postgres::lock_id(&pool).await?);
             }
             #[cfg(feature = "sqlite")]
             AnyKind::Sqlite => {}
@@ -146,10 +162,14 @@ impl DatabaseOperation<Any> for Migrator<Any> {
                     .as_mysql()
                     .ok_or(Error::FailedDatabaseConversion)?
                     .clone();
-                let mysql_pool = Pool::connect_with(connect_options).await?;
-                mysql::unlock_database(&mysql_pool).await?;
+                let pool = Pool::connect_with(connect_options).await?;
+                query = Some(mysql::unlock_database_query());
+                arguments.add(mysql::lock_id(&pool).await?);
             }
         };
+        if let Some(sql) = query {
+            sqlx::query_with(sql, arguments).execute(connection).await?;
+        }
         Ok(())
     }
 }
