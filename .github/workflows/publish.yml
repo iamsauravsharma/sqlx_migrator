@@ -16,7 +16,7 @@ jobs:
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
         run: |
-          cargo publish --features postgres,sqlite,mysql,any,runtime-tokio-rustls
+          cargo publish --features postgres,sqlite,mysql,any,runtime-tokio,tls-rustls
 
   publish_release_note:
     name: Publish release note

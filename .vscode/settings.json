@@ -4,6 +4,7 @@
         "sqlite",
         "mysql",
         "any",
-        "runtime-tokio-rustls"
+        "runtime-tokio",
+        "tls-rustls"
     ]
 }

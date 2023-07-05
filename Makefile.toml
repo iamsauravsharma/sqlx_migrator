@@ -2,7 +2,7 @@
 RUST_BACKTRACE = "full"
 
 [env.FEATURES_FLAG]
-value = "--features runtime-tokio-rustls,sqlite,postgres,mysql,any"
+value = "--features runtime-tokio,tls-rustls,sqlite,postgres,mysql,any"
 condition = { env_not_set = ["FEATURES_FLAG"] }
 
 [tasks.clean]
@@ -13,11 +13,7 @@ args = ["clean"]
 [tasks.build]
 description = "Run cargo build"
 command = "cargo"
-args = [
-    "build",
-    "--workspace",
-    "@@split(FEATURES_FLAG, )"
-]
+args = ["build", "--workspace", "@@split(FEATURES_FLAG, )"]
 
 [tasks.fmt]
 condition = { channels = ["nightly"] }
@@ -41,34 +37,17 @@ args = [
 [tasks.test]
 description = "Run test"
 command = "cargo"
-args = [
-    "test",
-    "--workspace",
-    "@@split(FEATURES_FLAG, )",
-
-]
+args = ["test", "--workspace", "@@split(FEATURES_FLAG, )"]
 
 [tasks.doc]
 description = "Run doc"
 command = "cargo"
-args = [
-    "doc",
-    "--workspace",
-    "--no-deps",
-    "@@split(FEATURES_FLAG, )",
-
-]
+args = ["doc", "--workspace", "--no-deps", "@@split(FEATURES_FLAG, )"]
 
 [tasks.rustdoc]
 description = "Run rustdoc"
 command = "cargo"
-args = [
-    "rustdoc",
-    "@@split(FEATURES_FLAG, )",
-    "--",
-    "--cfg",
-    "docsrs",
-]
+args = ["rustdoc", "@@split(FEATURES_FLAG, )", "--", "--cfg", "docsrs"]
 
 [tasks.local]
 dependencies = ["fmt", "build", "clippy", "doc", "test"]

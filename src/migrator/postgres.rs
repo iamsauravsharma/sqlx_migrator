@@ -22,10 +22,15 @@ pub(crate) fn drop_table_query() -> &'static str {
     "DROP TABLE IF EXISTS _sqlx_migrator_migrations"
 }
 
-/// Fetch row query
-#[must_use]
-pub(crate) fn fetch_row_query() -> &'static str {
-    "SELECT id, app, name, applied_time FROM _sqlx_migrator_migrations"
+/// Fetch rows
+pub(crate) async fn fetch_rows(
+    pool: &Pool<Postgres>,
+) -> Result<Vec<AppliedMigrationSqlRow>, Error> {
+    Ok(
+        sqlx::query_as("SELECT id, app, name, applied_time FROM _sqlx_migrator_migrations")
+            .fetch_all(pool)
+            .await?,
+    )
 }
 
 /// Add migration query
@@ -42,10 +47,10 @@ pub(crate) fn delete_migration_query() -> &'static str {
 
 /// get lock id
 pub(crate) async fn lock_id(pool: &Pool<Postgres>) -> Result<i64, Error> {
-    let (database,): (String,) = sqlx::query_as("SELECT CURRENT_DATABASE()")
+    let (database_name,): (String,) = sqlx::query_as("SELECT CURRENT_DATABASE()")
         .fetch_one(pool)
         .await?;
-    Ok(i64::from(crc32fast::hash(database.as_bytes())))
+    Ok(i64::from(crc32fast::hash(database_name.as_bytes())))
 }
 
 /// get lock database query
@@ -103,10 +108,7 @@ impl DatabaseOperation<Postgres> for Migrator<Postgres> {
     }
 
     async fn fetch_applied_migration_from_db(&self) -> Result<Vec<AppliedMigrationSqlRow>, Error> {
-        let rows = sqlx::query_as(fetch_row_query())
-            .fetch_all(&self.pool)
-            .await?;
-        Ok(rows)
+        fetch_rows(&self.pool).await
     }
 
     async fn lock(

@@ -49,7 +49,7 @@ pub enum Error {
     #[error("applied migrations exists. Revert all using revert subcommand")]
     AppliedMigrationExists,
 
-    /// Error when database pool cannot be created from any pool
-    #[error("failed to create database pool")]
-    FailedDatabaseConversion,
+    /// Error when unsupported database is used as any database
+    #[error("database not supported for any migrator")]
+    UnsupportedDatabase,
 }

@@ -12,19 +12,19 @@ keywords = ["sqlx", "sqlx_migrations", "rust_migrations"]
 categories = ["database"]
 
 [dependencies]
-sqlx = { version = "0.6.3", default-features = false, features = [
+sqlx = { version = "0.7.0", default-features = false, features = [
     "macros",
     "chrono",
 ] }
-async-trait = "0.1.68"
+async-trait = "0.1.70"
 tracing = { version = "0.1.37", optional = true }
-thiserror = "1.0.40"
-clap = { version = "4.3.0", features = ["derive"], optional = true }
+thiserror = "1.0.41"
+clap = { version = "4.3.10", features = ["derive"], optional = true }
 chrono = { version = "0.4.26", default-features = false, features = ["std"] }
 crc32fast = { version = "1.3.2", optional = true }
 
 [dev-dependencies]
-tokio = { version = "1.28.2", features = ["rt-multi-thread", "macros"] }
+tokio = { version = "1.29.1", features = ["rt-multi-thread", "macros"] }
 
 [features]
 default = ["cli", "tracing"]
@@ -34,12 +34,10 @@ sqlite = ["sqlx/sqlite"]
 mysql = ["sqlx/mysql", "dep:crc32fast"]
 any = ["sqlx/any"]
 cli = ["dep:clap"]
-runtime-async-std-native-tls = ["sqlx/runtime-async-std-native-tls"]
-runtime-async-std-rustls = ["sqlx/runtime-async-std-rustls"]
-runtime-actix-native-tls = ["sqlx/runtime-actix-native-tls"]
-runtime-actix-rustls = ["sqlx/runtime-actix-rustls"]
-runtime-tokio-native-tls = ["sqlx/runtime-tokio-native-tls"]
-runtime-tokio-rustls = ["sqlx/runtime-tokio-rustls"]
+runtime-async-std = ["sqlx/runtime-async-std"]
+runtime-tokio = ["sqlx/runtime-tokio"]
+tls-native-tls = ["sqlx/tls-native-tls"]
+tls-rustls = ["sqlx/tls-rustls"]
 
 [[example]]
 name = "postgres"
@@ -57,5 +55,5 @@ path = "examples/mysql/main.rs"
 required-features = ["mysql", "cli"]
 
 [package.metadata.docs.rs]
-features = ["postgres", "sqlite", "mysql", "any", "runtime-tokio-rustls"]
+features = ["postgres", "sqlite", "mysql", "any", "runtime-tokio", "tls-rustls"]
 rustdoc-args = ["--cfg", "docsrs"]

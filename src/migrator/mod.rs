@@ -447,24 +447,29 @@ where
             // Find position of last migration which matches condition of provided app and
             // migration name
             let position = if let Some(name) = plan.migration {
-                let Some(pos) =  migration_plan
+                let Some(pos) = migration_plan
                     .iter()
-                    .rposition(
-                        |migration| migration.app() == app && migration.name() == name
-                    )
-                    else {
-                        if migration_plan.iter().any(|migration| migration.app() == app) {
-                            return Err(Error::MigrationNameNotExists { app, migration: name });
-                        }
-                        return Err(Error::AppNameNotExists { app });
-                    };
+                    .rposition(|migration| migration.app() == app && migration.name() == name)
+                else {
+                    if migration_plan
+                        .iter()
+                        .any(|migration| migration.app() == app)
+                    {
+                        return Err(Error::MigrationNameNotExists {
+                            app,
+                            migration: name,
+                        });
+                    }
+                    return Err(Error::AppNameNotExists { app });
+                };
                 pos
             } else {
                 let Some(pos) = migration_plan
                     .iter()
-                    .rposition(|migration| migration.app() == app) else {
-                        return Err(Error::AppNameNotExists { app })
-                    };
+                    .rposition(|migration| migration.app() == app)
+                else {
+                    return Err(Error::AppNameNotExists { app });
+                };
                 pos
             };
             migration_plan.truncate(position + 1);
