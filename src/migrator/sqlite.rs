@@ -1,4 +1,4 @@
-use sqlx::Sqlite;
+use sqlx::{Pool, Sqlite};
 
 use super::{DatabaseOperation, Migrate, Migrator};
 use crate::error::Error;
@@ -22,10 +22,13 @@ pub(crate) fn drop_table_query() -> &'static str {
     "DROP TABLE IF EXISTS _sqlx_migrator_migrations"
 }
 
-/// fetch row query
-#[must_use]
-pub(crate) fn fetch_row_query() -> &'static str {
-    "SELECT id, app, name, applied_time FROM _sqlx_migrator_migrations"
+/// fetch rows
+pub(crate) async fn fetch_rows(pool: &Pool<Sqlite>) -> Result<Vec<AppliedMigrationSqlRow>, Error> {
+    Ok(
+        sqlx::query_as("SELECT id, app, name, applied_time FROM _sqlx_migrator_migrations")
+            .fetch_all(pool)
+            .await?,
+    )
 }
 
 /// add migration query
@@ -81,10 +84,7 @@ impl DatabaseOperation<Sqlite> for Migrator<Sqlite> {
     }
 
     async fn fetch_applied_migration_from_db(&self) -> Result<Vec<AppliedMigrationSqlRow>, Error> {
-        let rows = sqlx::query_as(fetch_row_query())
-            .fetch_all(&self.pool)
-            .await?;
-        Ok(rows)
+        fetch_rows(&self.pool).await
     }
 
     async fn lock(

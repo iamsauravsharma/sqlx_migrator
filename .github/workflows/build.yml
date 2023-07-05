@@ -24,7 +24,7 @@ jobs:
             rust-version: "nightly"
     runs-on: ${{ matrix.os }}
     env:
-      MAKE_FEATURES_FLAG: "--features postgres,sqlite,mysql,any,runtime-tokio-rustls"
+      MAKE_FEATURES_FLAG: "--features postgres,sqlite,mysql,any,runtime-tokio,tls-rustls"
     defaults:
       run:
         shell: bash
@@ -77,10 +77,10 @@ jobs:
         uses: dtolnay/rust-toolchain@nightly
       - name: Run example
         run: |
-          cargo run --example=postgres --features=postgres,runtime-tokio-rustls -- apply
-          cargo run --example=postgres --features=postgres,runtime-tokio-rustls -- revert --all
+          cargo run --example=postgres --features=postgres,runtime-tokio,tls-rustls -- apply
+          cargo run --example=postgres --features=postgres,runtime-tokio,tls-rustls -- revert --all
           touch db.sqlite3
-          cargo run --example=sqlite --features=sqlite,runtime-tokio-rustls -- apply
-          cargo run --example=sqlite --features=sqlite,runtime-tokio-rustls -- revert --all
-          cargo run --example=mysql --features=mysql,runtime-tokio-native-tls -- apply
-          cargo run --example=mysql --features=mysql,runtime-tokio-native-tls -- revert --all
+          cargo run --example=sqlite --features=sqlite,runtime-tokio,tls-rustls -- apply
+          cargo run --example=sqlite --features=sqlite,runtime-tokio,tls-rustls -- revert --all
+          cargo run --example=mysql --features=mysql,runtime-tokio,tls-native-tls -- apply
+          cargo run --example=mysql --features=mysql,runtime-tokio,tls-native-tls -- revert --all
