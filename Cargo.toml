@@ -25,6 +25,7 @@ crc32fast = { version = "1.3.2", optional = true }
 
 [dev-dependencies]
 tokio = { version = "1.29.1", features = ["rt-multi-thread", "macros"] }
+sqlx = { version = "0.7.0", features = ["runtime-tokio", "tls-rustls"] }
 
 [features]
 default = ["cli", "tracing"]
@@ -34,10 +35,6 @@ sqlite = ["sqlx/sqlite"]
 mysql = ["sqlx/mysql", "dep:crc32fast"]
 any = ["sqlx/any"]
 cli = ["dep:clap"]
-runtime-async-std = ["sqlx/runtime-async-std"]
-runtime-tokio = ["sqlx/runtime-tokio"]
-tls-native-tls = ["sqlx/tls-native-tls"]
-tls-rustls = ["sqlx/tls-rustls"]
 
 [[example]]
 name = "postgres"
@@ -55,5 +52,5 @@ path = "examples/mysql/main.rs"
 required-features = ["mysql", "cli"]
 
 [package.metadata.docs.rs]
-features = ["postgres", "sqlite", "mysql", "any", "runtime-tokio", "tls-rustls"]
+features = ["postgres", "sqlite", "mysql", "any"]
 rustdoc-args = ["--cfg", "docsrs"]
