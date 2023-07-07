@@ -4,3 +4,6 @@
 
 # MacOS related
 .DS_Store
+
+# VS code
+.vscode

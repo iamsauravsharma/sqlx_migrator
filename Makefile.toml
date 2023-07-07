@@ -2,7 +2,7 @@
 RUST_BACKTRACE = "full"
 
 [env.FEATURES_FLAG]
-value = "--features runtime-tokio,tls-rustls,sqlite,postgres,mysql,any"
+value = "--features sqlite,postgres,mysql,any"
 condition = { env_not_set = ["FEATURES_FLAG"] }
 
 [tasks.clean]
