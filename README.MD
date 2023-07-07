@@ -1,6 +1,6 @@
 # SQLX migrator
 
-Migrator for writing sqlx migration using Rust instead of SQL
+Migrator library for writing sqlx migration using Rust instead of SQL
 
 |                    License                     |              Crates Version               |                 Docs                 |
 | :--------------------------------------------: | :---------------------------------------: | :----------------------------------: |
@@ -15,15 +15,36 @@ Supported Databases:
 
 ## Installation
 
-To use postgres migrator you can configure Cargo.toml
+To use sqlx migrator you can configure Cargo.toml as shown below according to your requirements
 
 ```toml
 sqlx_migrator = { version = "0.8.0", features=["postgres"] }
 ```
 
+OR
+
+```toml
+sqlx_migrator = { version = "0.8.0", features=["mysql"] }
+```
+
+OR
+
+```toml
+sqlx_migrator = { version = "0.8.0", features=["sqlite"] }
+```
+
+OR
+
+```toml
+sqlx_migrator = { version = "0.8.0", features=[
+    "any",
+    # Plus any one of above database driver
+    ] }
+```
+
 # Usage
 
-To use sqlx_migrator first you need to implement Operation trait to write your sqlx operation
+To use sqlx_migrator first you need to implement Operation trait to write your sqlx operation below are examples for using postgres based migration
 
 ```rust
 use sqlx_migrator::error::Error;
@@ -152,12 +173,12 @@ pub(crate) struct SqlxOperation;
 #[async_trait::async_trait]
 impl Operation<sqlx::Postgres> for SqlxOperation {
     async fn up(&self, connection: &mut sqlx::PgConnection) -> Result<(), Error> {
-        sqlx::migrate!("db/migrations").run(connection).await?;
+        sqlx::migrate!("migrations").run(connection).await?;
         Ok(())
     }
 
     async fn down(&self, connection: &mut sqlx::PgConnection) -> Result<(), Error> {
-        sqlx::migrate!("db/migrations").undo(connection, 0).await?;
+        sqlx::migrate!("migrations").undo(connection, 0).await?;
         Ok(())
     }
 }
