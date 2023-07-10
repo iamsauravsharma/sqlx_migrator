@@ -111,7 +111,7 @@ impl Migration<sqlx::Postgres> for FirstMigration {
 Now at last you need to create migrator for your database to run migrations
 
 ```rust
-use sqlx_migrator::migrator::{Info, Migrate, Migrator};
+use sqlx_migrator::migrator::{Migrate, Migrator};
 use sqlx_migrator::sqlx::Postgres;
 
 #[tokio::main]

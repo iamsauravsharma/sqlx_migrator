@@ -227,9 +227,7 @@ impl Plan {
 }
 
 /// Info trait which implements some of database agnostic methods to
-/// return data. Only required methods needs to be implemented if you want to
-/// create your own migrator struct. This trait implements methods which doesn't
-/// depends on Database Operation trait methods
+/// return data
 pub trait Info<DB>
 where
     DB: sqlx::Database,
@@ -242,31 +240,6 @@ where
 
     /// Return pool of database
     fn pool(&self) -> &Pool<DB>;
-
-    /// Add vector of migrations to Migrator object
-    fn add_migrations(&mut self, migrations: Vec<Box<dyn Migration<DB>>>) {
-        for migration in migrations {
-            self.add_migration(migration);
-        }
-    }
-
-    /// Add single migration to migrator object
-    fn add_migration(&mut self, migration: Box<dyn Migration<DB>>) {
-        let migration_parents = migration.parents();
-        let migration_replaces = migration.replaces();
-        let is_new_value = self.migrations_mut().insert(migration);
-        // Only add parents and replaces if migrations was added first time. This can
-        // increase performance of recursive addition by ignoring parent and replace
-        // migration recursive addition
-        if is_new_value {
-            for parent in migration_parents {
-                self.add_migration(parent);
-            }
-            for replace in migration_replaces {
-                self.add_migration(replace);
-            }
-        }
-    }
 }
 
 /// Trait which is implemented for database for performing database related
@@ -314,14 +287,39 @@ where
 }
 
 /// Migrate trait which migrate a database according to requirements. This trait
-/// implements all methods which depends on DatabaseOperation trait. This trait
-/// is not required to implement any method since all have provided
-/// implementation and good to go for database agnostic case
+/// implements all methods which depends on DatabaseOperation trait and Info
+/// trait. This trait doesn't requires to implement any method since all
+/// function have default implementation
 #[async_trait::async_trait]
 pub trait Migrate<DB>: Info<DB> + DatabaseOperation<DB> + Send + Sync
 where
     DB: sqlx::Database,
 {
+    /// Add vector of migrations to Migrator object
+    fn add_migrations(&mut self, migrations: Vec<Box<dyn Migration<DB>>>) {
+        for migration in migrations {
+            self.add_migration(migration);
+        }
+    }
+
+    /// Add single migration to migrator object
+    fn add_migration(&mut self, migration: Box<dyn Migration<DB>>) {
+        let migration_parents = migration.parents();
+        let migration_replaces = migration.replaces();
+        let is_new_value = self.migrations_mut().insert(migration);
+        // Only add parents and replaces if migrations was added first time. This can
+        // increase performance of recursive addition by ignoring parent and replace
+        // migration recursive addition
+        if is_new_value {
+            for parent in migration_parents {
+                self.add_migration(parent);
+            }
+            for replace in migration_replaces {
+                self.add_migration(replace);
+            }
+        }
+    }
+
     /// List all applied migrations. Returns a vector of migration
     async fn list_applied_migrations(&self) -> MigrationVecResult<DB> {
         if cfg!(feature = "tracing") {
@@ -357,13 +355,12 @@ where
         let mut migration_plan = Vec::new();
 
         // Hashmap which contains key as migration name and value as list of migration
-        // which needs to applied earlier than key according to run_before method of
-        // migration
-        let mut run_before_migration_hashmap = HashMap::<_, Vec<_>>::new();
+        // which becomes parent for key due to value having key as run before value
+        let mut parents_due_to_run_before = HashMap::<_, Vec<_>>::new();
 
         for migration in self.migrations() {
             for run_before_migration in migration.run_before() {
-                run_before_migration_hashmap
+                parents_due_to_run_before
                     .entry(run_before_migration)
                     .or_default()
                     .push(migration);
@@ -382,7 +379,7 @@ where
                     .all(|migration| migration_plan.contains(&migration));
 
                 // Check if all run before parents are added or not
-                let all_run_before_parents_added = run_before_migration_hashmap
+                let all_run_before_parents_added = parents_due_to_run_before
                     .get(migration)
                     .unwrap_or(&vec![])
                     .iter()
@@ -405,8 +402,10 @@ where
             }
         }
 
-        // Remove migration from migration plan
+        // Remove migration from migration plan according to replaces vector
         for migration in migration_plan.clone() {
+            // Only need to check case when replaces contain value otherwise logic can be
+            // ignored
             if !migration.replaces().is_empty() {
                 // Check if any replaces migration are applied for not
                 let replaces_applied = migration
@@ -477,7 +476,7 @@ where
         Ok(migration_plan)
     }
 
-    /// Apply missing migration
+    /// Apply all migrations which are not applied till now
     ///
     /// # Errors
     /// If failed to apply migration

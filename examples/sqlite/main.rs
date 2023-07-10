@@ -1,4 +1,4 @@
-use sqlx_migrator::migrator::{Info, Migrator};
+use sqlx_migrator::migrator::{Migrate, Migrator};
 use sqlx_migrator::sqlx::Sqlite;
 
 mod migrations;
