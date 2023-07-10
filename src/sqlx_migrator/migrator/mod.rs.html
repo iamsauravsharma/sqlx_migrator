@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/migrator/mod.rs`."><title>mod.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-9bb858ba049f1f21.css" id="mainThemeStyle"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="sqlx_migrator" data-themes="" data-resource-suffix="" data-rustdoc-version="1.72.0-nightly (85bf07972 2023-07-06)" data-channel="nightly" data-search-js="search-f6292fe389d70017.js" data-settings-js="settings-de11bff964e9d4e5.js" data-settings-css="settings-8c76f75bfb6bd192.css" data-theme-light-css="light-0f8c037637f9eb3e.css" data-theme-dark-css="dark-1097f8e92a01e3cf.css" data-theme-ayu-css="ayu-614652228113ac93.css" ><script src="../../../static.files/storage-59fd9b8ccb335783.js"></script><script defer src="../../../static.files/source-script-106908c7a7964ba4.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../static.files/main-0795b7d26be81095.js"></script><noscript><link rel="stylesheet" media="(prefers-color-scheme:light)" href="../../../static.files/light-0f8c037637f9eb3e.css"><link rel="stylesheet" media="(prefers-color-scheme:dark)" href="../../../static.files/dark-1097f8e92a01e3cf.css"><link rel="stylesheet" href="../../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../sqlx_migrator/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/migrator/mod.rs`."><title>mod.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-9bb858ba049f1f21.css" id="mainThemeStyle"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="sqlx_migrator" data-themes="" data-resource-suffix="" data-rustdoc-version="1.73.0-nightly (1065d876c 2023-07-09)" data-channel="nightly" data-search-js="search-f6292fe389d70017.js" data-settings-js="settings-de11bff964e9d4e5.js" data-settings-css="settings-8c76f75bfb6bd192.css" data-theme-light-css="light-0f8c037637f9eb3e.css" data-theme-dark-css="dark-1097f8e92a01e3cf.css" data-theme-ayu-css="ayu-614652228113ac93.css" ><script src="../../../static.files/storage-59fd9b8ccb335783.js"></script><script defer src="../../../static.files/source-script-106908c7a7964ba4.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../static.files/main-0795b7d26be81095.js"></script><noscript><link rel="stylesheet" media="(prefers-color-scheme:light)" href="../../../static.files/light-0f8c037637f9eb3e.css"><link rel="stylesheet" media="(prefers-color-scheme:dark)" href="../../../static.files/dark-1097f8e92a01e3cf.css"><link rel="stylesheet" href="../../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../sqlx_migrator/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -620,7 +620,6 @@
 <a href="#620" id="620">620</a>
 <a href="#621" id="621">621</a>
 <a href="#622" id="622">622</a>
-<a href="#623" id="623">623</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Migrator module
 //!
 //! It contains common enum and trait for implementing migrator for sqlx
@@ -850,9 +849,7 @@
 }
 
 <span class="doccomment">/// Info trait which implements some of database agnostic methods to
-/// return data. Only required methods needs to be implemented if you want to
-/// create your own migrator struct. This trait implements methods which doesn&#39;t
-/// depends on Database Operation trait methods
+/// return data
 </span><span class="kw">pub trait </span>Info&lt;DB&gt;
 <span class="kw">where
     </span>DB: sqlx::Database,
@@ -865,31 +862,6 @@
 
     <span class="doccomment">/// Return pool of database
     </span><span class="kw">fn </span>pool(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Pool&lt;DB&gt;;
-
-    <span class="doccomment">/// Add vector of migrations to Migrator object
-    </span><span class="kw">fn </span>add_migrations(<span class="kw-2">&amp;mut </span><span class="self">self</span>, migrations: Vec&lt;Box&lt;<span class="kw">dyn </span>Migration&lt;DB&gt;&gt;&gt;) {
-        <span class="kw">for </span>migration <span class="kw">in </span>migrations {
-            <span class="self">self</span>.add_migration(migration);
-        }
-    }
-
-    <span class="doccomment">/// Add single migration to migrator object
-    </span><span class="kw">fn </span>add_migration(<span class="kw-2">&amp;mut </span><span class="self">self</span>, migration: Box&lt;<span class="kw">dyn </span>Migration&lt;DB&gt;&gt;) {
-        <span class="kw">let </span>migration_parents = migration.parents();
-        <span class="kw">let </span>migration_replaces = migration.replaces();
-        <span class="kw">let </span>is_new_value = <span class="self">self</span>.migrations_mut().insert(migration);
-        <span class="comment">// Only add parents and replaces if migrations was added first time. This can
-        // increase performance of recursive addition by ignoring parent and replace
-        // migration recursive addition
-        </span><span class="kw">if </span>is_new_value {
-            <span class="kw">for </span>parent <span class="kw">in </span>migration_parents {
-                <span class="self">self</span>.add_migration(parent);
-            }
-            <span class="kw">for </span>replace <span class="kw">in </span>migration_replaces {
-                <span class="self">self</span>.add_migration(replace);
-            }
-        }
-    }
 }
 
 <span class="doccomment">/// Trait which is implemented for database for performing database related
@@ -937,14 +909,39 @@
 }
 
 <span class="doccomment">/// Migrate trait which migrate a database according to requirements. This trait
-/// implements all methods which depends on DatabaseOperation trait. This trait
-/// is not required to implement any method since all have provided
-/// implementation and good to go for database agnostic case
+/// implements all methods which depends on DatabaseOperation trait and Info
+/// trait. This trait doesn&#39;t requires to implement any method since all
+/// function have default implementation
 </span><span class="attr">#[async_trait::async_trait]
 </span><span class="kw">pub trait </span>Migrate&lt;DB&gt;: Info&lt;DB&gt; + DatabaseOperation&lt;DB&gt; + Send + Sync
 <span class="kw">where
     </span>DB: sqlx::Database,
 {
+    <span class="doccomment">/// Add vector of migrations to Migrator object
+    </span><span class="kw">fn </span>add_migrations(<span class="kw-2">&amp;mut </span><span class="self">self</span>, migrations: Vec&lt;Box&lt;<span class="kw">dyn </span>Migration&lt;DB&gt;&gt;&gt;) {
+        <span class="kw">for </span>migration <span class="kw">in </span>migrations {
+            <span class="self">self</span>.add_migration(migration);
+        }
+    }
+
+    <span class="doccomment">/// Add single migration to migrator object
+    </span><span class="kw">fn </span>add_migration(<span class="kw-2">&amp;mut </span><span class="self">self</span>, migration: Box&lt;<span class="kw">dyn </span>Migration&lt;DB&gt;&gt;) {
+        <span class="kw">let </span>migration_parents = migration.parents();
+        <span class="kw">let </span>migration_replaces = migration.replaces();
+        <span class="kw">let </span>is_new_value = <span class="self">self</span>.migrations_mut().insert(migration);
+        <span class="comment">// Only add parents and replaces if migrations was added first time. This can
+        // increase performance of recursive addition by ignoring parent and replace
+        // migration recursive addition
+        </span><span class="kw">if </span>is_new_value {
+            <span class="kw">for </span>parent <span class="kw">in </span>migration_parents {
+                <span class="self">self</span>.add_migration(parent);
+            }
+            <span class="kw">for </span>replace <span class="kw">in </span>migration_replaces {
+                <span class="self">self</span>.add_migration(replace);
+            }
+        }
+    }
+
     <span class="doccomment">/// List all applied migrations. Returns a vector of migration
     </span><span class="kw">async fn </span>list_applied_migrations(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; MigrationVecResult&lt;DB&gt; {
         <span class="kw">if </span><span class="macro">cfg!</span>(feature = <span class="string">&quot;tracing&quot;</span>) {
@@ -980,13 +977,12 @@
         <span class="kw">let </span><span class="kw-2">mut </span>migration_plan = Vec::new();
 
         <span class="comment">// Hashmap which contains key as migration name and value as list of migration
-        // which needs to applied earlier than key according to run_before method of
-        // migration
-        </span><span class="kw">let </span><span class="kw-2">mut </span>run_before_migration_hashmap = HashMap::&lt;<span class="kw">_</span>, Vec&lt;<span class="kw">_</span>&gt;&gt;::new();
+        // which becomes parent for key due to value having key as run before value
+        </span><span class="kw">let </span><span class="kw-2">mut </span>parents_due_to_run_before = HashMap::&lt;<span class="kw">_</span>, Vec&lt;<span class="kw">_</span>&gt;&gt;::new();
 
         <span class="kw">for </span>migration <span class="kw">in </span><span class="self">self</span>.migrations() {
             <span class="kw">for </span>run_before_migration <span class="kw">in </span>migration.run_before() {
-                run_before_migration_hashmap
+                parents_due_to_run_before
                     .entry(run_before_migration)
                     .or_default()
                     .push(migration);
@@ -1005,7 +1001,7 @@
                     .all(|migration| migration_plan.contains(<span class="kw-2">&amp;</span>migration));
 
                 <span class="comment">// Check if all run before parents are added or not
-                </span><span class="kw">let </span>all_run_before_parents_added = run_before_migration_hashmap
+                </span><span class="kw">let </span>all_run_before_parents_added = parents_due_to_run_before
                     .get(migration)
                     .unwrap_or(<span class="kw-2">&amp;</span><span class="macro">vec!</span>[])
                     .iter()
@@ -1028,9 +1024,11 @@
             }
         }
 
-        <span class="comment">// Remove migration from migration plan
+        <span class="comment">// Remove migration from migration plan according to replaces vector
         </span><span class="kw">for </span>migration <span class="kw">in </span>migration_plan.clone() {
-            <span class="kw">if </span>!migration.replaces().is_empty() {
+            <span class="comment">// Only need to check case when replaces contain value otherwise logic can be
+            // ignored
+            </span><span class="kw">if </span>!migration.replaces().is_empty() {
                 <span class="comment">// Check if any replaces migration are applied for not
                 </span><span class="kw">let </span>replaces_applied = migration
                     .replaces()
@@ -1100,7 +1098,7 @@
         <span class="prelude-val">Ok</span>(migration_plan)
     }
 
-    <span class="doccomment">/// Apply missing migration
+    <span class="doccomment">/// Apply all migrations which are not applied till now
     ///
     /// # Errors
     /// If failed to apply migration
