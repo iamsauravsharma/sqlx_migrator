@@ -44,8 +44,6 @@
 
 use std::hash::Hash;
 
-use chrono::{DateTime, Utc};
-
 use crate::operation::Operation;
 
 /// Trait for migration
@@ -113,7 +111,7 @@ pub struct AppliedMigrationSqlRow {
     id: i32,
     app: String,
     name: String,
-    applied_time: DateTime<Utc>,
+    applied_time: String,
 }
 
 impl AppliedMigrationSqlRow {
@@ -125,8 +123,8 @@ impl AppliedMigrationSqlRow {
 
     /// Return migration applied time
     #[must_use]
-    pub fn applied_time(&self) -> DateTime<Utc> {
-        self.applied_time
+    pub fn applied_time(&self) -> &str {
+        &self.applied_time
     }
 }
 

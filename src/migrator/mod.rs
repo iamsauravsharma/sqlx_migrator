@@ -18,9 +18,9 @@
 //! use sqlx_migrator::migration::{AppliedMigrationSqlRow, Migration};
 //! use sqlx_migrator::migrator::{DatabaseOperation, Info, Migrate};
 //!
+//! #[derive(Default)]
 //! pub struct CustomMigrator {
 //!     migrations: HashSet<Box<dyn Migration<Postgres>>>,
-//!     pool: Pool<Postgres>,
 //! }
 //!
 //! impl Info<Postgres> for CustomMigrator {
@@ -31,68 +31,34 @@
 //!     fn migrations_mut(&mut self) -> &mut HashSet<Box<dyn Migration<Postgres>>> {
 //!         &mut self.migrations
 //!     }
-//!
-//!     fn pool(&self) -> &Pool<Postgres> {
-//!         &self.pool
-//!     }
 //! }
-//! #[must_use]
-//! pub(crate) fn create_migrator_table_query() -> &'static str {
-//!     "CREATE TABLE IF NOT EXISTS _custom_migrator_table_name (
-//!        id INT PRIMARY KEY NOT NULL GENERATED ALWAYS AS IDENTITY,
-//!        app TEXT NOT NULL,
-//!        name TEXT NOT NULL,
-//!        applied_time TIMESTAMPTZ NOT NULL DEFAULT now(),
-//!        UNIQUE (app, name)
-//!    )"
-//! }
-//!
-//! #[must_use]
-//! pub(crate) fn drop_table_query() -> &'static str {
-//!     "DROP TABLE IF EXISTS _custom_migrator_table_name"
-//! }
-//!
-//! #[must_use]
-//! pub(crate) fn fetch_row_query() -> &'static str {
-//!     "SELECT id, app, name, applied_time FROM _custom_migrator_table_name"
-//! }
-//!
-//! #[must_use]
-//! pub(crate) fn add_migration_query() -> &'static str {
-//!     "INSERT INTO _custom_migrator_table_name(app, name) VALUES ($1, $2)"
-//! }
-//!
-//! #[must_use]
-//! pub(crate) fn delete_migration_query() -> &'static str {
-//!     "DELETE FROM _custom_migrator_table_name WHERE app = $1 AND name = $2"
-//! }
-//!
-//! pub(crate) async fn lock_id(pool: &Pool<Postgres>) -> Result<i64, Error> {
-//!     let (database,): (String,) = sqlx::query_as("SELECT CURRENT_DATABASE()")
-//!         .fetch_one(pool)
-//!         .await?;
-//!     Ok(i64::from(crc32fast::hash(database.as_bytes())))
-//! }
-//!
-//! pub(crate) fn lock_database_query() -> &'static str {
-//!     "SELECT pg_advisory_lock($1)"
-//! }
-//!
-//! pub(crate) fn unlock_database_query() -> &'static str {
-//!     "SELECT pg_advisory_unlock($1)"
-//! }
-//!
 //! #[async_trait::async_trait]
 //! impl DatabaseOperation<Postgres> for CustomMigrator {
-//!     async fn ensure_migration_table_exists(&self) -> Result<(), Error> {
-//!         sqlx::query(create_migrator_table_query())
-//!             .execute(&self.pool)
-//!             .await?;
+//!     async fn ensure_migration_table_exists(
+//!         &self,
+//!         connection: &mut <Postgres as sqlx::Database>::Connection,
+//!     ) -> Result<(), Error> {
+//!         sqlx::query(
+//!             "CREATE TABLE IF NOT EXISTS _sqlx_migrator_migrations (
+//!         id INT PRIMARY KEY NOT NULL GENERATED ALWAYS AS IDENTITY,
+//!         app TEXT NOT NULL,
+//!         name TEXT NOT NULL,
+//!         applied_time TIMESTAMPTZ NOT NULL DEFAULT now(),
+//!         UNIQUE (app, name)
+//!     )",
+//!         )
+//!         .execute(connection)
+//!         .await?;
 //!         Ok(())
 //!     }
 //!
-//!     async fn drop_migration_table_if_exists(&self) -> Result<(), Error> {
-//!         sqlx::query(drop_table_query()).execute(&self.pool).await?;
+//!     async fn drop_migration_table_if_exists(
+//!         &self,
+//!         connection: &mut <Postgres as sqlx::Database>::Connection,
+//!     ) -> Result<(), Error> {
+//!         sqlx::query("DROP TABLE IF EXISTS _sqlx_migrator_migrations")
+//!             .execute(connection)
+//!             .await?;
 //!         Ok(())
 //!     }
 //!
@@ -101,7 +67,7 @@
 //!         migration: &Box<dyn Migration<Postgres>>,
 //!         connection: &mut <Postgres as sqlx::Database>::Connection,
 //!     ) -> Result<(), Error> {
-//!         sqlx::query(add_migration_query())
+//!         sqlx::query("INSERT INTO _sqlx_migrator_migrations(app, name) VALUES ($1, $2)")
 //!             .bind(migration.app())
 //!             .bind(migration.name())
 //!             .execute(connection)
@@ -114,7 +80,7 @@
 //!         migration: &Box<dyn Migration<Postgres>>,
 //!         connection: &mut <Postgres as sqlx::Database>::Connection,
 //!     ) -> Result<(), Error> {
-//!         sqlx::query(delete_migration_query())
+//!         sqlx::query("DELETE FROM _sqlx_migrator_migrations WHERE app = $1 AND name = $2")
 //!             .bind(migration.app())
 //!             .bind(migration.name())
 //!             .execute(connection)
@@ -124,19 +90,24 @@
 //!
 //!     async fn fetch_applied_migration_from_db(
 //!         &self,
+//!         connection: &mut <Postgres as sqlx::Database>::Connection,
 //!     ) -> Result<Vec<AppliedMigrationSqlRow>, Error> {
-//!         let rows = sqlx::query_as(fetch_row_query())
-//!             .fetch_all(&self.pool)
-//!             .await?;
-//!         Ok(rows)
+//!         Ok(sqlx::query_as::<_, AppliedMigrationSqlRow>(
+//!             "SELECT id, app, name, applied_time FROM _sqlx_migrator_migrations",
+//!         )
+//!         .fetch_all(connection)
+//!         .await?)
 //!     }
 //!
 //!     async fn lock(
 //!         &self,
 //!         connection: &mut <Postgres as sqlx::Database>::Connection,
 //!     ) -> Result<(), Error> {
-//!         let lock_id = lock_id(&self.pool).await?;
-//!         sqlx::query(lock_database_query())
+//!         let (database_name,): (String,) = sqlx::query_as("SELECT CURRENT_DATABASE()")
+//!             .fetch_one(&mut *connection)
+//!             .await?;
+//!         let lock_id = i64::from(crc32fast::hash(database_name.as_bytes()));
+//!         sqlx::query("SELECT pg_advisory_lock($1)")
 //!             .bind(lock_id)
 //!             .execute(connection)
 //!             .await?;
@@ -147,8 +118,11 @@
 //!         &self,
 //!         connection: &mut <Postgres as sqlx::Database>::Connection,
 //!     ) -> Result<(), Error> {
-//!         let lock_id = lock_id(&self.pool).await?;
-//!         sqlx::query(unlock_database_query())
+//!         let (database_name,): (String,) = sqlx::query_as("SELECT CURRENT_DATABASE()")
+//!             .fetch_one(&mut *connection)
+//!             .await?;
+//!         let lock_id = i64::from(crc32fast::hash(database_name.as_bytes()));
+//!         sqlx::query("SELECT pg_advisory_unlock($1)")
 //!             .bind(lock_id)
 //!             .execute(connection)
 //!             .await?;
@@ -158,9 +132,10 @@
 //!
 //! impl Migrate<Postgres> for CustomMigrator {}
 //! ```
+
 use std::collections::{HashMap, HashSet};
 
-use sqlx::Pool;
+use sqlx::{Connection, Pool};
 
 use crate::error::Error;
 use crate::migration::{AppliedMigrationSqlRow, Migration};
@@ -227,7 +202,7 @@ impl Plan {
 }
 
 /// Info trait which implements some of database agnostic methods to
-/// return data
+/// return data as well as add migrations
 pub trait Info<DB>
 where
     DB: sqlx::Database,
@@ -238,63 +213,6 @@ where
     /// Return mutable reference of migrations
     fn migrations_mut(&mut self) -> &mut HashSet<Box<dyn Migration<DB>>>;
 
-    /// Return pool of database
-    fn pool(&self) -> &Pool<DB>;
-}
-
-/// Trait which is implemented for database for performing database related
-/// actions on database. Usually this trait is implemented for database to
-/// support certain database along with info trait
-#[async_trait::async_trait]
-pub trait DatabaseOperation<DB>
-where
-    DB: sqlx::Database,
-{
-    /// Ensure migration table is created before running migrations. If not
-    /// create one
-    async fn ensure_migration_table_exists(&self) -> Result<(), Error>;
-
-    /// Drop migration table if migration table exists
-    async fn drop_migration_table_if_exists(&self) -> Result<(), Error>;
-
-    /// Add migration to migration table
-    #[allow(clippy::borrowed_box)]
-    async fn add_migration_to_db_table(
-        &self,
-        migration: &Box<dyn Migration<DB>>,
-        connection: &mut <DB as sqlx::Database>::Connection,
-    ) -> Result<(), Error>;
-
-    /// Delete migration from migration table
-    #[allow(clippy::borrowed_box)]
-    async fn delete_migration_from_db_table(
-        &self,
-        migration: &Box<dyn Migration<DB>>,
-        connection: &mut <DB as sqlx::Database>::Connection,
-    ) -> Result<(), Error>;
-
-    /// List all applied migrations from database as struct
-    async fn fetch_applied_migration_from_db(&self) -> Result<Vec<AppliedMigrationSqlRow>, Error>;
-
-    /// Lock database while doing migrations so no two migrations run together
-    async fn lock(&self, connection: &mut <DB as sqlx::Database>::Connection) -> Result<(), Error>;
-
-    /// Unlock locked database
-    async fn unlock(
-        &self,
-        connection: &mut <DB as sqlx::Database>::Connection,
-    ) -> Result<(), Error>;
-}
-
-/// Migrate trait which migrate a database according to requirements. This trait
-/// implements all methods which depends on DatabaseOperation trait and Info
-/// trait. This trait doesn't requires to implement any method since all
-/// function have default implementation
-#[async_trait::async_trait]
-pub trait Migrate<DB>: Info<DB> + DatabaseOperation<DB> + Send + Sync
-where
-    DB: sqlx::Database,
-{
     /// Add vector of migrations to Migrator object
     fn add_migrations(&mut self, migrations: Vec<Box<dyn Migration<DB>>>) {
         for migration in migrations {
@@ -319,14 +237,80 @@ where
             }
         }
     }
+}
 
+/// Trait which is implemented for database for performing database related
+/// actions on database. Usually this trait is implemented for database to
+/// support certain database along with info trait
+#[async_trait::async_trait]
+pub trait DatabaseOperation<DB>
+where
+    DB: sqlx::Database,
+{
+    /// Ensure migration table is created before running migrations. If not
+    /// create one
+    async fn ensure_migration_table_exists(
+        &self,
+        connection: &mut <DB as sqlx::Database>::Connection,
+    ) -> Result<(), Error>;
+
+    /// Drop migration table if migration table exists
+    async fn drop_migration_table_if_exists(
+        &self,
+        connection: &mut <DB as sqlx::Database>::Connection,
+    ) -> Result<(), Error>;
+
+    /// Add migration to migration table
+    #[allow(clippy::borrowed_box)]
+    async fn add_migration_to_db_table(
+        &self,
+        migration: &Box<dyn Migration<DB>>,
+        connection: &mut <DB as sqlx::Database>::Connection,
+    ) -> Result<(), Error>;
+
+    /// Delete migration from migration table
+    #[allow(clippy::borrowed_box)]
+    async fn delete_migration_from_db_table(
+        &self,
+        migration: &Box<dyn Migration<DB>>,
+        connection: &mut <DB as sqlx::Database>::Connection,
+    ) -> Result<(), Error>;
+
+    /// List all applied migrations from database as struct
+    async fn fetch_applied_migration_from_db(
+        &self,
+        connection: &mut <DB as sqlx::Database>::Connection,
+    ) -> Result<Vec<AppliedMigrationSqlRow>, Error>;
+
+    /// Lock database while doing migrations so no two migrations run together
+    async fn lock(&self, connection: &mut <DB as sqlx::Database>::Connection) -> Result<(), Error>;
+
+    /// Unlock locked database
+    async fn unlock(
+        &self,
+        connection: &mut <DB as sqlx::Database>::Connection,
+    ) -> Result<(), Error>;
+}
+
+/// Migrate trait which migrate a database according to requirements. This trait
+/// implements all methods which depends on DatabaseOperation trait and Info
+/// trait. This trait doesn't requires to implement any method since all
+/// function have default implementation
+#[async_trait::async_trait]
+pub trait Migrate<DB>: Info<DB> + DatabaseOperation<DB> + Send + Sync
+where
+    DB: sqlx::Database,
+{
     /// List all applied migrations. Returns a vector of migration
-    async fn list_applied_migrations(&self) -> MigrationVecResult<DB> {
+    async fn list_applied_migrations(
+        &self,
+        connection: &mut <DB as sqlx::Database>::Connection,
+    ) -> MigrationVecResult<DB> {
         if cfg!(feature = "tracing") {
             tracing::info!("Fetching applied migrations");
         }
-        self.ensure_migration_table_exists().await?;
-        let applied_migration_list = self.fetch_applied_migration_from_db().await?;
+        self.ensure_migration_table_exists(connection).await?;
+        let applied_migration_list = self.fetch_applied_migration_from_db(connection).await?;
 
         // convert applied migration string name to vector of migration implemented
         // objects
@@ -345,8 +329,12 @@ where
 
     /// Generate migration plan for according to plan type. Returns a vector of
     /// migration
-    async fn generate_migration_plan(&self, plan: Plan) -> MigrationVecResult<DB> {
-        let applied_migrations = self.list_applied_migrations().await?;
+    async fn generate_migration_plan(
+        &self,
+        plan: Plan,
+        connection: &mut <DB as sqlx::Database>::Connection,
+    ) -> MigrationVecResult<DB> {
+        let applied_migrations = self.list_applied_migrations(connection).await?;
 
         if cfg!(feature = "tracing") {
             tracing::info!("Generating {:?} migration plan", plan);
@@ -480,25 +468,28 @@ where
     ///
     /// # Errors
     /// If failed to apply migration
-    async fn apply_all(&self) -> Result<(), Error> {
+    async fn apply_all(&self, pool: &Pool<DB>) -> Result<(), Error> {
+        let mut connection = pool.acquire().await?;
         if cfg!(feature = "tracing") {
             tracing::info!("Applying all migration");
         }
-        let mut connection = self.pool().acquire().await?;
         self.lock(&mut connection).await?;
-        for migration in self
-            .generate_migration_plan(Plan::new(PlanType::Apply, None, None)?)
-            .await?
-        {
-            self.apply_migration(migration).await?;
+        let plan = Plan::new(PlanType::Apply, None, None)?;
+        for migration in self.generate_migration_plan(plan, &mut connection).await? {
+            self.apply_migration(migration, &mut connection).await?;
         }
         self.unlock(&mut connection).await?;
+        connection.close().await?;
         Ok(())
     }
 
     /// Apply given migration and add it to applied migration table
     #[allow(clippy::borrowed_box)]
-    async fn apply_migration(&self, migration: &Box<dyn Migration<DB>>) -> Result<(), Error> {
+    async fn apply_migration(
+        &self,
+        migration: &Box<dyn Migration<DB>>,
+        connection: &mut <DB as sqlx::Database>::Connection,
+    ) -> Result<(), Error> {
         if cfg!(feature = "tracing") {
             tracing::info!(
                 "Applying {} migration {}",
@@ -507,7 +498,7 @@ where
             );
         }
         if migration.is_atomic() {
-            let mut transaction = self.pool().begin().await?;
+            let mut transaction = connection.begin().await?;
             for operation in migration.operations() {
                 operation.up(&mut transaction).await?;
             }
@@ -515,11 +506,10 @@ where
                 .await?;
             transaction.commit().await?;
         } else {
-            let mut connection = self.pool().acquire().await?;
             for operation in migration.operations() {
-                operation.up(&mut connection).await?;
+                operation.up(connection).await?;
             }
-            self.add_migration_to_db_table(migration, &mut connection)
+            self.add_migration_to_db_table(migration, connection)
                 .await?;
         }
         Ok(())
@@ -529,25 +519,28 @@ where
     ///
     /// # Errors
     /// If any migration or operation fails
-    async fn revert_all(&self) -> Result<(), Error> {
+    async fn revert_all(&self, pool: &Pool<DB>) -> Result<(), Error> {
+        let mut connection = pool.acquire().await?;
         if cfg!(feature = "tracing") {
             tracing::info!("Reverting all migration");
         }
-        let mut connection = self.pool().acquire().await?;
         self.lock(&mut connection).await?;
-        for migration in self
-            .generate_migration_plan(Plan::new(PlanType::Revert, None, None)?)
-            .await?
-        {
-            self.revert_migration(migration).await?;
+        let plan = Plan::new(PlanType::Revert, None, None)?;
+        for migration in self.generate_migration_plan(plan, &mut connection).await? {
+            self.revert_migration(migration, &mut connection).await?;
         }
         self.unlock(&mut connection).await?;
+        connection.close().await?;
         Ok(())
     }
 
     /// Revert provided migration and remove migration from table
     #[allow(clippy::borrowed_box)]
-    async fn revert_migration(&self, migration: &Box<dyn Migration<DB>>) -> Result<(), Error> {
+    async fn revert_migration(
+        &self,
+        migration: &Box<dyn Migration<DB>>,
+        connection: &mut <DB as sqlx::Database>::Connection,
+    ) -> Result<(), Error> {
         if cfg!(feature = "tracing") {
             tracing::info!(
                 "Reverting {} migration {}",
@@ -561,7 +554,7 @@ where
         operations.reverse();
 
         if migration.is_atomic() {
-            let mut transaction = self.pool().begin().await?;
+            let mut transaction = connection.begin().await?;
             for operation in operations {
                 operation.down(&mut transaction).await?;
             }
@@ -569,11 +562,10 @@ where
                 .await?;
             transaction.commit().await?;
         } else {
-            let mut connection = self.pool().acquire().await?;
             for operation in operations {
-                operation.down(&mut connection).await?;
+                operation.down(connection).await?;
             }
-            self.delete_migration_from_db_table(migration, &mut connection)
+            self.delete_migration_from_db_table(migration, connection)
                 .await?;
         }
         Ok(())
@@ -587,19 +579,15 @@ where
     DB: sqlx::Database,
 {
     migrations: HashSet<Box<dyn Migration<DB>>>,
-    pool: Pool<DB>,
 }
 
-impl<DB> Migrator<DB>
+impl<DB> Default for Migrator<DB>
 where
     DB: sqlx::Database,
 {
-    /// Create new migrator from pool
-    #[must_use]
-    pub fn new(pool: &Pool<DB>) -> Self {
+    fn default() -> Self {
         Self {
-            migrations: HashSet::new(),
-            pool: pool.clone(),
+            migrations: HashSet::default(),
         }
     }
 }
@@ -614,9 +602,5 @@ where
 
     fn migrations_mut(&mut self) -> &mut HashSet<Box<dyn Migration<DB>>> {
         &mut self.migrations
-    }
-
-    fn pool(&self) -> &Pool<DB> {
-        &self.pool
     }
 }

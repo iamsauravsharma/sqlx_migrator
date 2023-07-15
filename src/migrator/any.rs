@@ -1,5 +1,5 @@
 use sqlx::any::AnyArguments;
-use sqlx::{Any, Arguments, MySql, Pool, Postgres, Sqlite};
+use sqlx::{Any, Arguments, MySql, Postgres, Sqlite};
 
 #[cfg(feature = "mysql")]
 use super::mysql;
@@ -11,10 +11,36 @@ use super::{DatabaseOperation, Migrate, Migrator};
 use crate::error::Error;
 use crate::migration::{AppliedMigrationSqlRow, Migration};
 
+/// get database name
+async fn get_database_name(
+    connection: &mut <Any as sqlx::Database>::Connection,
+) -> Result<Option<String>, Error> {
+    let backend_name = connection.backend_name();
+    let database_name_query = match backend_name {
+        #[cfg(feature = "postgres")]
+        <Postgres as sqlx::Database>::NAME => Some(postgres::current_database_query()),
+        #[cfg(feature = "sqlite")]
+        <Sqlite as sqlx::Database>::NAME => None,
+        #[cfg(feature = "mysql")]
+        <MySql as sqlx::Database>::NAME => Some(mysql::current_database_query()),
+        _ => return Err(Error::UnsupportedDatabase),
+    };
+    if let Some(sql) = database_name_query {
+        let (database_name,) = sqlx::query_as::<_, (String,)>(sql)
+            .fetch_one(connection)
+            .await?;
+        return Ok(Some(database_name));
+    }
+    Ok(None)
+}
+
 #[async_trait::async_trait]
 impl DatabaseOperation<Any> for Migrator<Any> {
-    async fn ensure_migration_table_exists(&self) -> Result<(), Error> {
-        let sql_query = match self.pool.acquire().await?.backend_name() {
+    async fn ensure_migration_table_exists(
+        &self,
+        connection: &mut <Any as sqlx::Database>::Connection,
+    ) -> Result<(), Error> {
+        let sql_query = match connection.backend_name() {
             #[cfg(feature = "postgres")]
             <Postgres as sqlx::Database>::NAME => postgres::create_migrator_table_query(),
             #[cfg(feature = "sqlite")]
@@ -23,12 +49,15 @@ impl DatabaseOperation<Any> for Migrator<Any> {
             <MySql as sqlx::Database>::NAME => mysql::create_migrator_table_query(),
             _ => return Err(Error::UnsupportedDatabase),
         };
-        sqlx::query(sql_query).execute(&self.pool).await?;
+        sqlx::query(sql_query).execute(connection).await?;
         Ok(())
     }
 
-    async fn drop_migration_table_if_exists(&self) -> Result<(), Error> {
-        let sql_query = match self.pool.acquire().await?.backend_name() {
+    async fn drop_migration_table_if_exists(
+        &self,
+        connection: &mut <Any as sqlx::Database>::Connection,
+    ) -> Result<(), Error> {
+        let sql_query = match connection.backend_name() {
             #[cfg(feature = "postgres")]
             <Postgres as sqlx::Database>::NAME => postgres::drop_table_query(),
             #[cfg(feature = "sqlite")]
@@ -37,7 +66,7 @@ impl DatabaseOperation<Any> for Migrator<Any> {
             <MySql as sqlx::Database>::NAME => mysql::drop_table_query(),
             _ => return Err(Error::UnsupportedDatabase),
         };
-        sqlx::query(sql_query).execute(&self.pool).await?;
+        sqlx::query(sql_query).execute(connection).await?;
         Ok(())
     }
 
@@ -85,59 +114,48 @@ impl DatabaseOperation<Any> for Migrator<Any> {
         Ok(())
     }
 
-    async fn fetch_applied_migration_from_db(&self) -> Result<Vec<AppliedMigrationSqlRow>, Error> {
-        let connection = self.pool.acquire().await?;
+    async fn fetch_applied_migration_from_db(
+        &self,
+        connection: &mut <Any as sqlx::Database>::Connection,
+    ) -> Result<Vec<AppliedMigrationSqlRow>, Error> {
         let backend_name = connection.backend_name();
-        let connect_options = self.pool.connect_options();
-        let db_url = connect_options.database_url.as_str();
-        match backend_name {
+        let query = match backend_name {
             #[cfg(feature = "postgres")]
-            <Postgres as sqlx::Database>::NAME => {
-                let pool = Pool::connect(db_url).await?;
-                postgres::fetch_rows(&pool).await
-            }
+            <Postgres as sqlx::Database>::NAME => postgres::fetch_rows_query(),
             #[cfg(feature = "sqlite")]
-            <Sqlite as sqlx::Database>::NAME => {
-                let pool = Pool::connect(db_url).await?;
-                sqlite::fetch_rows(&pool).await
-            }
+            <Sqlite as sqlx::Database>::NAME => sqlite::fetch_rows_query(),
             #[cfg(feature = "mysql")]
-            <MySql as sqlx::Database>::NAME => {
-                let pool = Pool::connect(db_url).await?;
-                mysql::fetch_rows(&pool).await
-            }
+            <MySql as sqlx::Database>::NAME => mysql::fetch_rows_query(),
             _ => return Err(Error::UnsupportedDatabase),
-        }
+        };
+        Ok(sqlx::query_as::<_, AppliedMigrationSqlRow>(query)
+            .fetch_all(connection)
+            .await?)
     }
 
     async fn lock(
         &self,
         connection: &mut <Any as sqlx::Database>::Connection,
     ) -> Result<(), Error> {
-        let mut query = None;
-        let mut arguments = AnyArguments::default();
-        let backend_name = connection.backend_name();
-        let connect_options = self.pool.connect_options();
-        let database_url = connect_options.database_url.as_str();
-        match backend_name {
-            #[cfg(feature = "postgres")]
-            <Postgres as sqlx::Database>::NAME => {
-                let pool = Pool::connect(database_url).await?;
-                query = Some(postgres::lock_database_query());
-                arguments.add(postgres::lock_id(&pool).await?);
-            }
-            #[cfg(feature = "sqlite")]
-            <Sqlite as sqlx::Database>::NAME => {}
-            #[cfg(feature = "mysql")]
-            <MySql as sqlx::Database>::NAME => {
-                let pool = Pool::connect(database_url).await?;
-                query = Some(mysql::lock_database_query());
-                arguments.add(mysql::lock_id(&pool).await?);
-            }
-            _ => return Err(Error::UnsupportedDatabase),
-        };
-        if let Some(sql) = query {
-            sqlx::query_with(sql, arguments).execute(connection).await?;
+        let database_name = get_database_name(connection).await?;
+        if let Some(name) = database_name {
+            let mut arguments = AnyArguments::default();
+            let query = match connection.backend_name() {
+                #[cfg(feature = "postgres")]
+                <Postgres as sqlx::Database>::NAME => {
+                    arguments.add(postgres::get_lock_id_for_database(&name));
+                    postgres::lock_database_query()
+                }
+                #[cfg(feature = "mysql")]
+                <MySql as sqlx::Database>::NAME => {
+                    arguments.add(mysql::get_lock_id_for_database(&name));
+                    mysql::lock_database_query()
+                }
+                _ => return Err(Error::UnsupportedDatabase),
+            };
+            sqlx::query_with(query, arguments)
+                .execute(connection)
+                .await?;
         }
         Ok(())
     }
@@ -146,29 +164,25 @@ impl DatabaseOperation<Any> for Migrator<Any> {
         &self,
         connection: &mut <Any as sqlx::Database>::Connection,
     ) -> Result<(), Error> {
-        let mut query = None;
-        let mut arguments = AnyArguments::default();
-        let backend_name = connection.backend_name();
-        let connect_options = self.pool.connect_options();
-        let database_url = connect_options.database_url.as_str();
-        match backend_name {
-            #[cfg(feature = "postgres")]
-            <Postgres as sqlx::Database>::NAME => {
-                let pool = Pool::connect(database_url).await?;
-                query = Some(postgres::unlock_database_query());
-                arguments.add(postgres::lock_id(&pool).await?);
-            }
-            #[cfg(feature = "sqlite")]
-            <Sqlite as sqlx::Database>::NAME => {}
-            #[cfg(feature = "mysql")]
-            <MySql as sqlx::Database>::NAME => {
-                let pool = Pool::connect(database_url).await?;
-                arguments.add(mysql::lock_id(&pool).await?);
-            }
-            _ => return Err(Error::UnsupportedDatabase),
-        };
-        if let Some(sql) = query {
-            sqlx::query_with(sql, arguments).execute(connection).await?;
+        let database_name = get_database_name(connection).await?;
+        if let Some(name) = database_name {
+            let mut arguments = AnyArguments::default();
+            let query = match connection.backend_name() {
+                #[cfg(feature = "postgres")]
+                <Postgres as sqlx::Database>::NAME => {
+                    arguments.add(postgres::get_lock_id_for_database(&name));
+                    postgres::unlock_database_query()
+                }
+                #[cfg(feature = "mysql")]
+                <MySql as sqlx::Database>::NAME => {
+                    arguments.add(mysql::get_lock_id_for_database(&name));
+                    mysql::unlock_database_query()
+                }
+                _ => return Err(Error::UnsupportedDatabase),
+            };
+            sqlx::query_with(query, arguments)
+                .execute(connection)
+                .await?;
         }
         Ok(())
     }

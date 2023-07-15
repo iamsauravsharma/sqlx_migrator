@@ -1,4 +1,4 @@
-use sqlx::{MySql, Pool};
+use sqlx::MySql;
 
 use super::{DatabaseOperation, Migrate, Migrator};
 use crate::error::Error;
@@ -23,12 +23,9 @@ pub(crate) fn drop_table_query() -> &'static str {
 }
 
 /// fetch rows
-pub(crate) async fn fetch_rows(pool: &Pool<MySql>) -> Result<Vec<AppliedMigrationSqlRow>, Error> {
-    Ok(
-        sqlx::query_as("SELECT id, app, name, applied_time FROM _sqlx_migrator_migrations")
-            .fetch_all(pool)
-            .await?,
-    )
+pub(crate) fn fetch_rows_query() -> &'static str {
+    "SELECT id, app, name, DATE_FORMAT(applied_time, '%Y-%m-%d %H:%i:%s') AS applied_time FROM \
+     _sqlx_migrator_migrations"
 }
 
 /// add migration query
@@ -43,10 +40,9 @@ pub(crate) fn delete_migration_query() -> &'static str {
     "DELETE FROM _sqlx_migrator_migrations WHERE app = ? AND name = ?"
 }
 
-/// get lock id
-pub(crate) async fn lock_id(pool: &Pool<MySql>) -> Result<String, Error> {
-    let (database_name,): (String,) = sqlx::query_as("SELECT DATABASE()").fetch_one(pool).await?;
-    Ok(crc32fast::hash(database_name.as_bytes()).to_string())
+/// get current database query
+pub(crate) fn current_database_query() -> &'static str {
+    "SELECT DATABASE()"
 }
 
 /// get lock database query
@@ -63,17 +59,28 @@ pub(crate) fn unlock_database_query() -> &'static str {
     "SELECT RELEASE_LOCK(?)"
 }
 
+/// generate lock id
+pub(crate) fn get_lock_id_for_database(database_name: &str) -> String {
+    crc32fast::hash(database_name.as_bytes()).to_string()
+}
+
 #[async_trait::async_trait]
 impl DatabaseOperation<MySql> for Migrator<MySql> {
-    async fn ensure_migration_table_exists(&self) -> Result<(), Error> {
+    async fn ensure_migration_table_exists(
+        &self,
+        connection: &mut <MySql as sqlx::Database>::Connection,
+    ) -> Result<(), Error> {
         sqlx::query(create_migrator_table_query())
-            .execute(&self.pool)
+            .execute(connection)
             .await?;
         Ok(())
     }
 
-    async fn drop_migration_table_if_exists(&self) -> Result<(), Error> {
-        sqlx::query(drop_table_query()).execute(&self.pool).await?;
+    async fn drop_migration_table_if_exists(
+        &self,
+        connection: &mut <MySql as sqlx::Database>::Connection,
+    ) -> Result<(), Error> {
+        sqlx::query(drop_table_query()).execute(connection).await?;
         Ok(())
     }
 
@@ -103,15 +110,25 @@ impl DatabaseOperation<MySql> for Migrator<MySql> {
         Ok(())
     }
 
-    async fn fetch_applied_migration_from_db(&self) -> Result<Vec<AppliedMigrationSqlRow>, Error> {
-        fetch_rows(&self.pool).await
+    async fn fetch_applied_migration_from_db(
+        &self,
+        connection: &mut <MySql as sqlx::Database>::Connection,
+    ) -> Result<Vec<AppliedMigrationSqlRow>, Error> {
+        Ok(
+            sqlx::query_as::<_, AppliedMigrationSqlRow>(fetch_rows_query())
+                .fetch_all(connection)
+                .await?,
+        )
     }
 
     async fn lock(
         &self,
         connection: &mut <MySql as sqlx::Database>::Connection,
     ) -> Result<(), Error> {
-        let lock_id = lock_id(&self.pool).await?;
+        let (database_name,): (String,) = sqlx::query_as(current_database_query())
+            .fetch_one(&mut *connection)
+            .await?;
+        let lock_id = get_lock_id_for_database(&database_name);
         sqlx::query(lock_database_query())
             .bind(lock_id)
             .execute(connection)
@@ -123,7 +140,10 @@ impl DatabaseOperation<MySql> for Migrator<MySql> {
         &self,
         connection: &mut <MySql as sqlx::Database>::Connection,
     ) -> Result<(), Error> {
-        let lock_id = lock_id(&self.pool).await?;
+        let (database_name,): (String,) = sqlx::query_as(current_database_query())
+            .fetch_one(&mut *connection)
+            .await?;
+        let lock_id = get_lock_id_for_database(&database_name);
         sqlx::query(unlock_database_query())
             .bind(lock_id)
             .execute(connection)

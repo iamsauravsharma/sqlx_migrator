@@ -111,14 +111,14 @@ impl Migration<sqlx::Postgres> for FirstMigration {
 Now at last you need to create migrator for your database to run migrations
 
 ```rust
-use sqlx_migrator::migrator::{Migrate, Migrator};
+use sqlx_migrator::migrator::{Info, Migrate, Migrator};
 use sqlx_migrator::sqlx::Postgres;
 
 #[tokio::main]
 async fn main() {
     let uri = std::env::var("DATABASE_URL").unwrap();
     let pool = sqlx::Pool::<Postgres>::connect(&uri).await.unwrap();
-    let mut migrator = Migrator::new(&pool);
+    let mut migrator = Migrator::default();
     migrator.add_migration(Box::new(FirstMigration));
 }
 ```
@@ -128,15 +128,15 @@ For directly run
 
 ```rust
 // use apply all to apply all pending migration
-migrator.apply_all().await.unwrap();
+migrator.apply_all(&pool).await.unwrap();
 // or use revert all to revert all applied migrations
-migrator.revert_all().await.unwrap();
+migrator.revert_all(&pool).await.unwrap();
 ```
 
 Or you can create cli
 
 ```rust
-sqlx_migrator::cli::run(Box::new(migrator)).await.unwrap();
+sqlx_migrator::cli::run(Box::new(migrator), &pool).await.unwrap();
 ```
 
 # Migrate from sqlx default sql based migration
@@ -152,7 +152,7 @@ Can be easily applied by following above usage docs where you only need to write
 Then you can create cli for migrator
 
 ```rust
-sqlx_migrator::cli::run(Box::new(migrator)).await.unwrap();
+sqlx_migrator::cli::run(Box::new(migrator), &pool).await.unwrap();
 ```
 
 and run fake apply cli command
