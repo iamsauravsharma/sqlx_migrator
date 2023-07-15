@@ -2,6 +2,7 @@
 use std::ops::Not;
 
 use clap::{Parser, Subcommand};
+use sqlx::Pool;
 
 use crate::error::Error;
 use crate::migrator::{Migrate, Plan};
@@ -35,27 +36,36 @@ impl SubCommand {
     ///
     /// # Errors
     ///  If any subcommand operations fail running
-    pub async fn handle_subcommand<DB>(&self, migrator: Box<dyn Migrate<DB>>) -> Result<(), Error>
+    pub async fn handle_subcommand<DB>(
+        &self,
+        migrator: Box<dyn Migrate<DB>>,
+        pool: &Pool<DB>,
+    ) -> Result<(), Error>
     where
         DB: sqlx::Database,
     {
+        let mut connection = pool.acquire().await?;
         match self {
-            SubCommand::Apply(apply) => apply.run(migrator).await?,
-            SubCommand::Drop => drop_migrations(migrator).await?,
-            SubCommand::List => list_migrations(migrator).await?,
-            SubCommand::Revert(revert) => revert.run(migrator).await?,
+            SubCommand::Apply(apply) => apply.run(migrator, &mut connection).await?,
+            SubCommand::Drop => drop_migrations(migrator, &mut connection).await?,
+            SubCommand::List => list_migrations(migrator, &mut connection).await?,
+            SubCommand::Revert(revert) => revert.run(migrator, &mut connection).await?,
         }
+        connection.close().await?;
         Ok(())
     }
 }
 
-async fn drop_migrations<DB>(migrator: Box<dyn Migrate<DB>>) -> Result<(), Error>
+async fn drop_migrations<DB>(
+    migrator: Box<dyn Migrate<DB>>,
+    connection: &mut <DB as sqlx::Database>::Connection,
+) -> Result<(), Error>
 where
     DB: sqlx::Database,
 {
-    migrator.ensure_migration_table_exists().await?;
+    migrator.ensure_migration_table_exists(connection).await?;
     if migrator
-        .fetch_applied_migration_from_db()
+        .fetch_applied_migration_from_db(connection)
         .await?
         .is_empty()
         .not()
@@ -63,17 +73,20 @@ where
         return Err(Error::AppliedMigrationExists);
     }
 
-    migrator.drop_migration_table_if_exists().await?;
+    migrator.drop_migration_table_if_exists(connection).await?;
     println!("Dropped migrations table");
     Ok(())
 }
 
-async fn list_migrations<DB>(migrator: Box<dyn Migrate<DB>>) -> Result<(), Error>
+async fn list_migrations<DB>(
+    migrator: Box<dyn Migrate<DB>>,
+    connection: &mut <DB as sqlx::Database>::Connection,
+) -> Result<(), Error>
 where
     DB: sqlx::Database,
 {
-    migrator.ensure_migration_table_exists().await?;
-    let applied_migrations = migrator.fetch_applied_migration_from_db().await?;
+    migrator.ensure_migration_table_exists(connection).await?;
+    let applied_migrations = migrator.fetch_applied_migration_from_db(connection).await?;
 
     let widths = [5, 10, 50, 10, 40];
     let full_width = widths.iter().sum::<usize>() + widths.len() * 3;
@@ -91,11 +104,8 @@ where
     );
 
     println!("{:^full_width$}", "-".repeat(full_width));
-
-    for migration in migrator
-        .generate_migration_plan(Plan::new(crate::migrator::PlanType::All, None, None)?)
-        .await?
-    {
+    let plan = Plan::new(crate::migrator::PlanType::All, None, None)?;
+    for migration in migrator.generate_migration_plan(plan, connection).await? {
         let applied_migration_info = applied_migrations
             .iter()
             .find(|&applied_migration| applied_migration == migration);
@@ -144,19 +154,21 @@ pub struct Apply {
     plan: bool,
 }
 impl Apply {
-    async fn run<DB>(&self, migrator: Box<dyn Migrate<DB>>) -> Result<(), Error>
+    async fn run<DB>(
+        &self,
+        migrator: Box<dyn Migrate<DB>>,
+        connection: &mut <DB as sqlx::Database>::Connection,
+    ) -> Result<(), Error>
     where
         DB: sqlx::Database,
     {
-        let mut lock_connection = migrator.pool().acquire().await?;
-        migrator.lock(&mut lock_connection).await?;
-        let migrations = migrator
-            .generate_migration_plan(Plan::new(
-                crate::migrator::PlanType::Apply,
-                self.app.clone(),
-                self.migration.clone(),
-            )?)
-            .await?;
+        migrator.lock(connection).await?;
+        let plan = Plan::new(
+            crate::migrator::PlanType::Apply,
+            self.app.clone(),
+            self.migration.clone(),
+        )?;
+        let migrations = migrator.generate_migration_plan(plan, connection).await?;
         if self.check && !migrations.is_empty() {
             return Err(Error::PendingMigrationPresent);
         }
@@ -174,19 +186,18 @@ impl Apply {
                 );
             }
         } else if self.fake {
-            let mut connection = migrator.pool().acquire().await?;
             for migration in migrations {
                 migrator
-                    .add_migration_to_db_table(migration, &mut connection)
+                    .add_migration_to_db_table(migration, connection)
                     .await?;
             }
         } else {
             for migration in migrations {
-                migrator.apply_migration(migration).await?;
+                migrator.apply_migration(migration, connection).await?;
                 println!("Applied {} : {}", migration.app(), migration.name());
             }
         }
-        migrator.unlock(&mut lock_connection).await?;
+        migrator.unlock(connection).await?;
         Ok(())
     }
 }
@@ -212,20 +223,22 @@ pub struct Revert {
     plan: bool,
 }
 impl Revert {
-    async fn run<DB>(&self, migrator: Box<dyn Migrate<DB>>) -> Result<(), Error>
+    async fn run<DB>(
+        &self,
+        migrator: Box<dyn Migrate<DB>>,
+        connection: &mut <DB as sqlx::Database>::Connection,
+    ) -> Result<(), Error>
     where
         DB: sqlx::Database,
     {
-        let mut lock_connection = migrator.pool().acquire().await?;
-        migrator.lock(&mut lock_connection).await?;
+        migrator.lock(connection).await?;
         let app_is_some = self.app.is_some();
-        let revert_plan = migrator
-            .generate_migration_plan(Plan::new(
-                crate::migrator::PlanType::Revert,
-                self.app.clone(),
-                self.migration.clone(),
-            )?)
-            .await?;
+        let plan = Plan::new(
+            crate::migrator::PlanType::Revert,
+            self.app.clone(),
+            self.migration.clone(),
+        )?;
+        let revert_plan = migrator.generate_migration_plan(plan, connection).await?;
         let revert_migrations;
         if self.all || app_is_some {
             revert_migrations = revert_plan;
@@ -248,19 +261,18 @@ impl Revert {
                 );
             }
         } else if self.fake {
-            let mut connection = migrator.pool().acquire().await?;
             for migration in revert_migrations {
                 migrator
-                    .delete_migration_from_db_table(migration, &mut connection)
+                    .delete_migration_from_db_table(migration, connection)
                     .await?;
             }
         } else {
             for migration in revert_migrations {
-                migrator.revert_migration(migration).await?;
+                migrator.revert_migration(migration, connection).await?;
                 println!("Reverted {} : {}", migration.app(), migration.name());
             }
         }
-        migrator.unlock(&mut lock_connection).await?;
+        migrator.unlock(connection).await?;
         Ok(())
     }
 }
@@ -271,11 +283,11 @@ impl Revert {
 ///
 /// # Errors
 /// When command fails to run
-pub async fn run<DB>(migrator: Box<dyn Migrate<DB>>) -> Result<(), Error>
+pub async fn run<DB>(migrator: Box<dyn Migrate<DB>>, pool: &Pool<DB>) -> Result<(), Error>
 where
     DB: sqlx::Database,
 {
     let args = Args::parse();
-    args.sub_command.handle_subcommand(migrator).await?;
+    args.sub_command.handle_subcommand(migrator, pool).await?;
     Ok(())
 }

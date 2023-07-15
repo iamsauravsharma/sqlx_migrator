@@ -78,9 +78,16 @@ jobs:
       - name: Run example
         run: |
           cargo run --example=postgres --features=postgres -- apply
+          cargo run --example=postgres --features=postgres -- list
           cargo run --example=postgres --features=postgres -- revert --all
+          cargo run --example=postgres --features=postgres -- list
           touch db.sqlite3
           cargo run --example=sqlite --features=sqlite -- apply
+          cargo run --example=sqlite --features=sqlite -- list
           cargo run --example=sqlite --features=sqlite -- revert --all
+          cargo run --example=sqlite --features=sqlite -- list
+          rm db.sqlite3
           cargo run --example=mysql --features=mysql -- apply
+          cargo run --example=mysql --features=mysql -- list
           cargo run --example=mysql --features=mysql -- revert --all
+          cargo run --example=mysql --features=mysql -- list

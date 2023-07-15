@@ -1,4 +1,4 @@
-use sqlx::{Pool, Sqlite};
+use sqlx::Sqlite;
 
 use super::{DatabaseOperation, Migrate, Migrator};
 use crate::error::Error;
@@ -23,12 +23,8 @@ pub(crate) fn drop_table_query() -> &'static str {
 }
 
 /// fetch rows
-pub(crate) async fn fetch_rows(pool: &Pool<Sqlite>) -> Result<Vec<AppliedMigrationSqlRow>, Error> {
-    Ok(
-        sqlx::query_as("SELECT id, app, name, applied_time FROM _sqlx_migrator_migrations")
-            .fetch_all(pool)
-            .await?,
-    )
+pub(crate) fn fetch_rows_query() -> &'static str {
+    "SELECT id, app, name, applied_time FROM _sqlx_migrator_migrations"
 }
 
 /// add migration query
@@ -45,15 +41,21 @@ pub(crate) fn delete_migration_query() -> &'static str {
 
 #[async_trait::async_trait]
 impl DatabaseOperation<Sqlite> for Migrator<Sqlite> {
-    async fn ensure_migration_table_exists(&self) -> Result<(), Error> {
+    async fn ensure_migration_table_exists(
+        &self,
+        connection: &mut <Sqlite as sqlx::Database>::Connection,
+    ) -> Result<(), Error> {
         sqlx::query(create_migrator_table_query())
-            .execute(&self.pool)
+            .execute(connection)
             .await?;
         Ok(())
     }
 
-    async fn drop_migration_table_if_exists(&self) -> Result<(), Error> {
-        sqlx::query(drop_table_query()).execute(&self.pool).await?;
+    async fn drop_migration_table_if_exists(
+        &self,
+        connection: &mut <Sqlite as sqlx::Database>::Connection,
+    ) -> Result<(), Error> {
+        sqlx::query(drop_table_query()).execute(connection).await?;
         Ok(())
     }
 
@@ -83,8 +85,15 @@ impl DatabaseOperation<Sqlite> for Migrator<Sqlite> {
         Ok(())
     }
 
-    async fn fetch_applied_migration_from_db(&self) -> Result<Vec<AppliedMigrationSqlRow>, Error> {
-        fetch_rows(&self.pool).await
+    async fn fetch_applied_migration_from_db(
+        &self,
+        connection: &mut <Sqlite as sqlx::Database>::Connection,
+    ) -> Result<Vec<AppliedMigrationSqlRow>, Error> {
+        Ok(
+            sqlx::query_as::<_, AppliedMigrationSqlRow>(fetch_rows_query())
+                .fetch_all(connection)
+                .await?,
+        )
     }
 
     async fn lock(
