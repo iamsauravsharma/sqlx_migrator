@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/migrator/postgres.rs`."><title>postgres.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-9bb858ba049f1f21.css" id="mainThemeStyle"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="sqlx_migrator" data-themes="" data-resource-suffix="" data-rustdoc-version="1.73.0-nightly (1065d876c 2023-07-09)" data-channel="nightly" data-search-js="search-f6292fe389d70017.js" data-settings-js="settings-de11bff964e9d4e5.js" data-settings-css="settings-8c76f75bfb6bd192.css" data-theme-light-css="light-0f8c037637f9eb3e.css" data-theme-dark-css="dark-1097f8e92a01e3cf.css" data-theme-ayu-css="ayu-614652228113ac93.css" ><script src="../../../static.files/storage-59fd9b8ccb335783.js"></script><script defer src="../../../static.files/source-script-106908c7a7964ba4.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../static.files/main-0795b7d26be81095.js"></script><noscript><link rel="stylesheet" media="(prefers-color-scheme:light)" href="../../../static.files/light-0f8c037637f9eb3e.css"><link rel="stylesheet" media="(prefers-color-scheme:dark)" href="../../../static.files/dark-1097f8e92a01e3cf.css"><link rel="stylesheet" href="../../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../sqlx_migrator/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/migrator/postgres.rs`."><title>postgres.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-9bb858ba049f1f21.css" id="mainThemeStyle"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="sqlx_migrator" data-themes="" data-resource-suffix="" data-rustdoc-version="1.73.0-nightly (ad963232d 2023-07-14)" data-channel="nightly" data-search-js="search-f6292fe389d70017.js" data-settings-js="settings-de11bff964e9d4e5.js" data-settings-css="settings-8c76f75bfb6bd192.css" data-theme-light-css="light-0f8c037637f9eb3e.css" data-theme-dark-css="dark-1097f8e92a01e3cf.css" data-theme-ayu-css="ayu-614652228113ac93.css" ><script src="../../../static.files/storage-59fd9b8ccb335783.js"></script><script defer src="../../../static.files/source-script-106908c7a7964ba4.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../static.files/main-0795b7d26be81095.js"></script><noscript><link rel="stylesheet" media="(prefers-color-scheme:light)" href="../../../static.files/light-0f8c037637f9eb3e.css"><link rel="stylesheet" media="(prefers-color-scheme:dark)" href="../../../static.files/dark-1097f8e92a01e3cf.css"><link rel="stylesheet" href="../../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../sqlx_migrator/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -137,7 +137,18 @@
 <a href="#137" id="137">137</a>
 <a href="#138" id="138">138</a>
 <a href="#139" id="139">139</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>sqlx::{Pool, Postgres};
+<a href="#140" id="140">140</a>
+<a href="#141" id="141">141</a>
+<a href="#142" id="142">142</a>
+<a href="#143" id="143">143</a>
+<a href="#144" id="144">144</a>
+<a href="#145" id="145">145</a>
+<a href="#146" id="146">146</a>
+<a href="#147" id="147">147</a>
+<a href="#148" id="148">148</a>
+<a href="#149" id="149">149</a>
+<a href="#150" id="150">150</a>
+</pre></div><pre class="rust"><code><span class="kw">use </span>sqlx::Postgres;
 
 <span class="kw">use super</span>::{DatabaseOperation, Migrate, Migrator};
 <span class="kw">use </span><span class="kw">crate</span>::error::Error;
@@ -162,15 +173,9 @@
 </span>}
 
 <span class="doccomment">/// Fetch rows
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>fetch_rows(
-    pool: <span class="kw-2">&amp;</span>Pool&lt;Postgres&gt;,
-) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;AppliedMigrationSqlRow&gt;, Error&gt; {
-    <span class="prelude-val">Ok</span>(
-        sqlx::query_as(<span class="string">&quot;SELECT id, app, name, applied_time FROM _sqlx_migrator_migrations&quot;</span>)
-            .fetch_all(pool)
-            .<span class="kw">await</span><span class="question-mark">?</span>,
-    )
-}
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>fetch_rows_query() -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str {
+    <span class="string">&quot;SELECT id, app, name, applied_time::TEXT FROM _sqlx_migrator_migrations&quot;
+</span>}
 
 <span class="doccomment">/// Add migration query
 </span><span class="attr">#[must_use]
@@ -184,39 +189,43 @@
     <span class="string">&quot;DELETE FROM _sqlx_migrator_migrations WHERE app = $1 AND name = $2&quot;
 </span>}
 
-<span class="doccomment">/// get lock id
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>lock_id(pool: <span class="kw-2">&amp;</span>Pool&lt;Postgres&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;i64, Error&gt; {
-    <span class="kw">let </span>(database_name,): (String,) = sqlx::query_as(<span class="string">&quot;SELECT CURRENT_DATABASE()&quot;</span>)
-        .fetch_one(pool)
-        .<span class="kw">await</span><span class="question-mark">?</span>;
-    <span class="prelude-val">Ok</span>(i64::from(crc32fast::hash(database_name.as_bytes())))
-}
+<span class="doccomment">/// get current database query
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>current_database_query() -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str {
+    <span class="string">&quot;SELECT CURRENT_DATABASE()&quot;
+</span>}
 
 <span class="doccomment">/// get lock database query
-/// # Errors
-/// Failed to lock database
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>lock_database_query() -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str {
     <span class="string">&quot;SELECT pg_advisory_lock($1)&quot;
 </span>}
 
 <span class="doccomment">/// get lock database query
-/// # Errors
-/// Failed to lock database
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>unlock_database_query() -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str {
     <span class="string">&quot;SELECT pg_advisory_unlock($1)&quot;
 </span>}
 
+<span class="doccomment">/// generate lock id
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>get_lock_id_for_database(database_name: <span class="kw-2">&amp;</span>str) -&gt; i64 {
+    i64::from(crc32fast::hash(database_name.as_bytes()))
+}
+
 <span class="attr">#[async_trait::async_trait]
 </span><span class="kw">impl </span>DatabaseOperation&lt;Postgres&gt; <span class="kw">for </span>Migrator&lt;Postgres&gt; {
-    <span class="kw">async fn </span>ensure_migration_table_exists(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
+    <span class="kw">async fn </span>ensure_migration_table_exists(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        connection: <span class="kw-2">&amp;mut </span>&lt;Postgres <span class="kw">as </span>sqlx::Database&gt;::Connection,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
         sqlx::query(create_migrator_table_query())
-            .execute(<span class="kw-2">&amp;</span><span class="self">self</span>.pool)
+            .execute(connection)
             .<span class="kw">await</span><span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="kw">async fn </span>drop_migration_table_if_exists(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
-        sqlx::query(drop_table_query()).execute(<span class="kw-2">&amp;</span><span class="self">self</span>.pool).<span class="kw">await</span><span class="question-mark">?</span>;
+    <span class="kw">async fn </span>drop_migration_table_if_exists(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        connection: <span class="kw-2">&amp;mut </span>&lt;Postgres <span class="kw">as </span>sqlx::Database&gt;::Connection,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
+        sqlx::query(drop_table_query()).execute(connection).<span class="kw">await</span><span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
 
@@ -246,15 +255,25 @@
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="kw">async fn </span>fetch_applied_migration_from_db(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;AppliedMigrationSqlRow&gt;, Error&gt; {
-        fetch_rows(<span class="kw-2">&amp;</span><span class="self">self</span>.pool).<span class="kw">await
-    </span>}
+    <span class="kw">async fn </span>fetch_applied_migration_from_db(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        connection: <span class="kw-2">&amp;mut </span>&lt;Postgres <span class="kw">as </span>sqlx::Database&gt;::Connection,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;AppliedMigrationSqlRow&gt;, Error&gt; {
+        <span class="prelude-val">Ok</span>(
+            sqlx::query_as::&lt;<span class="kw">_</span>, AppliedMigrationSqlRow&gt;(fetch_rows_query())
+                .fetch_all(connection)
+                .<span class="kw">await</span><span class="question-mark">?</span>,
+        )
+    }
 
     <span class="kw">async fn </span>lock(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         connection: <span class="kw-2">&amp;mut </span>&lt;Postgres <span class="kw">as </span>sqlx::Database&gt;::Connection,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
-        <span class="kw">let </span>lock_id = lock_id(<span class="kw-2">&amp;</span><span class="self">self</span>.pool).<span class="kw">await</span><span class="question-mark">?</span>;
+        <span class="kw">let </span>(database_name,): (String,) = sqlx::query_as(current_database_query())
+            .fetch_one(<span class="kw-2">&amp;mut *</span>connection)
+            .<span class="kw">await</span><span class="question-mark">?</span>;
+        <span class="kw">let </span>lock_id = get_lock_id_for_database(<span class="kw-2">&amp;</span>database_name);
         sqlx::query(lock_database_query())
             .bind(lock_id)
             .execute(connection)
@@ -266,7 +285,10 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         connection: <span class="kw-2">&amp;mut </span>&lt;Postgres <span class="kw">as </span>sqlx::Database&gt;::Connection,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
-        <span class="kw">let </span>lock_id = lock_id(<span class="kw-2">&amp;</span><span class="self">self</span>.pool).<span class="kw">await</span><span class="question-mark">?</span>;
+        <span class="kw">let </span>(database_name,): (String,) = sqlx::query_as(current_database_query())
+            .fetch_one(<span class="kw-2">&amp;mut *</span>connection)
+            .<span class="kw">await</span><span class="question-mark">?</span>;
+        <span class="kw">let </span>lock_id = get_lock_id_for_database(<span class="kw-2">&amp;</span>database_name);
         sqlx::query(unlock_database_query())
             .bind(lock_id)
             .execute(connection)
