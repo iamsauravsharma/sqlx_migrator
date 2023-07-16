@@ -1,6 +1,6 @@
 use sqlx::MySql;
 
-use super::{DatabaseOperation, Migrate, Migrator};
+use super::{DatabaseOperation, Migrator};
 use crate::error::Error;
 use crate::migration::{AppliedMigrationSqlRow, Migration};
 
@@ -151,5 +151,3 @@ impl DatabaseOperation<MySql> for Migrator<MySql> {
         Ok(())
     }
 }
-
-impl Migrate<MySql> for Migrator<MySql> {}

@@ -1,6 +1,6 @@
 use sqlx::Postgres;
 
-use super::{DatabaseOperation, Migrate, Migrator};
+use super::{DatabaseOperation, Migrator};
 use crate::error::Error;
 use crate::migration::{AppliedMigrationSqlRow, Migration};
 
@@ -146,5 +146,3 @@ impl DatabaseOperation<Postgres> for Migrator<Postgres> {
         Ok(())
     }
 }
-
-impl Migrate<Postgres> for Migrator<Postgres> {}

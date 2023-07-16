@@ -1,6 +1,6 @@
 use sqlx::Sqlite;
 
-use super::{DatabaseOperation, Migrate, Migrator};
+use super::{DatabaseOperation, Migrator};
 use crate::error::Error;
 use crate::migration::{AppliedMigrationSqlRow, Migration};
 
@@ -110,5 +110,3 @@ impl DatabaseOperation<Sqlite> for Migrator<Sqlite> {
         Ok(())
     }
 }
-
-impl Migrate<Sqlite> for Migrator<Sqlite> {}

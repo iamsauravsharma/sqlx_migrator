@@ -604,3 +604,10 @@ where
         &mut self.migrations
     }
 }
+
+impl<DB> Migrate<DB> for Migrator<DB>
+where
+    DB: sqlx::Database,
+    Self: DatabaseOperation<DB>,
+{
+}

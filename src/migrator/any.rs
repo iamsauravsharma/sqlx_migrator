@@ -7,7 +7,7 @@ use super::mysql;
 use super::postgres;
 #[cfg(feature = "sqlite")]
 use super::sqlite;
-use super::{DatabaseOperation, Migrate, Migrator};
+use super::{DatabaseOperation, Migrator};
 use crate::error::Error;
 use crate::migration::{AppliedMigrationSqlRow, Migration};
 
@@ -187,5 +187,3 @@ impl DatabaseOperation<Any> for Migrator<Any> {
         Ok(())
     }
 }
-
-impl Migrate<Any> for Migrator<Any> {}
