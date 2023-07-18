@@ -1,5 +1,11 @@
 use sqlx::any::AnyArguments;
-use sqlx::{Any, Arguments, MySql, Postgres, Sqlite};
+#[cfg(feature = "mysql")]
+use sqlx::MySql;
+#[cfg(feature = "postgres")]
+use sqlx::Postgres;
+#[cfg(feature = "sqlite")]
+use sqlx::Sqlite;
+use sqlx::{Any, Arguments};
 
 #[cfg(feature = "mysql")]
 use super::mysql;
