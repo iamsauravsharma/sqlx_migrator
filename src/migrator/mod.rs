@@ -39,7 +39,7 @@
 //!         connection: &mut <Postgres as sqlx::Database>::Connection,
 //!     ) -> Result<(), Error> {
 //!         sqlx::query(
-//!             "CREATE TABLE IF NOT EXISTS _sqlx_migrator_migrations (
+//!             "CREATE TABLE IF NOT EXISTS _custom_table_name (
 //!         id INT PRIMARY KEY NOT NULL GENERATED ALWAYS AS IDENTITY,
 //!         app TEXT NOT NULL,
 //!         name TEXT NOT NULL,
@@ -56,7 +56,7 @@
 //!         &self,
 //!         connection: &mut <Postgres as sqlx::Database>::Connection,
 //!     ) -> Result<(), Error> {
-//!         sqlx::query("DROP TABLE IF EXISTS _sqlx_migrator_migrations")
+//!         sqlx::query("DROP TABLE IF EXISTS _custom_table_name")
 //!             .execute(connection)
 //!             .await?;
 //!         Ok(())
@@ -67,7 +67,7 @@
 //!         migration: &Box<dyn Migration<Postgres>>,
 //!         connection: &mut <Postgres as sqlx::Database>::Connection,
 //!     ) -> Result<(), Error> {
-//!         sqlx::query("INSERT INTO _sqlx_migrator_migrations(app, name) VALUES ($1, $2)")
+//!         sqlx::query("INSERT INTO _custom_table_name(app, name) VALUES ($1, $2)")
 //!             .bind(migration.app())
 //!             .bind(migration.name())
 //!             .execute(connection)
@@ -80,7 +80,7 @@
 //!         migration: &Box<dyn Migration<Postgres>>,
 //!         connection: &mut <Postgres as sqlx::Database>::Connection,
 //!     ) -> Result<(), Error> {
-//!         sqlx::query("DELETE FROM _sqlx_migrator_migrations WHERE app = $1 AND name = $2")
+//!         sqlx::query("DELETE FROM _custom_table_name WHERE app = $1 AND name = $2")
 //!             .bind(migration.app())
 //!             .bind(migration.name())
 //!             .execute(connection)
@@ -93,7 +93,7 @@
 //!         connection: &mut <Postgres as sqlx::Database>::Connection,
 //!     ) -> Result<Vec<AppliedMigrationSqlRow>, Error> {
 //!         Ok(sqlx::query_as::<_, AppliedMigrationSqlRow>(
-//!             "SELECT id, app, name, applied_time FROM _sqlx_migrator_migrations",
+//!             "SELECT id, app, name, applied_time FROM _custom_table_name",
 //!         )
 //!         .fetch_all(connection)
 //!         .await?)
@@ -579,6 +579,40 @@ where
     DB: sqlx::Database,
 {
     migrations: HashSet<Box<dyn Migration<DB>>>,
+    prefix: Option<String>,
+}
+
+impl<DB> Migrator<DB>
+where
+    DB: sqlx::Database,
+{
+    /// Use prefix for migrator table name only ascii alpha numeric and
+    /// underscore characters are supported for table name. prefix will set
+    /// table name as `_{prefix}{default_table_name}` where default table
+    /// name is `_sqlx_migrator_migrations`
+    ///
+    /// # Errors
+    /// When passed prefix is not ascii alpha numeric or underscore character
+    pub fn with_prefix(mut self, prefix: impl Into<String>) -> Result<Self, Error> {
+        let prefix = prefix.into();
+        if !prefix
+            .chars()
+            .all(|c| char::is_ascii_alphanumeric(&c) || c == '_')
+        {
+            return Err(Error::NonAsciiAlphaNumeric);
+        }
+        self.prefix = Some(prefix);
+        Ok(self)
+    }
+
+    pub(crate) fn table_name(&self) -> String {
+        let default_table_name = "_sqlx_migrator_migrations".to_string();
+        if let Some(prefix) = &self.prefix {
+            format!("_{prefix}{default_table_name}")
+        } else {
+            default_table_name
+        }
+    }
 }
 
 impl<DB> Default for Migrator<DB>
@@ -588,6 +622,7 @@ where
     fn default() -> Self {
         Self {
             migrations: HashSet::default(),
+            prefix: None,
         }
     }
 }

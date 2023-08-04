@@ -14,5 +14,5 @@ async fn main() {
         .unwrap();
     // Or you can directly use migrator apply_all function instead of creating
     // cli
-    // migrator.apply_all().await.unwrap();
+    // migrator.apply_all(&pool).await.unwrap();
 }
