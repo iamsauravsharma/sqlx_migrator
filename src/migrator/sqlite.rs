@@ -6,37 +6,39 @@ use crate::migration::{AppliedMigrationSqlRow, Migration};
 
 /// create migrator table
 #[must_use]
-pub(crate) fn create_migrator_table_query() -> &'static str {
-    "CREATE TABLE IF NOT EXISTS _sqlx_migrator_migrations (
+pub(crate) fn create_migrator_table_query(table_name: &str) -> String {
+    format!(
+        "CREATE TABLE IF NOT EXISTS {table_name} (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         app TEXT NOT NULL,
         name TEXT NOT NULL,
         applied_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
         UNIQUE (app, name)
     )"
+    )
 }
 
 /// Drop table
 #[must_use]
-pub(crate) fn drop_table_query() -> &'static str {
-    "DROP TABLE IF EXISTS _sqlx_migrator_migrations"
+pub(crate) fn drop_table_query(table_name: &str) -> String {
+    format!("DROP TABLE IF EXISTS {table_name}")
 }
 
 /// fetch rows
-pub(crate) fn fetch_rows_query() -> &'static str {
-    "SELECT id, app, name, applied_time FROM _sqlx_migrator_migrations"
+pub(crate) fn fetch_rows_query(table_name: &str) -> String {
+    format!("SELECT id, app, name, applied_time FROM {table_name}")
 }
 
 /// add migration query
 #[must_use]
-pub(crate) fn add_migration_query() -> &'static str {
-    "INSERT INTO _sqlx_migrator_migrations(app, name) VALUES ($1, $2)"
+pub(crate) fn add_migration_query(table_name: &str) -> String {
+    format!("INSERT INTO {table_name}(app, name) VALUES ($1, $2)")
 }
 
 /// delete migration query
 #[must_use]
-pub(crate) fn delete_migration_query() -> &'static str {
-    "DELETE FROM _sqlx_migrator_migrations WHERE app = $1 AND name = $2"
+pub(crate) fn delete_migration_query(table_name: &str) -> String {
+    format!("DELETE FROM {table_name} WHERE app = $1 AND name = $2")
 }
 
 #[async_trait::async_trait]
@@ -45,7 +47,7 @@ impl DatabaseOperation<Sqlite> for Migrator<Sqlite> {
         &self,
         connection: &mut <Sqlite as sqlx::Database>::Connection,
     ) -> Result<(), Error> {
-        sqlx::query(create_migrator_table_query())
+        sqlx::query(&create_migrator_table_query(&self.table_name()))
             .execute(connection)
             .await?;
         Ok(())
@@ -55,7 +57,9 @@ impl DatabaseOperation<Sqlite> for Migrator<Sqlite> {
         &self,
         connection: &mut <Sqlite as sqlx::Database>::Connection,
     ) -> Result<(), Error> {
-        sqlx::query(drop_table_query()).execute(connection).await?;
+        sqlx::query(&drop_table_query(&self.table_name()))
+            .execute(connection)
+            .await?;
         Ok(())
     }
 
@@ -64,7 +68,7 @@ impl DatabaseOperation<Sqlite> for Migrator<Sqlite> {
         migration: &Box<dyn Migration<Sqlite>>,
         connection: &mut <Sqlite as sqlx::Database>::Connection,
     ) -> Result<(), Error> {
-        sqlx::query(add_migration_query())
+        sqlx::query(&add_migration_query(&self.table_name()))
             .bind(migration.app())
             .bind(migration.name())
             .execute(connection)
@@ -77,7 +81,7 @@ impl DatabaseOperation<Sqlite> for Migrator<Sqlite> {
         migration: &Box<dyn Migration<Sqlite>>,
         connection: &mut <Sqlite as sqlx::Database>::Connection,
     ) -> Result<(), Error> {
-        sqlx::query(delete_migration_query())
+        sqlx::query(&delete_migration_query(&self.table_name()))
             .bind(migration.app())
             .bind(migration.name())
             .execute(connection)
@@ -90,7 +94,7 @@ impl DatabaseOperation<Sqlite> for Migrator<Sqlite> {
         connection: &mut <Sqlite as sqlx::Database>::Connection,
     ) -> Result<Vec<AppliedMigrationSqlRow>, Error> {
         Ok(
-            sqlx::query_as::<_, AppliedMigrationSqlRow>(fetch_rows_query())
+            sqlx::query_as::<_, AppliedMigrationSqlRow>(&fetch_rows_query(&self.table_name()))
                 .fetch_all(connection)
                 .await?,
         )

@@ -48,14 +48,20 @@ impl DatabaseOperation<Any> for Migrator<Any> {
     ) -> Result<(), Error> {
         let sql_query = match connection.backend_name() {
             #[cfg(feature = "postgres")]
-            <Postgres as sqlx::Database>::NAME => postgres::create_migrator_table_query(),
+            <Postgres as sqlx::Database>::NAME => {
+                postgres::create_migrator_table_query(&self.table_name())
+            }
             #[cfg(feature = "sqlite")]
-            <Sqlite as sqlx::Database>::NAME => sqlite::create_migrator_table_query(),
+            <Sqlite as sqlx::Database>::NAME => {
+                sqlite::create_migrator_table_query(&self.table_name())
+            }
             #[cfg(feature = "mysql")]
-            <MySql as sqlx::Database>::NAME => mysql::create_migrator_table_query(),
+            <MySql as sqlx::Database>::NAME => {
+                mysql::create_migrator_table_query(&self.table_name())
+            }
             _ => return Err(Error::UnsupportedDatabase),
         };
-        sqlx::query(sql_query).execute(connection).await?;
+        sqlx::query(&sql_query).execute(connection).await?;
         Ok(())
     }
 
@@ -65,14 +71,14 @@ impl DatabaseOperation<Any> for Migrator<Any> {
     ) -> Result<(), Error> {
         let sql_query = match connection.backend_name() {
             #[cfg(feature = "postgres")]
-            <Postgres as sqlx::Database>::NAME => postgres::drop_table_query(),
+            <Postgres as sqlx::Database>::NAME => postgres::drop_table_query(&self.table_name()),
             #[cfg(feature = "sqlite")]
-            <Sqlite as sqlx::Database>::NAME => sqlite::drop_table_query(),
+            <Sqlite as sqlx::Database>::NAME => sqlite::drop_table_query(&self.table_name()),
             #[cfg(feature = "mysql")]
-            <MySql as sqlx::Database>::NAME => mysql::drop_table_query(),
+            <MySql as sqlx::Database>::NAME => mysql::drop_table_query(&self.table_name()),
             _ => return Err(Error::UnsupportedDatabase),
         };
-        sqlx::query(sql_query).execute(connection).await?;
+        sqlx::query(&sql_query).execute(connection).await?;
         Ok(())
     }
 
@@ -83,14 +89,14 @@ impl DatabaseOperation<Any> for Migrator<Any> {
     ) -> Result<(), Error> {
         let sql_query = match connection.backend_name() {
             #[cfg(feature = "postgres")]
-            <Postgres as sqlx::Database>::NAME => postgres::add_migration_query(),
+            <Postgres as sqlx::Database>::NAME => postgres::add_migration_query(&self.table_name()),
             #[cfg(feature = "sqlite")]
-            <Sqlite as sqlx::Database>::NAME => sqlite::add_migration_query(),
+            <Sqlite as sqlx::Database>::NAME => sqlite::add_migration_query(&self.table_name()),
             #[cfg(feature = "mysql")]
-            <MySql as sqlx::Database>::NAME => mysql::add_migration_query(),
+            <MySql as sqlx::Database>::NAME => mysql::add_migration_query(&self.table_name()),
             _ => return Err(Error::UnsupportedDatabase),
         };
-        sqlx::query(sql_query)
+        sqlx::query(&sql_query)
             .bind(migration.app())
             .bind(migration.name())
             .execute(connection)
@@ -105,14 +111,16 @@ impl DatabaseOperation<Any> for Migrator<Any> {
     ) -> Result<(), Error> {
         let sql_query = match connection.backend_name() {
             #[cfg(feature = "postgres")]
-            <Postgres as sqlx::Database>::NAME => postgres::delete_migration_query(),
+            <Postgres as sqlx::Database>::NAME => {
+                postgres::delete_migration_query(&self.table_name())
+            }
             #[cfg(feature = "sqlite")]
-            <Sqlite as sqlx::Database>::NAME => sqlite::delete_migration_query(),
+            <Sqlite as sqlx::Database>::NAME => sqlite::delete_migration_query(&self.table_name()),
             #[cfg(feature = "mysql")]
-            <MySql as sqlx::Database>::NAME => mysql::delete_migration_query(),
+            <MySql as sqlx::Database>::NAME => mysql::delete_migration_query(&self.table_name()),
             _ => return Err(Error::UnsupportedDatabase),
         };
-        sqlx::query(sql_query)
+        sqlx::query(&sql_query)
             .bind(migration.app())
             .bind(migration.name())
             .execute(connection)
@@ -127,14 +135,14 @@ impl DatabaseOperation<Any> for Migrator<Any> {
         let backend_name = connection.backend_name();
         let query = match backend_name {
             #[cfg(feature = "postgres")]
-            <Postgres as sqlx::Database>::NAME => postgres::fetch_rows_query(),
+            <Postgres as sqlx::Database>::NAME => postgres::fetch_rows_query(&self.table_name()),
             #[cfg(feature = "sqlite")]
-            <Sqlite as sqlx::Database>::NAME => sqlite::fetch_rows_query(),
+            <Sqlite as sqlx::Database>::NAME => sqlite::fetch_rows_query(&self.table_name()),
             #[cfg(feature = "mysql")]
-            <MySql as sqlx::Database>::NAME => mysql::fetch_rows_query(),
+            <MySql as sqlx::Database>::NAME => mysql::fetch_rows_query(&self.table_name()),
             _ => return Err(Error::UnsupportedDatabase),
         };
-        Ok(sqlx::query_as::<_, AppliedMigrationSqlRow>(query)
+        Ok(sqlx::query_as::<_, AppliedMigrationSqlRow>(&query)
             .fetch_all(connection)
             .await?)
     }
@@ -149,12 +157,12 @@ impl DatabaseOperation<Any> for Migrator<Any> {
             let query = match connection.backend_name() {
                 #[cfg(feature = "postgres")]
                 <Postgres as sqlx::Database>::NAME => {
-                    arguments.add(postgres::get_lock_id_for_database(&name));
+                    arguments.add(postgres::get_lock_id(&name, &self.table_name()));
                     postgres::lock_database_query()
                 }
                 #[cfg(feature = "mysql")]
                 <MySql as sqlx::Database>::NAME => {
-                    arguments.add(mysql::get_lock_id_for_database(&name));
+                    arguments.add(mysql::get_lock_id(&name, &self.table_name()));
                     mysql::lock_database_query()
                 }
                 _ => return Err(Error::UnsupportedDatabase),
@@ -176,12 +184,12 @@ impl DatabaseOperation<Any> for Migrator<Any> {
             let query = match connection.backend_name() {
                 #[cfg(feature = "postgres")]
                 <Postgres as sqlx::Database>::NAME => {
-                    arguments.add(postgres::get_lock_id_for_database(&name));
+                    arguments.add(postgres::get_lock_id(&name, &self.table_name()));
                     postgres::unlock_database_query()
                 }
                 #[cfg(feature = "mysql")]
                 <MySql as sqlx::Database>::NAME => {
-                    arguments.add(mysql::get_lock_id_for_database(&name));
+                    arguments.add(mysql::get_lock_id(&name, &self.table_name()));
                     mysql::unlock_database_query()
                 }
                 _ => return Err(Error::UnsupportedDatabase),

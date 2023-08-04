@@ -6,7 +6,7 @@ mod migrations;
 async fn main() {
     let uri = std::env::var("POSTGRES_DATABASE_URL").unwrap();
     let pool = sqlx::Pool::<Postgres>::connect(&uri).await.unwrap();
-    let mut migrator = Migrator::default();
+    let mut migrator = Migrator::default().with_prefix("prefix").unwrap();
     migrator.add_migrations(migrations::migrations());
     // There are two way to run migration. Either you can create cli as shown below
     sqlx_migrator::cli::run(Box::new(migrator), &pool)
@@ -14,5 +14,5 @@ async fn main() {
         .unwrap();
     // Or you can directly use migrator apply_all function instead of creating
     // cli
-    // migrator.apply_all().await.unwrap();
+    // migrator.apply_all(&pool).await.unwrap();
 }

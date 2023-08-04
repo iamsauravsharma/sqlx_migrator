@@ -52,4 +52,8 @@ pub enum Error {
     /// Error when unsupported database is used as any database
     #[error("database not supported for any migrator")]
     UnsupportedDatabase,
+
+    /// Error when passed prefix is not alpha numeric
+    #[error("prefix can only be ascii alphanumeric and underscore character")]
+    NonAsciiAlphaNumeric,
 }
