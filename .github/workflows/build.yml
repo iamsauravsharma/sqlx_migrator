@@ -44,7 +44,7 @@ jobs:
           env-prefix: "MAKE_"
       - name: Run tests
         run: |
-          cargo make full --env-file=.env
+          cargo make  --env-file=.env full
 
   run_example:
     name: Run Example
@@ -75,19 +75,21 @@ jobs:
       - uses: actions/checkout@v3
       - name: Setup rust toolchain
         uses: dtolnay/rust-toolchain@nightly
+      - name: Install cargo make
+        uses: davidB/rust-cargo-make@v1
       - name: Run example
         run: |
-          cargo run --example=postgres --features=postgres -- apply
-          cargo run --example=postgres --features=postgres -- list
-          cargo run --example=postgres --features=postgres -- revert --all
-          cargo run --example=postgres --features=postgres -- list
+          cargo make run_postgres_example apply
+          cargo make run_postgres_example list
+          cargo make run_postgres_example revert --all
+          cargo make run_postgres_example list
           touch db.sqlite3
-          cargo run --example=sqlite --features=sqlite -- apply
-          cargo run --example=sqlite --features=sqlite -- list
-          cargo run --example=sqlite --features=sqlite -- revert --all
-          cargo run --example=sqlite --features=sqlite -- list
+          cargo make run_sqlite_example apply
+          cargo make run_sqlite_example list
+          cargo make run_sqlite_example revert --all
+          cargo make run_sqlite_example list
           rm db.sqlite3
-          cargo run --example=mysql --features=mysql -- apply
-          cargo run --example=mysql --features=mysql -- list
-          cargo run --example=mysql --features=mysql -- revert --all
-          cargo run --example=mysql --features=mysql -- list
+          cargo run run_mysql_example apply
+          cargo run run_mysql_example list
+          cargo run run_mysql_example revert --all
+          cargo run run_mysql_example list

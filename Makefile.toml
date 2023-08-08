@@ -1,10 +1,6 @@
 [env]
 RUST_BACKTRACE = "full"
 
-[env.FEATURES_FLAG]
-value = "--features sqlite,postgres,mysql,any"
-condition = { env_not_set = ["FEATURES_FLAG"] }
-
 [tasks.clean]
 description = "Clean target directory"
 command = "cargo"
@@ -54,3 +50,18 @@ dependencies = ["fmt", "build", "clippy", "doc", "test"]
 
 [tasks.full]
 dependencies = ["clean", "local"]
+
+[tasks.run_postgres_example]
+description = "run postgres example"
+command = "cargo"
+args = ["run", "--example", "postgres", "--features", "postgres", "--", "${@}"]
+
+[tasks.run_sqlite_example]
+description = "run postgres example"
+command = "cargo"
+args = ["run", "--example", "sqlite", "--features", "sqlite", "--", "${@}"]
+
+[tasks.run_mysql_example]
+description = "run postgres example"
+command = "cargo"
+args = ["run", "--example", "mysql", "--features", "mysql", "--", "${@}"]
