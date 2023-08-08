@@ -43,7 +43,7 @@ args = ["doc", "--workspace", "--no-deps", "@@split(FEATURES_FLAG, )"]
 [tasks.rustdoc]
 description = "Run rustdoc"
 command = "cargo"
-args = ["rustdoc", "@@split(FEATURES_FLAG, )", "--", "--cfg", "docsrs"]
+args = ["rustdoc", "--all-features", "--", "--cfg", "docsrs"]
 
 [tasks.local]
 dependencies = ["fmt", "build", "clippy", "doc", "test"]
