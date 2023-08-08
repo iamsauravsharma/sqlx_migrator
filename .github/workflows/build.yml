@@ -89,7 +89,7 @@ jobs:
           cargo make run_sqlite_example revert --all
           cargo make run_sqlite_example list
           rm db.sqlite3
-          cargo run run_mysql_example apply
-          cargo run run_mysql_example list
-          cargo run run_mysql_example revert --all
-          cargo run run_mysql_example list
+          cargo make run_mysql_example apply
+          cargo make run_mysql_example list
+          cargo make run_mysql_example revert --all
+          cargo make run_mysql_example list
