@@ -605,6 +605,7 @@ where
         Ok(self)
     }
 
+    #[cfg(any(feature = "postgres", feature = "mysql", feature = "sqlite"))]
     pub(crate) fn table_name(&self) -> String {
         let default_table_name = "_sqlx_migrator_migrations".to_string();
         if let Some(prefix) = &self.prefix {
