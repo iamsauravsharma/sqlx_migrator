@@ -44,7 +44,7 @@ jobs:
           env-prefix: "MAKE_"
       - name: Run tests
         run: |
-          cargo make  --env-file=.env full
+          cargo make --env-file=.env full
 
   run_example:
     name: Run Example
