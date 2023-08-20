@@ -16,6 +16,9 @@
 <a href="#16" id="16">16</a>
 <a href="#17" id="17">17</a>
 <a href="#18" id="18">18</a>
+<a href="#19" id="19">19</a>
+<a href="#20" id="20">20</a>
+<a href="#21" id="21">21</a>
 </pre></div><pre class="rust"><code><span class="attr">#![warn(missing_docs, unreachable_pub, unused_crate_dependencies)]
 #![deny(unsafe_code)]
 #![deny(clippy::all)]
@@ -26,7 +29,10 @@
 //! examples and readme file to learn of how to use sqlx migrator on sqlx
 //! project
 
-</span><span class="attr">#[cfg(feature = <span class="string">&quot;cli&quot;</span>)]
+</span><span class="comment">// use serde to handle unused_crate_dependencies issue for serde
+</span><span class="kw">use </span>serde <span class="kw">as _</span>;
+
+<span class="attr">#[cfg(feature = <span class="string">&quot;cli&quot;</span>)]
 </span><span class="kw">pub mod </span>cli;
 <span class="kw">pub mod </span>error;
 <span class="kw">pub mod </span>migration;
