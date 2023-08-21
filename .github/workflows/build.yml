@@ -51,7 +51,7 @@ jobs:
     runs-on: "ubuntu-latest"
     needs: build
     env:
-      SQLITE_DATABASE_URL: sqlite://db.sqlite3
+      SQLITE_DATABASE_URL: "sqlite::memory:"
       POSTGRES_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
       MYSQL_DATABASE_URL: mysql://root:mysql@127.0.0.1:3306/default_db
     services:
@@ -83,12 +83,10 @@ jobs:
           cargo make run_postgres_example list
           cargo make run_postgres_example revert --all
           cargo make run_postgres_example list
-          touch db.sqlite3
           cargo make run_sqlite_example apply
           cargo make run_sqlite_example list
           cargo make run_sqlite_example revert --all
           cargo make run_sqlite_example list
-          rm db.sqlite3
           cargo make run_mysql_example apply
           cargo make run_mysql_example list
           cargo make run_mysql_example revert --all

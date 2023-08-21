@@ -8,9 +8,6 @@
 //! examples and readme file to learn of how to use sqlx migrator on sqlx
 //! project
 
-// use serde to handle unused_crate_dependencies issue for serde
-use serde as _;
-
 #[cfg(feature = "cli")]
 pub mod cli;
 pub mod error;
