@@ -19,11 +19,12 @@ pub enum SubCommand {
     /// Apply migrations
     #[command()]
     Apply(Apply),
-    /// Drop sqlx information migrations table. Needs all migrations to be
-    /// reverted
+    /// Drop migration information table. Needs all migrations to be
+    /// reverted else raises error
     #[command()]
     Drop,
-    /// List migrations along with their status
+    /// List migrations along with their status and time applied if migrations
+    /// is already applied
     #[command()]
     List,
     /// Revert migrations
@@ -136,13 +137,13 @@ where
 #[derive(Parser, Debug)]
 /// CLI struct for apply subcommand
 pub struct Apply {
-    /// Apply migration till all app migration are applied
+    /// App name up to which migration needs to be applied
     #[arg(long)]
     app: Option<String>,
     /// Check for pending migration
     #[arg(long)]
     check: bool,
-    /// Make migration applied without applying
+    /// Make migration applied without running migration operations
     #[arg(long)]
     fake: bool,
     /// Apply migration till provided migration. Requires app options to be
@@ -208,10 +209,10 @@ pub struct Revert {
     /// Revert all migration
     #[arg(long)]
     all: bool,
-    /// Revert migration till all app migration are reverted
+    /// Revert migration till app migrations is reverted
     #[arg(long)]
     app: Option<String>,
-    /// Make migration reverted without reverting
+    /// Make migration reverted without running revert operation
     #[arg(long)]
     fake: bool,
     /// Revert migration till provided migration. Requires app options to be
@@ -282,7 +283,7 @@ impl Revert {
 /// function
 ///
 /// # Errors
-/// When command fails to run
+/// When command fails to run and raises error
 pub async fn run<DB>(migrator: Box<dyn Migrate<DB>>, pool: &Pool<DB>) -> Result<(), Error>
 where
     DB: sqlx::Database,

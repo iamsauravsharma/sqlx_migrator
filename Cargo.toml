@@ -48,5 +48,5 @@ path = "examples/mysql/main.rs"
 required-features = ["mysql", "cli"]
 
 [package.metadata.docs.rs]
-features = ["postgres", "sqlite", "mysql", "any"]
+all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
