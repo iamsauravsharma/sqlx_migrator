@@ -137,6 +137,7 @@ where
 
 #[derive(Parser, Debug)]
 /// CLI struct for apply subcommand
+#[allow(clippy::struct_excessive_bools)]
 pub struct Apply {
     /// App name up to which migration needs to be applied
     #[arg(long)]
@@ -147,6 +148,10 @@ pub struct Apply {
     /// Make migration applied without running migration operations
     #[arg(long)]
     fake: bool,
+    /// Force run apply operation without asking question if migration is
+    /// destructible
+    #[arg(long)]
+    force: bool,
     /// Apply migration till provided migration. Requires app options to be
     /// present
     #[arg(long, requires = "app")]
@@ -194,6 +199,27 @@ impl Apply {
                     .await?;
             }
         } else {
+            let destructible_migrations = migrations
+                .iter()
+                .filter(|m| m.operations().iter().any(|o| o.is_destructible()))
+                .collect::<Vec<_>>();
+            if !self.force && !destructible_migrations.is_empty() {
+                let mut input = String::new();
+                println!(
+                    "Do you want to apply destructible migrations {} (y/N)",
+                    destructible_migrations.len()
+                );
+                for (position, migration) in destructible_migrations.iter().enumerate() {
+                    println!("{position}. {} : {}", migration.app(), migration.name());
+                }
+                std::io::stdout().flush()?;
+                std::io::stdin().read_line(&mut input)?;
+                let input = input.trim().to_ascii_lowercase();
+                // If answer is not y or yes then return
+                if !["y", "yes"].contains(&input.as_str()) {
+                    return Ok(());
+                }
+            }
             for migration in migrations {
                 migrator.apply_migration(migration, connection).await?;
                 println!("Applied {} : {}", migration.app(), migration.name());
