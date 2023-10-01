@@ -8,8 +8,8 @@ pub enum Error {
     #[error(transparent)]
     SqlxError(#[from] sqlx::error::Error),
 
-    /// Error type created from error raised by std input output
     #[cfg(feature = "cli")]
+    /// Error type created from error raised by std input output
     #[error(transparent)]
     StdIoError(#[from] std::io::Error),
 
@@ -26,6 +26,7 @@ pub enum Error {
     #[error("operation is irreversible")]
     IrreversibleOperation,
 
+    #[cfg(feature = "cli")]
     /// Error for pending migration present
     #[error("pending migration present")]
     PendingMigrationPresent,
@@ -50,6 +51,7 @@ pub enum Error {
         migration: String,
     },
 
+    #[cfg(feature = "cli")]
     /// Error when applied migrations exists
     #[error("applied migrations exists. Revert all using revert subcommand")]
     AppliedMigrationExists,

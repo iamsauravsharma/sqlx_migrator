@@ -37,11 +37,12 @@ where
 {
     /// Up command to be executed during migration apply
     async fn up(&self, connection: &mut <DB as sqlx::Database>::Connection) -> Result<(), Error>;
+
     /// Down command to be executed during migration rollback. If it is not
     /// implemented than operation is irreversible operation.
     async fn down(&self, connection: &mut <DB as sqlx::Database>::Connection) -> Result<(), Error> {
         // use connection from parameter for default implementation
-        let _: &mut <DB as sqlx::Database>::Connection = connection;
+        let _ = connection;
         return Err(Error::IrreversibleOperation);
     }
 
