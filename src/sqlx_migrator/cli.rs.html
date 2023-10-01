@@ -340,6 +340,8 @@
 <a href="#340" id="340">340</a>
 <a href="#341" id="341">341</a>
 <a href="#342" id="342">342</a>
+<a href="#343" id="343">343</a>
+<a href="#344" id="344">344</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Module for creating and running cli with help of migrator
 </span><span class="kw">use </span>std::io::Write;
 <span class="kw">use </span>std::ops::Not;
@@ -481,7 +483,8 @@
 </span><span class="doccomment">/// CLI struct for apply subcommand
 </span><span class="attr">#[allow(clippy::struct_excessive_bools)]
 </span><span class="kw">pub struct </span>Apply {
-    <span class="doccomment">/// App name up to which migration needs to be applied
+    <span class="doccomment">/// App name up to which migration needs to be applied. If migration option
+    /// is also present than only till migration is applied
     </span><span class="attr">#[arg(long)]
     </span>app: <span class="prelude-ty">Option</span>&lt;String&gt;,
     <span class="doccomment">/// Check for pending migration
@@ -579,7 +582,8 @@
     <span class="doccomment">/// Revert all migration
     </span><span class="attr">#[arg(long)]
     </span>all: bool,
-    <span class="doccomment">/// Revert migration till app migrations is reverted
+    <span class="doccomment">/// Revert migration till app migrations is reverted. If it is present
+    /// alongside migration options than only till migration is reverted
     </span><span class="attr">#[arg(long)]
     </span>app: <span class="prelude-ty">Option</span>&lt;String&gt;,
     <span class="doccomment">/// Make migration reverted without running revert operation
