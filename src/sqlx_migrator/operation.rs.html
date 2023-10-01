@@ -53,6 +53,7 @@
 <a href="#53" id="53">53</a>
 <a href="#54" id="54">54</a>
 <a href="#55" id="55">55</a>
+<a href="#56" id="56">56</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Operation module
 //!
 //! To create own operation implement trait for type
@@ -92,11 +93,12 @@
 {
     <span class="doccomment">/// Up command to be executed during migration apply
     </span><span class="kw">async fn </span>up(<span class="kw-2">&amp;</span><span class="self">self</span>, connection: <span class="kw-2">&amp;mut </span>&lt;DB <span class="kw">as </span>sqlx::Database&gt;::Connection) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt;;
+
     <span class="doccomment">/// Down command to be executed during migration rollback. If it is not
     /// implemented than operation is irreversible operation.
     </span><span class="kw">async fn </span>down(<span class="kw-2">&amp;</span><span class="self">self</span>, connection: <span class="kw-2">&amp;mut </span>&lt;DB <span class="kw">as </span>sqlx::Database&gt;::Connection) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
         <span class="comment">// use connection from parameter for default implementation
-        </span><span class="kw">let _</span>: <span class="kw-2">&amp;mut </span>&lt;DB <span class="kw">as </span>sqlx::Database&gt;::Connection = connection;
+        </span><span class="kw">let _ </span>= connection;
         <span class="kw">return </span><span class="prelude-val">Err</span>(Error::IrreversibleOperation);
     }
 

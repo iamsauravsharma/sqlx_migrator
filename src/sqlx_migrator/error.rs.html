@@ -62,6 +62,8 @@
 <a href="#62" id="62">62</a>
 <a href="#63" id="63">63</a>
 <a href="#64" id="64">64</a>
+<a href="#65" id="65">65</a>
+<a href="#66" id="66">66</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Module for library error
 
 /// Error enum to store different types of error
@@ -72,9 +74,9 @@
     </span><span class="attr">#[error(transparent)]
     </span>SqlxError(<span class="attr">#[from] </span>sqlx::error::Error),
 
-    <span class="doccomment">/// Error type created from error raised by std input output
-    </span><span class="attr">#[cfg(feature = <span class="string">&quot;cli&quot;</span>)]
-    #[error(transparent)]
+    <span class="attr">#[cfg(feature = <span class="string">&quot;cli&quot;</span>)]
+    </span><span class="doccomment">/// Error type created from error raised by std input output
+    </span><span class="attr">#[error(transparent)]
     </span>StdIoError(<span class="attr">#[from] </span>std::io::Error),
 
     <span class="doccomment">/// Error for failed to create migrations plan
@@ -90,7 +92,8 @@
     </span><span class="attr">#[error(<span class="string">&quot;operation is irreversible&quot;</span>)]
     </span>IrreversibleOperation,
 
-    <span class="doccomment">/// Error for pending migration present
+    <span class="attr">#[cfg(feature = <span class="string">&quot;cli&quot;</span>)]
+    </span><span class="doccomment">/// Error for pending migration present
     </span><span class="attr">#[error(<span class="string">&quot;pending migration present&quot;</span>)]
     </span>PendingMigrationPresent,
 
@@ -114,7 +117,8 @@
         </span>migration: String,
     },
 
-    <span class="doccomment">/// Error when applied migrations exists
+    <span class="attr">#[cfg(feature = <span class="string">&quot;cli&quot;</span>)]
+    </span><span class="doccomment">/// Error when applied migrations exists
     </span><span class="attr">#[error(<span class="string">&quot;applied migrations exists. Revert all using revert subcommand&quot;</span>)]
     </span>AppliedMigrationExists,
 
