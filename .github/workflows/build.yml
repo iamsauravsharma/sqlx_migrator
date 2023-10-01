@@ -81,13 +81,13 @@ jobs:
         run: |
           cargo make run_postgres_example apply
           cargo make run_postgres_example list
-          cargo make run_postgres_example revert --all
+          cargo make run_postgres_example revert --all --force
           cargo make run_postgres_example list
           cargo make run_sqlite_example apply
           cargo make run_sqlite_example list
-          cargo make run_sqlite_example revert --all
+          cargo make run_sqlite_example revert --all --force
           cargo make run_sqlite_example list
           cargo make run_mysql_example apply
           cargo make run_mysql_example list
-          cargo make run_mysql_example revert --all
+          cargo make run_mysql_example revert --all --force
           cargo make run_mysql_example list

@@ -1,4 +1,5 @@
 //! Module for creating and running cli with help of migrator
+use std::io::Write;
 use std::ops::Not;
 
 use clap::{Parser, Subcommand};
@@ -205,6 +206,7 @@ impl Apply {
 
 #[derive(Parser, Debug)]
 /// CLI struct for revert subcommand
+#[allow(clippy::struct_excessive_bools)]
 pub struct Revert {
     /// Revert all migration
     #[arg(long)]
@@ -215,6 +217,9 @@ pub struct Revert {
     /// Make migration reverted without running revert operation
     #[arg(long)]
     fake: bool,
+    /// Force run revert operation without asking question
+    #[arg(long)]
+    force: bool,
     /// Revert migration till provided migration. Requires app options to be
     /// present
     #[arg(long, requires = "app")]
@@ -268,6 +273,23 @@ impl Revert {
                     .await?;
             }
         } else {
+            if !self.force {
+                let mut input = String::new();
+                println!(
+                    "Do you want to revert {} migrations (y/N)",
+                    revert_migrations.len()
+                );
+                for (position, migration) in revert_migrations.iter().enumerate() {
+                    println!("{position}. {} : {}", migration.app(), migration.name());
+                }
+                std::io::stdout().flush()?;
+                std::io::stdin().read_line(&mut input)?;
+                let input = input.trim().to_ascii_lowercase();
+                // If answer is not y or yes then return
+                if !["y", "yes"].contains(&input.as_str()) {
+                    return Ok(());
+                }
+            }
             for migration in revert_migrations {
                 migrator.revert_migration(migration, connection).await?;
                 println!("Reverted {} : {}", migration.app(), migration.name());

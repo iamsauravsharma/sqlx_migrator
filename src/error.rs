@@ -8,6 +8,11 @@ pub enum Error {
     #[error(transparent)]
     SqlxError(#[from] sqlx::error::Error),
 
+    /// Error type created from error raised by std input output
+    #[cfg(feature = "cli")]
+    #[error(transparent)]
+    StdIoError(#[from] std::io::Error),
+
     /// Error for failed to create migrations plan
     #[error("failed to create migrations plan")]
     FailedToCreateMigrationPlan,
