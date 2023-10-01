@@ -139,7 +139,8 @@ where
 /// CLI struct for apply subcommand
 #[allow(clippy::struct_excessive_bools)]
 pub struct Apply {
-    /// App name up to which migration needs to be applied
+    /// App name up to which migration needs to be applied. If migration option
+    /// is also present than only till migration is applied
     #[arg(long)]
     app: Option<String>,
     /// Check for pending migration
@@ -237,7 +238,8 @@ pub struct Revert {
     /// Revert all migration
     #[arg(long)]
     all: bool,
-    /// Revert migration till app migrations is reverted
+    /// Revert migration till app migrations is reverted. If it is present
+    /// alongside migration options than only till migration is reverted
     #[arg(long)]
     app: Option<String>,
     /// Make migration reverted without running revert operation
