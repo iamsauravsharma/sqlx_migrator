@@ -44,4 +44,12 @@ where
         let _: &mut <DB as sqlx::Database>::Connection = connection;
         return Err(Error::IrreversibleOperation);
     }
+
+    /// Whether up operation is destructible or not. If operation is
+    /// destructible than user should answer before running migration. Down
+    /// operation are always destructible by default and it cannot be changed
+    /// By default it is false
+    fn is_destructible(&self) -> bool {
+        false
+    }
 }
