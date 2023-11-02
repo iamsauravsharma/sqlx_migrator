@@ -77,16 +77,27 @@ jobs:
         uses: dtolnay/rust-toolchain@nightly
       - name: Install cargo make
         uses: davidB/rust-cargo-make@v1
-      - name: Run example
+      - name: Print cli help message
+        run: |
+          cargo make run_postgres_example --help
+          cargo make run_postgres_example apply --help
+          cargo make run_postgres_example drop --help
+          cargo make run_postgres_example list --help
+          cargo make run_postgres_example revert --help
+      - name: Run postgres example
         run: |
           cargo make run_postgres_example apply
           cargo make run_postgres_example list
           cargo make run_postgres_example revert --all --force
           cargo make run_postgres_example list
+      - name: Run sqlite example
+        run: |
           cargo make run_sqlite_example apply
           cargo make run_sqlite_example list
           cargo make run_sqlite_example revert --all --force
           cargo make run_sqlite_example list
+      - name: Run mysql example
+        run: |
           cargo make run_mysql_example apply
           cargo make run_mysql_example list
           cargo make run_mysql_example revert --all --force

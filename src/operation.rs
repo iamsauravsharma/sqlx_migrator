@@ -47,9 +47,9 @@ where
     }
 
     /// Whether up operation is destructible or not. If operation is
-    /// destructible than user should answer before running migration. Down
-    /// operation are always destructible by default and it cannot be changed
-    /// By default it is false
+    /// destructible than user should answer before running migration. By
+    /// default up operation are false. Down operation are always
+    /// destructible by default and it cannot be changed
     fn is_destructible(&self) -> bool {
         false
     }
