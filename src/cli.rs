@@ -146,6 +146,9 @@ pub struct Apply {
     /// Check for pending migration
     #[arg(long)]
     check: bool,
+    /// Number of migration to apply. Conflicts with app args
+    #[arg(long, conflicts_with = "app")]
+    count: Option<usize>,
     /// Make migration applied without running migration operations
     #[arg(long)]
     fake: bool,
@@ -176,7 +179,14 @@ impl Apply {
             self.app.clone(),
             self.migration.clone(),
         )?;
-        let migrations = migrator.generate_migration_plan(plan, connection).await?;
+        let mut migrations = migrator.generate_migration_plan(plan, connection).await?;
+        if let Some(count) = self.count {
+            let actual_len = migrations.len();
+            if count > actual_len {
+                return Err(Error::CountGreater { actual_len, count });
+            }
+            migrations.truncate(count);
+        }
         if self.check && !migrations.is_empty() {
             return Err(Error::PendingMigrationPresent);
         }
@@ -235,13 +245,16 @@ impl Apply {
 /// CLI struct for revert subcommand
 #[allow(clippy::struct_excessive_bools)]
 pub struct Revert {
-    /// Revert all migration
-    #[arg(long)]
+    /// Revert all migration. Conflicts with app args
+    #[arg(long, conflicts_with = "app")]
     all: bool,
     /// Revert migration till app migrations is reverted. If it is present
     /// alongside migration options than only till migration is reverted
     #[arg(long)]
     app: Option<String>,
+    /// Number of migration to revert. Conflicts with all and app args
+    #[arg(long, conflicts_with_all = ["all", "app"])]
+    count: Option<usize>,
     /// Make migration reverted without running revert operation
     #[arg(long)]
     fake: bool,
@@ -266,21 +279,22 @@ impl Revert {
         DB: sqlx::Database,
     {
         migrator.lock(connection).await?;
-        let app_is_some = self.app.is_some();
         let plan = Plan::new(
             crate::migrator::PlanType::Revert,
             self.app.clone(),
             self.migration.clone(),
         )?;
-        let revert_plan = migrator.generate_migration_plan(plan, connection).await?;
-        let revert_migrations;
-        if self.all || app_is_some {
-            revert_migrations = revert_plan;
-        } else if let Some(latest_migration) = revert_plan.first() {
-            revert_migrations = vec![latest_migration];
-        } else {
-            revert_migrations = vec![];
+        let mut revert_migrations = migrator.generate_migration_plan(plan, connection).await?;
+        if let Some(count) = self.count {
+            let actual_len = revert_migrations.len();
+            if count > actual_len {
+                return Err(Error::CountGreater { actual_len, count });
+            }
+            revert_migrations.truncate(count);
+        } else if !self.all && self.app.is_none() && !revert_migrations.is_empty() {
+            revert_migrations.truncate(1);
         }
+
         if self.plan {
             let first_width = 10;
             let second_width = 50;

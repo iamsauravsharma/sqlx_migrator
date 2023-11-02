@@ -56,6 +56,16 @@ pub enum Error {
     #[error("applied migrations exists. Revert all using revert subcommand")]
     AppliedMigrationExists,
 
+    #[cfg(feature = "cli")]
+    /// Error when count of migrations is big than total number of migration
+    #[error("count of migrations is big only {actual_len} present passed {count}")]
+    CountGreater {
+        /// Actual length of migration
+        actual_len: usize,
+        /// Count passed in option
+        count: usize,
+    },
+
     /// Error when unsupported database is used as any database
     #[error("database not supported for any migrator")]
     UnsupportedDatabase,
