@@ -1,3 +1,4 @@
+//! Example crate for postgres
 use sqlx_migrator::migrator::{Info, Migrator};
 use sqlx_migrator::sqlx::Postgres;
 

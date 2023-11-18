@@ -1,7 +1,3 @@
-#![warn(missing_docs, unreachable_pub, unused_crate_dependencies)]
-#![deny(unsafe_code)]
-#![deny(clippy::all)]
-#![warn(clippy::pedantic)]
 #![cfg_attr(docsrs, feature(doc_auto_cfg))]
 
 //! Library to create sqlx migration using rust code instead of sql. Visit

@@ -1,3 +1,4 @@
+//! Example crate for mysql
 use sqlx_migrator::migrator::{Info, Migrator};
 use sqlx_migrator::sqlx::MySql;
 
