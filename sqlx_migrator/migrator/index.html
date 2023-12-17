@@ -1,4 +1,5 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Migrator module"><title>sqlx_migrator::migrator - Rust</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-9ee3a5e31a2afa3e.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="sqlx_migrator" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0-nightly (a1a37735c 2023-11-23)" data-channel="nightly" data-search-js="search-f4028ef4dd0903c7.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../sidebar-items.js"></script><script defer src="../../static.files/main-f06f02fd918e3bb3.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc mod"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button></nav><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../../sqlx_migrator/index.html">sqlx_migrator</a><span class="version">0.10.0</span></h2></div><h2 class="location"><a href="#">Module migrator</a></h2><div class="sidebar-elems"><section><ul class="block"><li><a href="#structs">Structs</a></li><li><a href="#enums">Enums</a></li><li><a href="#traits">Traits</a></li></ul></section><h2><a href="../index.html">In crate sqlx_migrator</a></h2></div></nav><main><div class="width-limiter"><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="main-heading"><h1>Module <a href="../index.html">sqlx_migrator</a>::<wbr><a class="mod" href="#">migrator</a><button id="copy-path" title="Copy item path to clipboard"><img src="../../static.files/clipboard-7571035ce49a181d.svg" width="19" height="18" alt="Copy item path"></button></h1><span class="out-of-band"><a class="src" href="../../src/sqlx_migrator/migrator/mod.rs.html#1-649">source</a> · <button id="toggle-all-docs" title="collapse all docs">[<span>&#x2212;</span>]</button></span></div><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Migrator module</p>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Migrator module"><title>sqlx_migrator::migrator - Rust</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-804b98a1284a310a.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="sqlx_migrator" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0-nightly (445177724 2023-12-16)" data-channel="nightly" data-search-js="search-874d56868bf05518.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../sidebar-items.js"></script><script defer src="../../static.files/main-305769736d49e732.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-feafe1bb7466e4bd.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc mod"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button></nav><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../../sqlx_migrator/index.html">sqlx_migrator</a><span class="version">0.10.0</span></h2></div><h2 class="location"><a href="#">Module migrator</a></h2><div class="sidebar-elems"><section><ul class="block"><li><a href="#structs">Structs</a></li><li><a href="#enums">Enums</a></li><li><a href="#traits">Traits</a></li></ul></section><h2><a href="../index.html">In crate sqlx_migrator</a></h2></div></nav><div class="sidebar-resizer"></div>
+    <main><div class="width-limiter"><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../sqlx_migrator/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="main-heading"><h1>Module <a href="../index.html">sqlx_migrator</a>::<wbr><a class="mod" href="#">migrator</a><button id="copy-path" title="Copy item path to clipboard"><img src="../../static.files/clipboard-7571035ce49a181d.svg" width="19" height="18" alt="Copy item path"></button></h1><span class="out-of-band"><a class="src" href="../../src/sqlx_migrator/migrator/mod.rs.html#1-634">source</a> · <button id="toggle-all-docs" title="collapse all docs">[<span>&#x2212;</span>]</button></span></div><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Migrator module</p>
 <p>It contains common enum and trait for implementing migrator for sqlx
 supported database</p>
 <p>It also provides its own struct Migrator which supports Postgres, Sqlite and
@@ -35,13 +36,13 @@ table name instead of default table name</p>
         connection: <span class="kw-2">&amp;mut </span>&lt;Postgres <span class="kw">as </span>sqlx::Database&gt;::Connection,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
         sqlx::query(
-            <span class="string">&quot;CREATE TABLE IF NOT EXISTS _custom_table_name (
+            <span class="string">"CREATE TABLE IF NOT EXISTS _custom_table_name (
         id INT PRIMARY KEY NOT NULL GENERATED ALWAYS AS IDENTITY,
         app TEXT NOT NULL,
         name TEXT NOT NULL,
         applied_time TIMESTAMPTZ NOT NULL DEFAULT now(),
         UNIQUE (app, name)
-    )&quot;</span>,
+    )"</span>,
         )
         .execute(connection)
         .<span class="kw">await</span><span class="question-mark">?</span>;
@@ -52,7 +53,7 @@ table name instead of default table name</p>
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         connection: <span class="kw-2">&amp;mut </span>&lt;Postgres <span class="kw">as </span>sqlx::Database&gt;::Connection,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
-        sqlx::query(<span class="string">&quot;DROP TABLE IF EXISTS _custom_table_name&quot;</span>)
+        sqlx::query(<span class="string">"DROP TABLE IF EXISTS _custom_table_name"</span>)
             .execute(connection)
             .<span class="kw">await</span><span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
@@ -63,7 +64,7 @@ table name instead of default table name</p>
         migration: <span class="kw-2">&amp;</span>Box&lt;<span class="kw">dyn </span>Migration&lt;Postgres&gt;&gt;,
         connection: <span class="kw-2">&amp;mut </span>&lt;Postgres <span class="kw">as </span>sqlx::Database&gt;::Connection,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
-        sqlx::query(<span class="string">&quot;INSERT INTO _custom_table_name(app, name) VALUES ($1, $2)&quot;</span>)
+        sqlx::query(<span class="string">"INSERT INTO _custom_table_name(app, name) VALUES ($1, $2)"</span>)
             .bind(migration.app())
             .bind(migration.name())
             .execute(connection)
@@ -76,7 +77,7 @@ table name instead of default table name</p>
         migration: <span class="kw-2">&amp;</span>Box&lt;<span class="kw">dyn </span>Migration&lt;Postgres&gt;&gt;,
         connection: <span class="kw-2">&amp;mut </span>&lt;Postgres <span class="kw">as </span>sqlx::Database&gt;::Connection,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
-        sqlx::query(<span class="string">&quot;DELETE FROM _custom_table_name WHERE app = $1 AND name = $2&quot;</span>)
+        sqlx::query(<span class="string">"DELETE FROM _custom_table_name WHERE app = $1 AND name = $2"</span>)
             .bind(migration.app())
             .bind(migration.name())
             .execute(connection)
@@ -89,7 +90,7 @@ table name instead of default table name</p>
         connection: <span class="kw-2">&amp;mut </span>&lt;Postgres <span class="kw">as </span>sqlx::Database&gt;::Connection,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;AppliedMigrationSqlRow&gt;, Error&gt; {
         <span class="prelude-val">Ok</span>(sqlx::query_as::&lt;<span class="kw">_</span>, AppliedMigrationSqlRow&gt;(
-            <span class="string">&quot;SELECT id, app, name, applied_time FROM _custom_table_name&quot;</span>,
+            <span class="string">"SELECT id, app, name, applied_time FROM _custom_table_name"</span>,
         )
         .fetch_all(connection)
         .<span class="kw">await</span><span class="question-mark">?</span>)
@@ -99,11 +100,11 @@ table name instead of default table name</p>
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         connection: <span class="kw-2">&amp;mut </span>&lt;Postgres <span class="kw">as </span>sqlx::Database&gt;::Connection,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
-        <span class="kw">let </span>(database_name,): (String,) = sqlx::query_as(<span class="string">&quot;SELECT CURRENT_DATABASE()&quot;</span>)
+        <span class="kw">let </span>(database_name,): (String,) = sqlx::query_as(<span class="string">"SELECT CURRENT_DATABASE()"</span>)
             .fetch_one(<span class="kw-2">&amp;mut *</span>connection)
             .<span class="kw">await</span><span class="question-mark">?</span>;
         <span class="kw">let </span>lock_id = i64::from(crc32fast::hash(database_name.as_bytes()));
-        sqlx::query(<span class="string">&quot;SELECT pg_advisory_lock($1)&quot;</span>)
+        sqlx::query(<span class="string">"SELECT pg_advisory_lock($1)"</span>)
             .bind(lock_id)
             .execute(connection)
             .<span class="kw">await</span><span class="question-mark">?</span>;
@@ -114,11 +115,11 @@ table name instead of default table name</p>
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         connection: <span class="kw-2">&amp;mut </span>&lt;Postgres <span class="kw">as </span>sqlx::Database&gt;::Connection,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
-        <span class="kw">let </span>(database_name,): (String,) = sqlx::query_as(<span class="string">&quot;SELECT CURRENT_DATABASE()&quot;</span>)
+        <span class="kw">let </span>(database_name,): (String,) = sqlx::query_as(<span class="string">"SELECT CURRENT_DATABASE()"</span>)
             .fetch_one(<span class="kw-2">&amp;mut *</span>connection)
             .<span class="kw">await</span><span class="question-mark">?</span>;
         <span class="kw">let </span>lock_id = i64::from(crc32fast::hash(database_name.as_bytes()));
-        sqlx::query(<span class="string">&quot;SELECT pg_advisory_unlock($1)&quot;</span>)
+        sqlx::query(<span class="string">"SELECT pg_advisory_unlock($1)"</span>)
             .bind(lock_id)
             .execute(connection)
             .<span class="kw">await</span><span class="question-mark">?</span>;
@@ -127,8 +128,8 @@ table name instead of default table name</p>
 }
 
 <span class="kw">impl </span>Migrate&lt;Postgres&gt; <span class="kw">for </span>CustomMigrator {}</code></pre></div>
-</div></details><h2 id="structs" class="small-section-header"><a href="#structs">Structs</a></h2><ul class="item-table"><li><div class="item-name"><a class="struct" href="struct.Migrator.html" title="struct sqlx_migrator::migrator::Migrator">Migrator</a></div><div class="desc docblock-short">Migrator struct which store migrations graph and information related to
-different library supported migrations</div></li><li><div class="item-name"><a class="struct" href="struct.Plan.html" title="struct sqlx_migrator::migrator::Plan">Plan</a></div><div class="desc docblock-short">Struct which determine type of plan to use</div></li></ul><h2 id="enums" class="small-section-header"><a href="#enums">Enums</a></h2><ul class="item-table"><li><div class="item-name"><a class="enum" href="enum.PlanType.html" title="enum sqlx_migrator::migrator::PlanType">PlanType</a></div><div class="desc docblock-short">Type of plan which needs to be generate</div></li></ul><h2 id="traits" class="small-section-header"><a href="#traits">Traits</a></h2><ul class="item-table"><li><div class="item-name"><a class="trait" href="trait.DatabaseOperation.html" title="trait sqlx_migrator::migrator::DatabaseOperation">DatabaseOperation</a></div><div class="desc docblock-short">Trait which is implemented for database for performing database related
+</div></details><h2 id="structs" class="section-header"><a href="#structs">Structs</a></h2><ul class="item-table"><li><div class="item-name"><a class="struct" href="struct.Migrator.html" title="struct sqlx_migrator::migrator::Migrator">Migrator</a></div><div class="desc docblock-short">Migrator struct which store migrations graph and information related to
+different library supported migrations</div></li><li><div class="item-name"><a class="struct" href="struct.Plan.html" title="struct sqlx_migrator::migrator::Plan">Plan</a></div><div class="desc docblock-short">Struct which determine type of plan to use</div></li></ul><h2 id="enums" class="section-header"><a href="#enums">Enums</a></h2><ul class="item-table"><li><div class="item-name"><a class="enum" href="enum.PlanType.html" title="enum sqlx_migrator::migrator::PlanType">PlanType</a></div><div class="desc docblock-short">Type of plan which needs to be generate</div></li></ul><h2 id="traits" class="section-header"><a href="#traits">Traits</a></h2><ul class="item-table"><li><div class="item-name"><a class="trait" href="trait.DatabaseOperation.html" title="trait sqlx_migrator::migrator::DatabaseOperation">DatabaseOperation</a></div><div class="desc docblock-short">Trait which is implemented for database for performing database related
 actions on database. Usually this trait is implemented for database to
 support certain database along with info trait</div></li><li><div class="item-name"><a class="trait" href="trait.Info.html" title="trait sqlx_migrator::migrator::Info">Info</a></div><div class="desc docblock-short">Info trait which implements some of database agnostic methods to
 return data as well as add migrations</div></li><li><div class="item-name"><a class="trait" href="trait.Migrate.html" title="trait sqlx_migrator::migrator::Migrate">Migrate</a></div><div class="desc docblock-short">Migrate trait which migrate a database according to requirements. This trait

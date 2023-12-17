@@ -1,4 +1,5 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/migrator/mod.rs`."><title>mod.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-9ee3a5e31a2afa3e.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="sqlx_migrator" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0-nightly (a1a37735c 2023-11-23)" data-channel="nightly" data-search-js="search-f4028ef4dd0903c7.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-f06f02fd918e3bb3.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/migrator/mod.rs`."><title>mod.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-804b98a1284a310a.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="sqlx_migrator" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0-nightly (445177724 2023-12-16)" data-channel="nightly" data-search-js="search-874d56868bf05518.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../../static.files/src-script-39ed315d46fb705f.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-305769736d49e732.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-feafe1bb7466e4bd.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><div class="sidebar-resizer"></div>
+    <main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -632,21 +633,6 @@
 <a href="#632" id="632">632</a>
 <a href="#633" id="633">633</a>
 <a href="#634" id="634">634</a>
-<a href="#635" id="635">635</a>
-<a href="#636" id="636">636</a>
-<a href="#637" id="637">637</a>
-<a href="#638" id="638">638</a>
-<a href="#639" id="639">639</a>
-<a href="#640" id="640">640</a>
-<a href="#641" id="641">641</a>
-<a href="#642" id="642">642</a>
-<a href="#643" id="643">643</a>
-<a href="#644" id="644">644</a>
-<a href="#645" id="645">645</a>
-<a href="#646" id="646">646</a>
-<a href="#647" id="647">647</a>
-<a href="#648" id="648">648</a>
-<a href="#649" id="649">649</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Migrator module
 //!
 //! It contains common enum and trait for implementing migrator for sqlx
@@ -688,13 +674,13 @@
 //!         connection: &amp;mut &lt;Postgres as sqlx::Database&gt;::Connection,
 //!     ) -&gt; Result&lt;(), Error&gt; {
 //!         sqlx::query(
-//!             &quot;CREATE TABLE IF NOT EXISTS _custom_table_name (
+//!             "CREATE TABLE IF NOT EXISTS _custom_table_name (
 //!         id INT PRIMARY KEY NOT NULL GENERATED ALWAYS AS IDENTITY,
 //!         app TEXT NOT NULL,
 //!         name TEXT NOT NULL,
 //!         applied_time TIMESTAMPTZ NOT NULL DEFAULT now(),
 //!         UNIQUE (app, name)
-//!     )&quot;,
+//!     )",
 //!         )
 //!         .execute(connection)
 //!         .await?;
@@ -705,7 +691,7 @@
 //!         &amp;self,
 //!         connection: &amp;mut &lt;Postgres as sqlx::Database&gt;::Connection,
 //!     ) -&gt; Result&lt;(), Error&gt; {
-//!         sqlx::query(&quot;DROP TABLE IF EXISTS _custom_table_name&quot;)
+//!         sqlx::query("DROP TABLE IF EXISTS _custom_table_name")
 //!             .execute(connection)
 //!             .await?;
 //!         Ok(())
@@ -716,7 +702,7 @@
 //!         migration: &amp;Box&lt;dyn Migration&lt;Postgres&gt;&gt;,
 //!         connection: &amp;mut &lt;Postgres as sqlx::Database&gt;::Connection,
 //!     ) -&gt; Result&lt;(), Error&gt; {
-//!         sqlx::query(&quot;INSERT INTO _custom_table_name(app, name) VALUES ($1, $2)&quot;)
+//!         sqlx::query("INSERT INTO _custom_table_name(app, name) VALUES ($1, $2)")
 //!             .bind(migration.app())
 //!             .bind(migration.name())
 //!             .execute(connection)
@@ -729,7 +715,7 @@
 //!         migration: &amp;Box&lt;dyn Migration&lt;Postgres&gt;&gt;,
 //!         connection: &amp;mut &lt;Postgres as sqlx::Database&gt;::Connection,
 //!     ) -&gt; Result&lt;(), Error&gt; {
-//!         sqlx::query(&quot;DELETE FROM _custom_table_name WHERE app = $1 AND name = $2&quot;)
+//!         sqlx::query("DELETE FROM _custom_table_name WHERE app = $1 AND name = $2")
 //!             .bind(migration.app())
 //!             .bind(migration.name())
 //!             .execute(connection)
@@ -742,7 +728,7 @@
 //!         connection: &amp;mut &lt;Postgres as sqlx::Database&gt;::Connection,
 //!     ) -&gt; Result&lt;Vec&lt;AppliedMigrationSqlRow&gt;, Error&gt; {
 //!         Ok(sqlx::query_as::&lt;_, AppliedMigrationSqlRow&gt;(
-//!             &quot;SELECT id, app, name, applied_time FROM _custom_table_name&quot;,
+//!             "SELECT id, app, name, applied_time FROM _custom_table_name",
 //!         )
 //!         .fetch_all(connection)
 //!         .await?)
@@ -752,11 +738,11 @@
 //!         &amp;self,
 //!         connection: &amp;mut &lt;Postgres as sqlx::Database&gt;::Connection,
 //!     ) -&gt; Result&lt;(), Error&gt; {
-//!         let (database_name,): (String,) = sqlx::query_as(&quot;SELECT CURRENT_DATABASE()&quot;)
+//!         let (database_name,): (String,) = sqlx::query_as("SELECT CURRENT_DATABASE()")
 //!             .fetch_one(&amp;mut *connection)
 //!             .await?;
 //!         let lock_id = i64::from(crc32fast::hash(database_name.as_bytes()));
-//!         sqlx::query(&quot;SELECT pg_advisory_lock($1)&quot;)
+//!         sqlx::query("SELECT pg_advisory_lock($1)")
 //!             .bind(lock_id)
 //!             .execute(connection)
 //!             .await?;
@@ -767,11 +753,11 @@
 //!         &amp;self,
 //!         connection: &amp;mut &lt;Postgres as sqlx::Database&gt;::Connection,
 //!     ) -&gt; Result&lt;(), Error&gt; {
-//!         let (database_name,): (String,) = sqlx::query_as(&quot;SELECT CURRENT_DATABASE()&quot;)
+//!         let (database_name,): (String,) = sqlx::query_as("SELECT CURRENT_DATABASE()")
 //!             .fetch_one(&amp;mut *connection)
 //!             .await?;
 //!         let lock_id = i64::from(crc32fast::hash(database_name.as_bytes()));
-//!         sqlx::query(&quot;SELECT pg_advisory_unlock($1)&quot;)
+//!         sqlx::query("SELECT pg_advisory_unlock($1)")
 //!             .bind(lock_id)
 //!             .execute(connection)
 //!             .await?;
@@ -791,24 +777,24 @@
 
 <span class="doccomment">/// Any database module which support mysql, sqlite and postgres by default
 </span><span class="attr">#[cfg(all(
-    any(feature = <span class="string">&quot;postgres&quot;</span>, feature = <span class="string">&quot;mysql&quot;</span>, feature = <span class="string">&quot;sqlite&quot;</span>),
-    feature = <span class="string">&quot;any&quot;
+    any(feature = <span class="string">"postgres"</span>, feature = <span class="string">"mysql"</span>, feature = <span class="string">"sqlite"</span>),
+    feature = <span class="string">"any"
 </span>))]
 </span><span class="kw">mod </span>any;
 
 <span class="doccomment">/// Module for mysql
-</span><span class="attr">#[cfg(feature = <span class="string">&quot;mysql&quot;</span>)]
+</span><span class="attr">#[cfg(feature = <span class="string">"mysql"</span>)]
 </span><span class="kw">mod </span>mysql;
 
 <span class="doccomment">/// Module for sqlite
-</span><span class="attr">#[cfg(feature = <span class="string">&quot;sqlite&quot;</span>)]
+</span><span class="attr">#[cfg(feature = <span class="string">"sqlite"</span>)]
 </span><span class="kw">mod </span>sqlite;
 
 <span class="doccomment">/// Module for postgres
-</span><span class="attr">#[cfg(feature = <span class="string">&quot;postgres&quot;</span>)]
+</span><span class="attr">#[cfg(feature = <span class="string">"postgres"</span>)]
 </span><span class="kw">mod </span>postgres;
 
-<span class="kw">type </span>MigrationVecResult&lt;<span class="lifetime">&#39;a</span>, DB&gt; = <span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Box&lt;<span class="kw">dyn </span>Migration&lt;DB&gt;&gt;&gt;, Error&gt;;
+<span class="kw">type </span>MigrationVecResult&lt;<span class="lifetime">'a</span>, DB&gt; = <span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>Box&lt;<span class="kw">dyn </span>Migration&lt;DB&gt;&gt;&gt;, Error&gt;;
 
 <span class="doccomment">/// Type of plan which needs to be generate
 </span><span class="attr">#[derive(Debug)]
@@ -852,10 +838,7 @@
 
 <span class="doccomment">/// Info trait which implements some of database agnostic methods to
 /// return data as well as add migrations
-</span><span class="kw">pub trait </span>Info&lt;DB&gt;
-<span class="kw">where
-    </span>DB: sqlx::Database,
-{
+</span><span class="kw">pub trait </span>Info&lt;DB&gt; {
     <span class="doccomment">/// Return migrations
     </span><span class="kw">fn </span>migrations(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>HashSet&lt;Box&lt;<span class="kw">dyn </span>Migration&lt;DB&gt;&gt;&gt;;
 
@@ -943,7 +926,7 @@
 
 <span class="doccomment">/// Migrate trait which migrate a database according to requirements. This trait
 /// implements all methods which depends on DatabaseOperation trait and Info
-/// trait. This trait doesn&#39;t requires to implement any method since all
+/// trait. This trait doesn't requires to implement any method since all
 /// function have default implementation
 </span><span class="attr">#[async_trait::async_trait]
 </span><span class="kw">pub trait </span>Migrate&lt;DB&gt;: Info&lt;DB&gt; + DatabaseOperation&lt;DB&gt; + Send + Sync
@@ -955,8 +938,8 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         connection: <span class="kw-2">&amp;mut </span>&lt;DB <span class="kw">as </span>sqlx::Database&gt;::Connection,
     ) -&gt; MigrationVecResult&lt;DB&gt; {
-        <span class="kw">if </span><span class="macro">cfg!</span>(feature = <span class="string">&quot;tracing&quot;</span>) {
-            <span class="macro">tracing::info!</span>(<span class="string">&quot;Fetching applied migrations&quot;</span>);
+        <span class="kw">if </span><span class="macro">cfg!</span>(feature = <span class="string">"tracing"</span>) {
+            <span class="macro">tracing::info!</span>(<span class="string">"Fetching applied migrations"</span>);
         }
         <span class="self">self</span>.ensure_migration_table_exists(connection).<span class="kw">await</span><span class="question-mark">?</span>;
         <span class="kw">let </span>applied_migration_list = <span class="self">self</span>.fetch_applied_migration_from_db(connection).<span class="kw">await</span><span class="question-mark">?</span>;
@@ -985,8 +968,8 @@
     ) -&gt; MigrationVecResult&lt;DB&gt; {
         <span class="kw">let </span>applied_migrations = <span class="self">self</span>.list_applied_migrations(connection).<span class="kw">await</span><span class="question-mark">?</span>;
 
-        <span class="kw">if </span><span class="macro">cfg!</span>(feature = <span class="string">&quot;tracing&quot;</span>) {
-            <span class="macro">tracing::info!</span>(<span class="string">&quot;Generating {:?} migration plan&quot;</span>, plan);
+        <span class="kw">if </span><span class="macro">cfg!</span>(feature = <span class="string">"tracing"</span>) {
+            <span class="macro">tracing::info!</span>(<span class="string">"Generating {:?} migration plan"</span>, plan);
         }
 
         <span class="kw">let </span><span class="kw-2">mut </span>migration_plan = Vec::new();
@@ -1119,8 +1102,8 @@
     /// If failed to apply migration
     </span><span class="kw">async fn </span>apply_all(<span class="kw-2">&amp;</span><span class="self">self</span>, pool: <span class="kw-2">&amp;</span>Pool&lt;DB&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>connection = pool.acquire().<span class="kw">await</span><span class="question-mark">?</span>;
-        <span class="kw">if </span><span class="macro">cfg!</span>(feature = <span class="string">&quot;tracing&quot;</span>) {
-            <span class="macro">tracing::info!</span>(<span class="string">&quot;Applying all migration&quot;</span>);
+        <span class="kw">if </span><span class="macro">cfg!</span>(feature = <span class="string">"tracing"</span>) {
+            <span class="macro">tracing::info!</span>(<span class="string">"Applying all migration"</span>);
         }
         <span class="self">self</span>.lock(<span class="kw-2">&amp;mut </span>connection).<span class="kw">await</span><span class="question-mark">?</span>;
         <span class="kw">let </span>plan = Plan::new(PlanType::Apply, <span class="prelude-val">None</span>, <span class="prelude-val">None</span>)<span class="question-mark">?</span>;
@@ -1139,9 +1122,9 @@
         migration: <span class="kw-2">&amp;</span>Box&lt;<span class="kw">dyn </span>Migration&lt;DB&gt;&gt;,
         connection: <span class="kw-2">&amp;mut </span>&lt;DB <span class="kw">as </span>sqlx::Database&gt;::Connection,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
-        <span class="kw">if </span><span class="macro">cfg!</span>(feature = <span class="string">&quot;tracing&quot;</span>) {
+        <span class="kw">if </span><span class="macro">cfg!</span>(feature = <span class="string">"tracing"</span>) {
             <span class="macro">tracing::info!</span>(
-                <span class="string">&quot;Applying {} migration {}&quot;</span>,
+                <span class="string">"Applying {} migration {}"</span>,
                 migration.app(),
                 migration.name()
             );
@@ -1170,8 +1153,8 @@
     /// If any migration or operation fails
     </span><span class="kw">async fn </span>revert_all(<span class="kw-2">&amp;</span><span class="self">self</span>, pool: <span class="kw-2">&amp;</span>Pool&lt;DB&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>connection = pool.acquire().<span class="kw">await</span><span class="question-mark">?</span>;
-        <span class="kw">if </span><span class="macro">cfg!</span>(feature = <span class="string">&quot;tracing&quot;</span>) {
-            <span class="macro">tracing::info!</span>(<span class="string">&quot;Reverting all migration&quot;</span>);
+        <span class="kw">if </span><span class="macro">cfg!</span>(feature = <span class="string">"tracing"</span>) {
+            <span class="macro">tracing::info!</span>(<span class="string">"Reverting all migration"</span>);
         }
         <span class="self">self</span>.lock(<span class="kw-2">&amp;mut </span>connection).<span class="kw">await</span><span class="question-mark">?</span>;
         <span class="kw">let </span>plan = Plan::new(PlanType::Revert, <span class="prelude-val">None</span>, <span class="prelude-val">None</span>)<span class="question-mark">?</span>;
@@ -1190,9 +1173,9 @@
         migration: <span class="kw-2">&amp;</span>Box&lt;<span class="kw">dyn </span>Migration&lt;DB&gt;&gt;,
         connection: <span class="kw-2">&amp;mut </span>&lt;DB <span class="kw">as </span>sqlx::Database&gt;::Connection,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
-        <span class="kw">if </span><span class="macro">cfg!</span>(feature = <span class="string">&quot;tracing&quot;</span>) {
+        <span class="kw">if </span><span class="macro">cfg!</span>(feature = <span class="string">"tracing"</span>) {
             <span class="macro">tracing::info!</span>(
-                <span class="string">&quot;Reverting {} migration {}&quot;</span>,
+                <span class="string">"Reverting {} migration {}"</span>,
                 migration.app(),
                 migration.name()
             );
@@ -1223,18 +1206,12 @@
 
 <span class="doccomment">/// Migrator struct which store migrations graph and information related to
 /// different library supported migrations
-</span><span class="kw">pub struct </span>Migrator&lt;DB&gt;
-<span class="kw">where
-    </span>DB: sqlx::Database,
-{
+</span><span class="kw">pub struct </span>Migrator&lt;DB&gt; {
     migrations: HashSet&lt;Box&lt;<span class="kw">dyn </span>Migration&lt;DB&gt;&gt;&gt;,
     prefix: <span class="prelude-ty">Option</span>&lt;String&gt;,
 }
 
-<span class="kw">impl</span>&lt;DB&gt; Migrator&lt;DB&gt;
-<span class="kw">where
-    </span>DB: sqlx::Database,
-{
+<span class="kw">impl</span>&lt;DB&gt; Migrator&lt;DB&gt; {
     <span class="doccomment">/// Use prefix for migrator table name only ascii alpha numeric and
     /// underscore characters are supported for table name. prefix will set
     /// table name as `_{prefix}{default_table_name}` where default table
@@ -1246,7 +1223,7 @@
         <span class="kw">let </span>prefix = prefix.into();
         <span class="kw">if </span>!prefix
             .chars()
-            .all(|c| char::is_ascii_alphanumeric(<span class="kw-2">&amp;</span>c) || c == <span class="string">&#39;_&#39;</span>)
+            .all(|c| char::is_ascii_alphanumeric(<span class="kw-2">&amp;</span>c) || c == <span class="string">'_'</span>)
         {
             <span class="kw">return </span><span class="prelude-val">Err</span>(Error::NonAsciiAlphaNumeric);
         }
@@ -1254,21 +1231,18 @@
         <span class="prelude-val">Ok</span>(<span class="self">self</span>)
     }
 
-    <span class="attr">#[cfg(any(feature = <span class="string">&quot;postgres&quot;</span>, feature = <span class="string">&quot;mysql&quot;</span>, feature = <span class="string">&quot;sqlite&quot;</span>))]
+    <span class="attr">#[cfg(any(feature = <span class="string">"postgres"</span>, feature = <span class="string">"mysql"</span>, feature = <span class="string">"sqlite"</span>))]
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>table_name(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; String {
-        <span class="kw">let </span>default_table_name = <span class="string">&quot;_sqlx_migrator_migrations&quot;</span>.to_string();
+        <span class="kw">let </span>default_table_name = <span class="string">"_sqlx_migrator_migrations"</span>.to_string();
         <span class="kw">if let </span><span class="prelude-val">Some</span>(prefix) = <span class="kw-2">&amp;</span><span class="self">self</span>.prefix {
-            <span class="macro">format!</span>(<span class="string">&quot;_{prefix}{default_table_name}&quot;</span>)
+            <span class="macro">format!</span>(<span class="string">"_{prefix}{default_table_name}"</span>)
         } <span class="kw">else </span>{
             default_table_name
         }
     }
 }
 
-<span class="kw">impl</span>&lt;DB&gt; Default <span class="kw">for </span>Migrator&lt;DB&gt;
-<span class="kw">where
-    </span>DB: sqlx::Database,
-{
+<span class="kw">impl</span>&lt;DB&gt; Default <span class="kw">for </span>Migrator&lt;DB&gt; {
     <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             migrations: HashSet::default(),
@@ -1277,10 +1251,7 @@
     }
 }
 
-<span class="kw">impl</span>&lt;DB&gt; Info&lt;DB&gt; <span class="kw">for </span>Migrator&lt;DB&gt;
-<span class="kw">where
-    </span>DB: sqlx::Database,
-{
+<span class="kw">impl</span>&lt;DB&gt; Info&lt;DB&gt; <span class="kw">for </span>Migrator&lt;DB&gt; {
     <span class="kw">fn </span>migrations(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>HashSet&lt;Box&lt;<span class="kw">dyn </span>Migration&lt;DB&gt;&gt;&gt; {
         <span class="kw-2">&amp;</span><span class="self">self</span>.migrations
     }

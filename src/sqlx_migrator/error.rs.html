@@ -1,4 +1,5 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/error.rs`."><title>error.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-9ee3a5e31a2afa3e.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="sqlx_migrator" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0-nightly (a1a37735c 2023-11-23)" data-channel="nightly" data-search-js="search-f4028ef4dd0903c7.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-f06f02fd918e3bb3.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/error.rs`."><title>error.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-804b98a1284a310a.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="sqlx_migrator" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0-nightly (445177724 2023-12-16)" data-channel="nightly" data-search-js="search-874d56868bf05518.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../static.files/src-script-39ed315d46fb705f.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-305769736d49e732.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-feafe1bb7466e4bd.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><div class="sidebar-resizer"></div>
+    <main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -84,42 +85,42 @@
     </span><span class="attr">#[error(transparent)]
     </span>SqlxError(<span class="attr">#[from] </span>sqlx::error::Error),
 
-    <span class="attr">#[cfg(feature = <span class="string">&quot;cli&quot;</span>)]
+    <span class="attr">#[cfg(feature = <span class="string">"cli"</span>)]
     </span><span class="doccomment">/// Error type created from error raised by std input output
     </span><span class="attr">#[error(transparent)]
     </span>StdIoError(<span class="attr">#[from] </span>std::io::Error),
 
     <span class="doccomment">/// Error for failed to create migrations plan
-    </span><span class="attr">#[error(<span class="string">&quot;failed to create migrations plan&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"failed to create migrations plan"</span>)]
     </span>FailedToCreateMigrationPlan,
 
     <span class="doccomment">/// Error when migration plan has applied replaces migrations as well as
     /// current migration
-    </span><span class="attr">#[error(<span class="string">&quot;both replace migrations and current migration are applied&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"both replace migrations and current migration are applied"</span>)]
     </span>BothMigrationTypeApplied,
 
     <span class="doccomment">/// Error for irreversible operation
-    </span><span class="attr">#[error(<span class="string">&quot;operation is irreversible&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"operation is irreversible"</span>)]
     </span>IrreversibleOperation,
 
-    <span class="attr">#[cfg(feature = <span class="string">&quot;cli&quot;</span>)]
+    <span class="attr">#[cfg(feature = <span class="string">"cli"</span>)]
     </span><span class="doccomment">/// Error for pending migration present
-    </span><span class="attr">#[error(<span class="string">&quot;pending migration present&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"pending migration present"</span>)]
     </span>PendingMigrationPresent,
 
     <span class="doccomment">/// Error when migration name is only present but not app name
-    </span><span class="attr">#[error(<span class="string">&quot;app name required only migration name present&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"app name required only migration name present"</span>)]
     </span>AppNameRequired,
 
-    <span class="doccomment">/// Error when provided app name doesn&#39;t exists
-    </span><span class="attr">#[error(<span class="string">&quot;provided app {app} doesn&#39;t exists&quot;</span>)]
+    <span class="doccomment">/// Error when provided app name doesn't exists
+    </span><span class="attr">#[error(<span class="string">"provided app {app} doesn't exists"</span>)]
     </span>AppNameNotExists {
         <span class="doccomment">/// Name of app
         </span>app: String,
     },
 
-    <span class="doccomment">/// Error when provided migration name doesn&#39;t exists for app
-    </span><span class="attr">#[error(<span class="string">&quot;provided migration {migration} doesn&#39;t exists for app {app}&quot;</span>)]
+    <span class="doccomment">/// Error when provided migration name doesn't exists for app
+    </span><span class="attr">#[error(<span class="string">"provided migration {migration} doesn't exists for app {app}"</span>)]
     </span>MigrationNameNotExists {
         <span class="doccomment">/// Name of app
         </span>app: String,
@@ -127,14 +128,14 @@
         </span>migration: String,
     },
 
-    <span class="attr">#[cfg(feature = <span class="string">&quot;cli&quot;</span>)]
+    <span class="attr">#[cfg(feature = <span class="string">"cli"</span>)]
     </span><span class="doccomment">/// Error when applied migrations exists
-    </span><span class="attr">#[error(<span class="string">&quot;applied migrations exists. Revert all using revert subcommand&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"applied migrations exists. Revert all using revert subcommand"</span>)]
     </span>AppliedMigrationExists,
 
-    <span class="attr">#[cfg(feature = <span class="string">&quot;cli&quot;</span>)]
+    <span class="attr">#[cfg(feature = <span class="string">"cli"</span>)]
     </span><span class="doccomment">/// Error when count of migrations is big than total number of migration
-    </span><span class="attr">#[error(<span class="string">&quot;count of migrations is big only {actual_len} present passed {count}&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"count of migrations is big only {actual_len} present passed {count}"</span>)]
     </span>CountGreater {
         <span class="doccomment">/// Actual length of migration
         </span>actual_len: usize,
@@ -143,11 +144,11 @@
     },
 
     <span class="doccomment">/// Error when unsupported database is used as any database
-    </span><span class="attr">#[error(<span class="string">&quot;database not supported for any migrator&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"database not supported for any migrator"</span>)]
     </span>UnsupportedDatabase,
 
     <span class="doccomment">/// Error when passed prefix is not alpha numeric
-    </span><span class="attr">#[error(<span class="string">&quot;prefix can only be ascii alphanumeric and underscore character&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"prefix can only be ascii alphanumeric and underscore character"</span>)]
     </span>NonAsciiAlphaNumeric,
 }
 </code></pre></div></section></main></body></html>

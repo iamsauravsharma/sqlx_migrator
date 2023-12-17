@@ -1,4 +1,5 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/cli.rs`."><title>cli.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-9ee3a5e31a2afa3e.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="sqlx_migrator" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0-nightly (a1a37735c 2023-11-23)" data-channel="nightly" data-search-js="search-f4028ef4dd0903c7.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-f06f02fd918e3bb3.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/cli.rs`."><title>cli.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-804b98a1284a310a.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="sqlx_migrator" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0-nightly (445177724 2023-12-16)" data-channel="nightly" data-search-js="search-874d56868bf05518.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../static.files/src-script-39ed315d46fb705f.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-305769736d49e732.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-feafe1bb7466e4bd.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><div class="sidebar-resizer"></div>
+    <main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -434,7 +435,7 @@
     }
 
     migrator.drop_migration_table_if_exists(connection).<span class="kw">await</span><span class="question-mark">?</span>;
-    <span class="macro">println!</span>(<span class="string">&quot;Dropped migrations table&quot;</span>);
+    <span class="macro">println!</span>(<span class="string">"Dropped migrations table"</span>);
     <span class="prelude-val">Ok</span>(())
 }
 
@@ -458,31 +459,31 @@
     <span class="kw">let </span>fifth_width = widths[<span class="number">4</span>];
 
     <span class="macro">println!</span>(
-        <span class="string">&quot;{:^first_width$} | {:^second_width$} | {:^third_width$} | {:^fourth_width$} | \
-         {:^fifth_width$}&quot;</span>,
-        <span class="string">&quot;ID&quot;</span>, <span class="string">&quot;App&quot;</span>, <span class="string">&quot;Name&quot;</span>, <span class="string">&quot;Status&quot;</span>, <span class="string">&quot;Applied time&quot;
+        <span class="string">"{:^first_width$} | {:^second_width$} | {:^third_width$} | {:^fourth_width$} | \
+         {:^fifth_width$}"</span>,
+        <span class="string">"ID"</span>, <span class="string">"App"</span>, <span class="string">"Name"</span>, <span class="string">"Status"</span>, <span class="string">"Applied time"
     </span>);
 
-    <span class="macro">println!</span>(<span class="string">&quot;{:^full_width$}&quot;</span>, <span class="string">&quot;-&quot;</span>.repeat(full_width));
+    <span class="macro">println!</span>(<span class="string">"{:^full_width$}"</span>, <span class="string">"-"</span>.repeat(full_width));
     <span class="kw">let </span>plan = Plan::new(<span class="kw">crate</span>::migrator::PlanType::All, <span class="prelude-val">None</span>, <span class="prelude-val">None</span>)<span class="question-mark">?</span>;
     <span class="kw">for </span>migration <span class="kw">in </span>migrator.generate_migration_plan(plan, connection).<span class="kw">await</span><span class="question-mark">? </span>{
         <span class="kw">let </span>applied_migration_info = applied_migrations
             .iter()
             .find(|<span class="kw-2">&amp;</span>applied_migration| applied_migration == migration);
 
-        <span class="kw">let </span><span class="kw-2">mut </span>id = String::from(<span class="string">&quot;N/A&quot;</span>);
-        <span class="kw">let </span><span class="kw-2">mut </span>status = <span class="string">&quot;\u{2717}&quot;</span>;
-        <span class="kw">let </span><span class="kw-2">mut </span>applied_time = String::from(<span class="string">&quot;N/A&quot;</span>);
+        <span class="kw">let </span><span class="kw-2">mut </span>id = String::from(<span class="string">"N/A"</span>);
+        <span class="kw">let </span><span class="kw-2">mut </span>status = <span class="string">"\u{2717}"</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>applied_time = String::from(<span class="string">"N/A"</span>);
 
         <span class="kw">if let </span><span class="prelude-val">Some</span>(sqlx_migration) = applied_migration_info {
             id = sqlx_migration.id().to_string();
-            status = <span class="string">&quot;\u{2713}&quot;</span>;
+            status = <span class="string">"\u{2713}"</span>;
             applied_time = sqlx_migration.applied_time().to_string();
         }
 
         <span class="macro">println!</span>(
-            <span class="string">&quot;{:^first_width$} | {:^second_width$} | {:^third_width$} | {:^fourth_width$} | \
-             {:^fifth_width$}&quot;</span>,
+            <span class="string">"{:^first_width$} | {:^second_width$} | {:^third_width$} | {:^fourth_width$} | \
+             {:^fifth_width$}"</span>,
             id,
             migration.app(),
             migration.name(),
@@ -505,7 +506,7 @@
     </span><span class="attr">#[arg(long)]
     </span>check: bool,
     <span class="doccomment">/// Number of migration to apply. Conflicts with app args
-    </span><span class="attr">#[arg(long, conflicts_with = <span class="string">&quot;app&quot;</span>)]
+    </span><span class="attr">#[arg(long, conflicts_with = <span class="string">"app"</span>)]
     </span>count: <span class="prelude-ty">Option</span>&lt;usize&gt;,
     <span class="doccomment">/// Make migration applied without running migration operations
     </span><span class="attr">#[arg(long)]
@@ -516,7 +517,7 @@
     </span>force: bool,
     <span class="doccomment">/// Apply migration till provided migration. Requires app options to be
     /// present
-    </span><span class="attr">#[arg(long, requires = <span class="string">&quot;app&quot;</span>)]
+    </span><span class="attr">#[arg(long, requires = <span class="string">"app"</span>)]
     </span>migration: <span class="prelude-ty">Option</span>&lt;String&gt;,
     <span class="doccomment">/// Show plan
     </span><span class="attr">#[arg(long)]
@@ -552,11 +553,11 @@
             <span class="kw">let </span>first_width = <span class="number">10</span>;
             <span class="kw">let </span>second_width = <span class="number">50</span>;
             <span class="kw">let </span>full_width = first_width + second_width + <span class="number">3</span>;
-            <span class="macro">println!</span>(<span class="string">&quot;{:^first_width$} | {:^second_width$}&quot;</span>, <span class="string">&quot;App&quot;</span>, <span class="string">&quot;Name&quot;</span>);
-            <span class="macro">println!</span>(<span class="string">&quot;{:^full_width$}&quot;</span>, <span class="string">&quot;-&quot;</span>.repeat(full_width));
+            <span class="macro">println!</span>(<span class="string">"{:^first_width$} | {:^second_width$}"</span>, <span class="string">"App"</span>, <span class="string">"Name"</span>);
+            <span class="macro">println!</span>(<span class="string">"{:^full_width$}"</span>, <span class="string">"-"</span>.repeat(full_width));
             <span class="kw">for </span>migration <span class="kw">in </span>migrations {
                 <span class="macro">println!</span>(
-                    <span class="string">&quot;{:^first_width$} | {:^second_width$}&quot;</span>,
+                    <span class="string">"{:^first_width$} | {:^second_width$}"</span>,
                     migration.app(),
                     migration.name(),
                 );
@@ -575,23 +576,23 @@
             <span class="kw">if </span>!<span class="self">self</span>.force &amp;&amp; !destructible_migrations.is_empty() {
                 <span class="kw">let </span><span class="kw-2">mut </span>input = String::new();
                 <span class="macro">println!</span>(
-                    <span class="string">&quot;Do you want to apply destructible migrations {} (y/N)&quot;</span>,
+                    <span class="string">"Do you want to apply destructible migrations {} (y/N)"</span>,
                     destructible_migrations.len()
                 );
                 <span class="kw">for </span>(position, migration) <span class="kw">in </span>destructible_migrations.iter().enumerate() {
-                    <span class="macro">println!</span>(<span class="string">&quot;{position}. {} : {}&quot;</span>, migration.app(), migration.name());
+                    <span class="macro">println!</span>(<span class="string">"{position}. {} : {}"</span>, migration.app(), migration.name());
                 }
                 std::io::stdout().flush()<span class="question-mark">?</span>;
                 std::io::stdin().read_line(<span class="kw-2">&amp;mut </span>input)<span class="question-mark">?</span>;
                 <span class="kw">let </span>input = input.trim().to_ascii_lowercase();
                 <span class="comment">// If answer is not y or yes then return
-                </span><span class="kw">if </span>![<span class="string">&quot;y&quot;</span>, <span class="string">&quot;yes&quot;</span>].contains(<span class="kw-2">&amp;</span>input.as_str()) {
+                </span><span class="kw">if </span>![<span class="string">"y"</span>, <span class="string">"yes"</span>].contains(<span class="kw-2">&amp;</span>input.as_str()) {
                     <span class="kw">return </span><span class="prelude-val">Ok</span>(());
                 }
             }
             <span class="kw">for </span>migration <span class="kw">in </span>migrations {
                 migrator.apply_migration(migration, connection).<span class="kw">await</span><span class="question-mark">?</span>;
-                <span class="macro">println!</span>(<span class="string">&quot;Applied {} : {}&quot;</span>, migration.app(), migration.name());
+                <span class="macro">println!</span>(<span class="string">"Applied {} : {}"</span>, migration.app(), migration.name());
             }
         }
         migrator.unlock(connection).<span class="kw">await</span><span class="question-mark">?</span>;
@@ -604,14 +605,14 @@
 </span><span class="attr">#[allow(clippy::struct_excessive_bools)]
 </span><span class="kw">pub struct </span>Revert {
     <span class="doccomment">/// Revert all migration. Conflicts with app args
-    </span><span class="attr">#[arg(long, conflicts_with = <span class="string">&quot;app&quot;</span>)]
+    </span><span class="attr">#[arg(long, conflicts_with = <span class="string">"app"</span>)]
     </span>all: bool,
     <span class="doccomment">/// Revert migration till app migrations is reverted. If it is present
     /// alongside migration options than only till migration is reverted
     </span><span class="attr">#[arg(long)]
     </span>app: <span class="prelude-ty">Option</span>&lt;String&gt;,
     <span class="doccomment">/// Number of migration to revert. Conflicts with all and app args
-    </span><span class="attr">#[arg(long, conflicts_with_all = [<span class="string">&quot;all&quot;</span>, <span class="string">&quot;app&quot;</span>]</span>)]
+    </span><span class="attr">#[arg(long, conflicts_with_all = [<span class="string">"all"</span>, <span class="string">"app"</span>]</span>)]
     count: <span class="prelude-ty">Option</span>&lt;usize&gt;,
     <span class="doccomment">/// Make migration reverted without running revert operation
     </span><span class="attr">#[arg(long)]
@@ -621,7 +622,7 @@
     </span>force: bool,
     <span class="doccomment">/// Revert migration till provided migration. Requires app options to be
     /// present
-    </span><span class="attr">#[arg(long, requires = <span class="string">&quot;app&quot;</span>)]
+    </span><span class="attr">#[arg(long, requires = <span class="string">"app"</span>)]
     </span>migration: <span class="prelude-ty">Option</span>&lt;String&gt;,
     <span class="doccomment">/// Show plan
     </span><span class="attr">#[arg(long)]
@@ -657,11 +658,11 @@
             <span class="kw">let </span>first_width = <span class="number">10</span>;
             <span class="kw">let </span>second_width = <span class="number">50</span>;
             <span class="kw">let </span>full_width = first_width + second_width + <span class="number">3</span>;
-            <span class="macro">println!</span>(<span class="string">&quot;{:^first_width$} | {:^second_width$}&quot;</span>, <span class="string">&quot;App&quot;</span>, <span class="string">&quot;Name&quot;</span>);
-            <span class="macro">println!</span>(<span class="string">&quot;{:^full_width$}&quot;</span>, <span class="string">&quot;-&quot;</span>.repeat(full_width));
+            <span class="macro">println!</span>(<span class="string">"{:^first_width$} | {:^second_width$}"</span>, <span class="string">"App"</span>, <span class="string">"Name"</span>);
+            <span class="macro">println!</span>(<span class="string">"{:^full_width$}"</span>, <span class="string">"-"</span>.repeat(full_width));
             <span class="kw">for </span>migration <span class="kw">in </span>revert_migrations {
                 <span class="macro">println!</span>(
-                    <span class="string">&quot;{:^first_width$} | {:^second_width$}&quot;</span>,
+                    <span class="string">"{:^first_width$} | {:^second_width$}"</span>,
                     migration.app(),
                     migration.name(),
                 );
@@ -676,23 +677,23 @@
             <span class="kw">if </span>!<span class="self">self</span>.force {
                 <span class="kw">let </span><span class="kw-2">mut </span>input = String::new();
                 <span class="macro">println!</span>(
-                    <span class="string">&quot;Do you want to revert {} migrations (y/N)&quot;</span>,
+                    <span class="string">"Do you want to revert {} migrations (y/N)"</span>,
                     revert_migrations.len()
                 );
                 <span class="kw">for </span>(position, migration) <span class="kw">in </span>revert_migrations.iter().enumerate() {
-                    <span class="macro">println!</span>(<span class="string">&quot;{position}. {} : {}&quot;</span>, migration.app(), migration.name());
+                    <span class="macro">println!</span>(<span class="string">"{position}. {} : {}"</span>, migration.app(), migration.name());
                 }
                 std::io::stdout().flush()<span class="question-mark">?</span>;
                 std::io::stdin().read_line(<span class="kw-2">&amp;mut </span>input)<span class="question-mark">?</span>;
                 <span class="kw">let </span>input = input.trim().to_ascii_lowercase();
                 <span class="comment">// If answer is not y or yes then return
-                </span><span class="kw">if </span>![<span class="string">&quot;y&quot;</span>, <span class="string">&quot;yes&quot;</span>].contains(<span class="kw-2">&amp;</span>input.as_str()) {
+                </span><span class="kw">if </span>![<span class="string">"y"</span>, <span class="string">"yes"</span>].contains(<span class="kw-2">&amp;</span>input.as_str()) {
                     <span class="kw">return </span><span class="prelude-val">Ok</span>(());
                 }
             }
             <span class="kw">for </span>migration <span class="kw">in </span>revert_migrations {
                 migrator.revert_migration(migration, connection).<span class="kw">await</span><span class="question-mark">?</span>;
-                <span class="macro">println!</span>(<span class="string">&quot;Reverted {} : {}&quot;</span>, migration.app(), migration.name());
+                <span class="macro">println!</span>(<span class="string">"Reverted {} : {}"</span>, migration.app(), migration.name());
             }
         }
         migrator.unlock(connection).<span class="kw">await</span><span class="question-mark">?</span>;
