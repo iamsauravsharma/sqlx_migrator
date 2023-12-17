@@ -203,10 +203,7 @@ impl Plan {
 
 /// Info trait which implements some of database agnostic methods to
 /// return data as well as add migrations
-pub trait Info<DB>
-where
-    DB: sqlx::Database,
-{
+pub trait Info<DB> {
     /// Return migrations
     fn migrations(&self) -> &HashSet<Box<dyn Migration<DB>>>;
 
@@ -574,18 +571,12 @@ where
 
 /// Migrator struct which store migrations graph and information related to
 /// different library supported migrations
-pub struct Migrator<DB>
-where
-    DB: sqlx::Database,
-{
+pub struct Migrator<DB> {
     migrations: HashSet<Box<dyn Migration<DB>>>,
     prefix: Option<String>,
 }
 
-impl<DB> Migrator<DB>
-where
-    DB: sqlx::Database,
-{
+impl<DB> Migrator<DB> {
     /// Use prefix for migrator table name only ascii alpha numeric and
     /// underscore characters are supported for table name. prefix will set
     /// table name as `_{prefix}{default_table_name}` where default table
@@ -616,10 +607,7 @@ where
     }
 }
 
-impl<DB> Default for Migrator<DB>
-where
-    DB: sqlx::Database,
-{
+impl<DB> Default for Migrator<DB> {
     fn default() -> Self {
         Self {
             migrations: HashSet::default(),
@@ -628,10 +616,7 @@ where
     }
 }
 
-impl<DB> Info<DB> for Migrator<DB>
-where
-    DB: sqlx::Database,
-{
+impl<DB> Info<DB> for Migrator<DB> {
     fn migrations(&self) -> &HashSet<Box<dyn Migration<DB>>> {
         &self.migrations
     }

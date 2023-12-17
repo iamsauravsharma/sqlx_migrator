@@ -82,21 +82,15 @@ pub trait Migration<DB>: Send + Sync {
     }
 }
 
-impl<DB> PartialEq for dyn Migration<DB>
-where
-    DB: sqlx::Database,
-{
+impl<DB> PartialEq for dyn Migration<DB> {
     fn eq(&self, other: &Self) -> bool {
         self.app() == other.app() && self.name() == other.name()
     }
 }
 
-impl<DB> Eq for dyn Migration<DB> where DB: sqlx::Database {}
+impl<DB> Eq for dyn Migration<DB> {}
 
-impl<DB> Hash for dyn Migration<DB>
-where
-    DB: sqlx::Database,
-{
+impl<DB> Hash for dyn Migration<DB> {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.app().hash(state);
         self.name().hash(state);
@@ -128,10 +122,7 @@ impl AppliedMigrationSqlRow {
     }
 }
 
-impl<DB> PartialEq<Box<dyn Migration<DB>>> for AppliedMigrationSqlRow
-where
-    DB: sqlx::Database,
-{
+impl<DB> PartialEq<Box<dyn Migration<DB>>> for AppliedMigrationSqlRow {
     fn eq(&self, other: &Box<dyn Migration<DB>>) -> bool {
         self.app == other.app() && self.name == other.name()
     }
