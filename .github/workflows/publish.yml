@@ -3,6 +3,9 @@ on:
   push:
     tags: "v*"
 
+permissions:
+  contents: write
+
 jobs:
   publish_crate:
     name: Publish to crates.io
