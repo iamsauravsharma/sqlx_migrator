@@ -222,9 +222,9 @@ pub trait Info<DB> {
         let migration_parents = migration.parents();
         let migration_replaces = migration.replaces();
         let is_new_value = self.migrations_mut().insert(migration);
-        // Only add parents and replaces if migrations was added first time. This can
-        // increase performance of recursive addition by ignoring parent and replace
-        // migration recursive addition
+        // Only add parents and replaces migrations if current migration was added first
+        // time. This can increase performance of recursive addition by ignoring
+        // parent and replace migration recursive addition
         if is_new_value {
             for parent in migration_parents {
                 self.add_migration(parent);

@@ -1,4 +1,5 @@
 //! Example crate for sqlite
+use sqlx_migrator::cli::MigrationCommand;
 use sqlx_migrator::migrator::{Info, Migrator};
 use sqlx_migrator::sqlx::Sqlite;
 
@@ -10,7 +11,7 @@ async fn main() {
     let mut migrator = Migrator::default();
     migrator.add_migrations(migrations::migrations());
     // There are two way to run migration. Either you can create cli as shown below
-    sqlx_migrator::cli::run(Box::new(migrator), &pool)
+    MigrationCommand::parse_and_run(Box::new(migrator), &pool)
         .await
         .unwrap();
     // Or you can directly use migrator apply_all function instead of creating

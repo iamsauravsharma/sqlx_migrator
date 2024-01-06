@@ -95,7 +95,7 @@ impl Migration<sqlx::Postgres> for FirstMigration {
     }
 
     // use parents function to add parents of a migrations.
-    fn parents(&self) -> Vec<Box<dyn Migration<DB>>> {
+    fn parents(&self) -> Vec<Box<dyn Migration<sqlx::Postgres>>> {
         vec![]
     }
 
@@ -133,10 +133,37 @@ migrator.apply_all(&pool).await.unwrap();
 migrator.revert_all(&pool).await.unwrap();
 ```
 
-Or you can create cli
+Or you can create cli using
 
 ```rust
-sqlx_migrator::cli::run(Box::new(migrator), &pool).await.unwrap();
+use sqlx_migrator::cli::MigrationCommand;
+MigrationCommand::parse_and_run(Box::new(migrator), &pool).await.unwrap();
+```
+
+If you want to extend your own clap based cli then you can add migrator to sub command enum and then run migrator
+```rust
+#[derive(clap::Parser)]
+struct Cli {
+    #[command(subcommand)]
+    sub_command: CliSubcommand
+}
+
+#[derive(clap::Subcommand)]
+enum CliSubcommand {
+    #[command()]
+    Migrator(sqlx_migrator::cli::MigrationCommand)
+}
+
+impl Cli {
+    async fn run() {
+        let cli = Self::parse();
+        match cli.sub_command {
+            Migrator(m) => {
+                m.run(Box::new(migrator), &pool).await.unwrap()
+            }
+        }
+    }
+}
 ```
 
 # Migrate from sqlx default sql based migration
@@ -152,7 +179,8 @@ Can be easily applied by following above usage docs where you only need to write
 Then you can create cli for migrator
 
 ```rust
-sqlx_migrator::cli::run(Box::new(migrator), &pool).await.unwrap();
+use sqlx_migrator::cli::MigrationCommand;
+MigrationCommand::parse_and_run(Box::new(migrator), &pool).await.unwrap();
 ```
 
 and run fake apply cli command

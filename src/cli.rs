@@ -8,15 +8,48 @@ use sqlx::Pool;
 use crate::error::Error;
 use crate::migrator::{Migrate, Plan};
 
+/// Migration command for performing rust based sqlx migrations
 #[derive(Parser, Debug)]
-struct Args {
+pub struct MigrationCommand {
     #[command(subcommand)]
     sub_command: SubCommand,
 }
 
+impl MigrationCommand {
+    /// Parse `MigrationCommand` and run migration command line interface
+    ///
+    /// # Errors
+    /// If migration command fails to complete and raise some issue
+    pub async fn parse_and_run<DB>(
+        migrator: Box<dyn Migrate<DB>>,
+        pool: &Pool<DB>,
+    ) -> Result<(), Error>
+    where
+        DB: sqlx::Database,
+    {
+        let migration_command = Self::parse();
+        migration_command.run(migrator, pool).await
+    }
+
+    /// Run migration command line interface
+    ///
+    /// # Errors
+    /// If migration command fails to complete and raise some issue
+    pub async fn run<DB>(
+        &self,
+        migrator: Box<dyn Migrate<DB>>,
+        pool: &Pool<DB>,
+    ) -> Result<(), Error>
+    where
+        DB: sqlx::Database,
+    {
+        self.sub_command.handle_subcommand(migrator, pool).await?;
+        Ok(())
+    }
+}
+
 #[derive(Subcommand, Debug)]
-/// Subcommand for sqlx migrator cli
-pub enum SubCommand {
+enum SubCommand {
     /// Apply migrations
     #[command()]
     Apply(Apply),
@@ -34,11 +67,7 @@ pub enum SubCommand {
 }
 
 impl SubCommand {
-    /// Handle all subcommand operations
-    ///
-    /// # Errors
-    ///  If any subcommand operations fail running
-    pub async fn handle_subcommand<DB>(
+    async fn handle_subcommand<DB>(
         &self,
         migrator: Box<dyn Migrate<DB>>,
         pool: &Pool<DB>,
@@ -136,9 +165,8 @@ where
 }
 
 #[derive(Parser, Debug)]
-/// CLI struct for apply subcommand
 #[allow(clippy::struct_excessive_bools)]
-pub struct Apply {
+struct Apply {
     /// App name up to which migration needs to be applied. If migration option
     /// is also present than only till migration is applied
     #[arg(long)]
@@ -242,9 +270,8 @@ impl Apply {
 }
 
 #[derive(Parser, Debug)]
-/// CLI struct for revert subcommand
 #[allow(clippy::struct_excessive_bools)]
-pub struct Revert {
+struct Revert {
     /// Revert all migration. Conflicts with app args
     #[arg(long, conflicts_with = "app")]
     all: bool,
@@ -340,19 +367,4 @@ impl Revert {
         migrator.unlock(connection).await?;
         Ok(())
     }
-}
-
-/// Run full cli by parsing args with help of migrator. If you only need to add
-/// subcommand to your app than use `SubCommand` enum `handle_subcommand`
-/// function
-///
-/// # Errors
-/// When command fails to run and raises error
-pub async fn run<DB>(migrator: Box<dyn Migrate<DB>>, pool: &Pool<DB>) -> Result<(), Error>
-where
-    DB: sqlx::Database,
-{
-    let args = Args::parse();
-    args.sub_command.handle_subcommand(migrator, pool).await?;
-    Ok(())
 }
