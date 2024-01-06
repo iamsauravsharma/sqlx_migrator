@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["SubCommand"],"fn":["run"],"struct":["Apply","Revert"]};
+window.SIDEBAR_ITEMS = {"struct":["MigrationCommand"]};
