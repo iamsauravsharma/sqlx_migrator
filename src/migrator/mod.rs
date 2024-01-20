@@ -201,8 +201,8 @@ impl Plan {
     }
 }
 
-/// Info trait which implements some of database agnostic methods to
-/// return data as well as add migrations
+/// Info trait which implements some of database agnostic methods to add
+/// migration or returns immutable or mutable migrations list
 pub trait Info<DB> {
     /// Return migrations
     fn migrations(&self) -> &HashSet<Box<dyn Migration<DB>>>;
@@ -236,9 +236,9 @@ pub trait Info<DB> {
     }
 }
 
-/// Trait which is implemented for database for performing database related
-/// actions on database. Usually this trait is implemented for database to
-/// support certain database along with info trait
+/// Trait which is implemented for database for performing different
+/// operations/action on database. Usually this trait is implemented for
+/// database to support database along with info trait
 #[async_trait::async_trait]
 pub trait DatabaseOperation<DB>
 where
@@ -257,7 +257,7 @@ where
         connection: &mut <DB as sqlx::Database>::Connection,
     ) -> Result<(), Error>;
 
-    /// Add migration to migration table
+    /// Add migration to migration db table
     #[allow(clippy::borrowed_box)]
     async fn add_migration_to_db_table(
         &self,
@@ -265,7 +265,7 @@ where
         connection: &mut <DB as sqlx::Database>::Connection,
     ) -> Result<(), Error>;
 
-    /// Delete migration from migration table
+    /// Delete migration from migration db table
     #[allow(clippy::borrowed_box)]
     async fn delete_migration_from_db_table(
         &self,
@@ -290,9 +290,10 @@ where
 }
 
 /// Migrate trait which migrate a database according to requirements. This trait
-/// implements all methods which depends on DatabaseOperation trait and Info
+/// implements all methods which depends on `DatabaseOperation` trait and `Info`
 /// trait. This trait doesn't requires to implement any method since all
-/// function have default implementation
+/// function have default implementation and all methods are database
+/// agnostics
 #[async_trait::async_trait]
 pub trait Migrate<DB>: Info<DB> + DatabaseOperation<DB> + Send + Sync
 where
@@ -324,8 +325,7 @@ where
         Ok(applied_migrations)
     }
 
-    /// Generate migration plan for according to plan type. Returns a vector of
-    /// migration
+    /// Generate migration plan according to plan. Returns a vector of migration
     async fn generate_migration_plan(
         &self,
         plan: Plan,
@@ -354,27 +354,29 @@ where
 
         // Create migration plan until migration plan length is equal to hashmap
         // length
-        while migration_plan.len() != self.migrations().len() {
+        let migrations_len = self.migrations().len();
+        while migration_plan.len() != migrations_len {
             let old_migration_plan_length = migration_plan.len();
             for migration in self.migrations() {
-                // Check if all parents are applied or not
-                let all_parents_applied = migration
-                    .parents()
-                    .iter()
-                    .all(|migration| migration_plan.contains(&migration));
+                if !migration_plan.contains(&migration) {
+                    // Check if all parents are applied or not
+                    let all_parents_applied = migration
+                        .parents()
+                        .iter()
+                        .all(|migration| migration_plan.contains(&migration));
 
-                // Check if all run before parents are added or not
-                let all_run_before_parents_added = parents_due_to_run_before
-                    .get(migration)
-                    .unwrap_or(&vec![])
-                    .iter()
-                    .all(|migration| migration_plan.contains(migration));
+                    if all_parents_applied {
+                        // Check if all run before parents are added or not
+                        let all_run_before_parents_added = parents_due_to_run_before
+                            .get(migration)
+                            .unwrap_or(&vec![])
+                            .iter()
+                            .all(|migration| migration_plan.contains(migration));
 
-                if all_parents_applied
-                    && all_run_before_parents_added
-                    && !migration_plan.contains(&migration)
-                {
-                    migration_plan.push(migration);
+                        if all_run_before_parents_added {
+                            migration_plan.push(migration);
+                        }
+                    }
                 }
             }
 
@@ -569,11 +571,13 @@ where
     }
 }
 
+const DEFAULT_TABLE_NAME: &str = "_sqlx_migration_migrations";
+
 /// Migrator struct which store migrations graph and information related to
 /// different library supported migrations
 pub struct Migrator<DB> {
     migrations: HashSet<Box<dyn Migration<DB>>>,
-    prefix: Option<String>,
+    table_name: String,
 }
 
 impl<DB> Migrator<DB> {
@@ -592,18 +596,15 @@ impl<DB> Migrator<DB> {
         {
             return Err(Error::NonAsciiAlphaNumeric);
         }
-        self.prefix = Some(prefix);
+        self.table_name = format!("_{prefix}{DEFAULT_TABLE_NAME}");
         Ok(self)
     }
 
-    #[cfg(any(feature = "postgres", feature = "mysql", feature = "sqlite"))]
-    pub(crate) fn table_name(&self) -> String {
-        let default_table_name = "_sqlx_migrator_migrations".to_string();
-        if let Some(prefix) = &self.prefix {
-            format!("_{prefix}{default_table_name}")
-        } else {
-            default_table_name
-        }
+    /// Get name of table which is used for storing migrations related
+    /// information in database
+    #[must_use]
+    pub fn table_name(&self) -> &str {
+        &self.table_name
     }
 }
 
@@ -611,7 +612,7 @@ impl<DB> Default for Migrator<DB> {
     fn default() -> Self {
         Self {
             migrations: HashSet::default(),
-            prefix: None,
+            table_name: DEFAULT_TABLE_NAME.to_string(),
         }
     }
 }

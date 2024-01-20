@@ -47,7 +47,7 @@ impl DatabaseOperation<Sqlite> for Migrator<Sqlite> {
         &self,
         connection: &mut <Sqlite as sqlx::Database>::Connection,
     ) -> Result<(), Error> {
-        sqlx::query(&create_migrator_table_query(&self.table_name()))
+        sqlx::query(&create_migrator_table_query(self.table_name()))
             .execute(connection)
             .await?;
         Ok(())
@@ -57,7 +57,7 @@ impl DatabaseOperation<Sqlite> for Migrator<Sqlite> {
         &self,
         connection: &mut <Sqlite as sqlx::Database>::Connection,
     ) -> Result<(), Error> {
-        sqlx::query(&drop_table_query(&self.table_name()))
+        sqlx::query(&drop_table_query(self.table_name()))
             .execute(connection)
             .await?;
         Ok(())
@@ -68,7 +68,7 @@ impl DatabaseOperation<Sqlite> for Migrator<Sqlite> {
         migration: &Box<dyn Migration<Sqlite>>,
         connection: &mut <Sqlite as sqlx::Database>::Connection,
     ) -> Result<(), Error> {
-        sqlx::query(&add_migration_query(&self.table_name()))
+        sqlx::query(&add_migration_query(self.table_name()))
             .bind(migration.app())
             .bind(migration.name())
             .execute(connection)
@@ -81,7 +81,7 @@ impl DatabaseOperation<Sqlite> for Migrator<Sqlite> {
         migration: &Box<dyn Migration<Sqlite>>,
         connection: &mut <Sqlite as sqlx::Database>::Connection,
     ) -> Result<(), Error> {
-        sqlx::query(&delete_migration_query(&self.table_name()))
+        sqlx::query(&delete_migration_query(self.table_name()))
             .bind(migration.app())
             .bind(migration.name())
             .execute(connection)
@@ -94,7 +94,7 @@ impl DatabaseOperation<Sqlite> for Migrator<Sqlite> {
         connection: &mut <Sqlite as sqlx::Database>::Connection,
     ) -> Result<Vec<AppliedMigrationSqlRow>, Error> {
         Ok(
-            sqlx::query_as::<_, AppliedMigrationSqlRow>(&fetch_rows_query(&self.table_name()))
+            sqlx::query_as::<_, AppliedMigrationSqlRow>(&fetch_rows_query(self.table_name()))
                 .fetch_all(connection)
                 .await?,
         )

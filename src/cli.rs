@@ -103,7 +103,6 @@ where
     {
         return Err(Error::AppliedMigrationExists);
     }
-
     migrator.drop_migration_table_if_exists(connection).await?;
     println!("Dropped migrations table");
     Ok(())
