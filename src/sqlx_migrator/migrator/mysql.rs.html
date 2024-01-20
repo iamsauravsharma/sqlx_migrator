@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/migrator/mysql.rs`."><title>mysql.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-4e54bb2b497cc83f.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="sqlx_migrator" data-themes="" data-resource-suffix="" data-rustdoc-version="1.77.0-nightly (595bc6f00 2024-01-05)" data-channel="nightly" data-search-js="search-c17e98913a53b3b7.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-0b2e2def73e61cbe.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-04d5337699b92874.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title">
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/migrator/mysql.rs`."><title>mysql.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-4e54bb2b497cc83f.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="sqlx_migrator" data-themes="" data-resource-suffix="" data-rustdoc-version="1.77.0-nightly (88189a71e 2024-01-19)" data-channel="nightly" data-search-js="search-dd67cee4cfa65049.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-0b2e2def73e61cbe.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-04d5337699b92874.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title">
             <h2>Files</h2></div></nav><div class="sidebar-resizer"></div>
     <main><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../../sqlx_migrator/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
@@ -237,7 +237,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         connection: <span class="kw-2">&amp;mut </span>&lt;MySql <span class="kw">as </span>sqlx::Database&gt;::Connection,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
-        sqlx::query(<span class="kw-2">&amp;</span>create_migrator_table_query(<span class="kw-2">&amp;</span><span class="self">self</span>.table_name()))
+        sqlx::query(<span class="kw-2">&amp;</span>create_migrator_table_query(<span class="self">self</span>.table_name()))
             .execute(connection)
             .<span class="kw">await</span><span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
@@ -247,7 +247,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         connection: <span class="kw-2">&amp;mut </span>&lt;MySql <span class="kw">as </span>sqlx::Database&gt;::Connection,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
-        sqlx::query(<span class="kw-2">&amp;</span>drop_table_query(<span class="kw-2">&amp;</span><span class="self">self</span>.table_name()))
+        sqlx::query(<span class="kw-2">&amp;</span>drop_table_query(<span class="self">self</span>.table_name()))
             .execute(connection)
             .<span class="kw">await</span><span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
@@ -258,7 +258,7 @@
         migration: <span class="kw-2">&amp;</span>Box&lt;<span class="kw">dyn </span>Migration&lt;MySql&gt;&gt;,
         connection: <span class="kw-2">&amp;mut </span>&lt;MySql <span class="kw">as </span>sqlx::Database&gt;::Connection,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
-        sqlx::query(<span class="kw-2">&amp;</span>add_migration_query(<span class="kw-2">&amp;</span><span class="self">self</span>.table_name()))
+        sqlx::query(<span class="kw-2">&amp;</span>add_migration_query(<span class="self">self</span>.table_name()))
             .bind(migration.app())
             .bind(migration.name())
             .execute(connection)
@@ -271,7 +271,7 @@
         migration: <span class="kw-2">&amp;</span>Box&lt;<span class="kw">dyn </span>Migration&lt;MySql&gt;&gt;,
         connection: <span class="kw-2">&amp;mut </span>&lt;MySql <span class="kw">as </span>sqlx::Database&gt;::Connection,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
-        sqlx::query(<span class="kw-2">&amp;</span>delete_migration_query(<span class="kw-2">&amp;</span><span class="self">self</span>.table_name()))
+        sqlx::query(<span class="kw-2">&amp;</span>delete_migration_query(<span class="self">self</span>.table_name()))
             .bind(migration.app())
             .bind(migration.name())
             .execute(connection)
@@ -284,7 +284,7 @@
         connection: <span class="kw-2">&amp;mut </span>&lt;MySql <span class="kw">as </span>sqlx::Database&gt;::Connection,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;AppliedMigrationSqlRow&gt;, Error&gt; {
         <span class="prelude-val">Ok</span>(
-            sqlx::query_as::&lt;<span class="kw">_</span>, AppliedMigrationSqlRow&gt;(<span class="kw-2">&amp;</span>fetch_rows_query(<span class="kw-2">&amp;</span><span class="self">self</span>.table_name()))
+            sqlx::query_as::&lt;<span class="kw">_</span>, AppliedMigrationSqlRow&gt;(<span class="kw-2">&amp;</span>fetch_rows_query(<span class="self">self</span>.table_name()))
                 .fetch_all(connection)
                 .<span class="kw">await</span><span class="question-mark">?</span>,
         )
@@ -297,7 +297,7 @@
         <span class="kw">let </span>(database_name,): (String,) = sqlx::query_as(current_database_query())
             .fetch_one(<span class="kw-2">&amp;mut *</span>connection)
             .<span class="kw">await</span><span class="question-mark">?</span>;
-        <span class="kw">let </span>lock_id = get_lock_id(<span class="kw-2">&amp;</span>database_name, <span class="kw-2">&amp;</span><span class="self">self</span>.table_name());
+        <span class="kw">let </span>lock_id = get_lock_id(<span class="kw-2">&amp;</span>database_name, <span class="self">self</span>.table_name());
         sqlx::query(lock_database_query())
             .bind(lock_id)
             .execute(connection)
@@ -312,7 +312,7 @@
         <span class="kw">let </span>(database_name,): (String,) = sqlx::query_as(current_database_query())
             .fetch_one(<span class="kw-2">&amp;mut *</span>connection)
             .<span class="kw">await</span><span class="question-mark">?</span>;
-        <span class="kw">let </span>lock_id = get_lock_id(<span class="kw-2">&amp;</span>database_name, <span class="kw-2">&amp;</span><span class="self">self</span>.table_name());
+        <span class="kw">let </span>lock_id = get_lock_id(<span class="kw-2">&amp;</span>database_name, <span class="self">self</span>.table_name());
         sqlx::query(unlock_database_query())
             .bind(lock_id)
             .execute(connection)

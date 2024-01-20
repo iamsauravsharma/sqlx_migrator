@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/migrator/mod.rs`."><title>mod.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-4e54bb2b497cc83f.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="sqlx_migrator" data-themes="" data-resource-suffix="" data-rustdoc-version="1.77.0-nightly (595bc6f00 2024-01-05)" data-channel="nightly" data-search-js="search-c17e98913a53b3b7.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-0b2e2def73e61cbe.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-04d5337699b92874.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title">
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/migrator/mod.rs`."><title>mod.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-4e54bb2b497cc83f.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="sqlx_migrator" data-themes="" data-resource-suffix="" data-rustdoc-version="1.77.0-nightly (88189a71e 2024-01-19)" data-channel="nightly" data-search-js="search-dd67cee4cfa65049.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-0b2e2def73e61cbe.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-04d5337699b92874.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title">
             <h2>Files</h2></div></nav><div class="sidebar-resizer"></div>
     <main><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../../sqlx_migrator/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
@@ -634,6 +634,7 @@
 <a href="#632" id="632">632</a>
 <a href="#633" id="633">633</a>
 <a href="#634" id="634">634</a>
+<a href="#635" id="635">635</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Migrator module
 //!
 //! It contains common enum and trait for implementing migrator for sqlx
@@ -837,8 +838,8 @@
     }
 }
 
-<span class="doccomment">/// Info trait which implements some of database agnostic methods to
-/// return data as well as add migrations
+<span class="doccomment">/// Info trait which implements some of database agnostic methods to add
+/// migration or returns immutable or mutable migrations list
 </span><span class="kw">pub trait </span>Info&lt;DB&gt; {
     <span class="doccomment">/// Return migrations
     </span><span class="kw">fn </span>migrations(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>HashSet&lt;Box&lt;<span class="kw">dyn </span>Migration&lt;DB&gt;&gt;&gt;;
@@ -872,9 +873,9 @@
     }
 }
 
-<span class="doccomment">/// Trait which is implemented for database for performing database related
-/// actions on database. Usually this trait is implemented for database to
-/// support certain database along with info trait
+<span class="doccomment">/// Trait which is implemented for database for performing different
+/// operations/action on database. Usually this trait is implemented for
+/// database to support database along with info trait
 </span><span class="attr">#[async_trait::async_trait]
 </span><span class="kw">pub trait </span>DatabaseOperation&lt;DB&gt;
 <span class="kw">where
@@ -893,7 +894,7 @@
         connection: <span class="kw-2">&amp;mut </span>&lt;DB <span class="kw">as </span>sqlx::Database&gt;::Connection,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt;;
 
-    <span class="doccomment">/// Add migration to migration table
+    <span class="doccomment">/// Add migration to migration db table
     </span><span class="attr">#[allow(clippy::borrowed_box)]
     </span><span class="kw">async fn </span>add_migration_to_db_table(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
@@ -901,7 +902,7 @@
         connection: <span class="kw-2">&amp;mut </span>&lt;DB <span class="kw">as </span>sqlx::Database&gt;::Connection,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt;;
 
-    <span class="doccomment">/// Delete migration from migration table
+    <span class="doccomment">/// Delete migration from migration db table
     </span><span class="attr">#[allow(clippy::borrowed_box)]
     </span><span class="kw">async fn </span>delete_migration_from_db_table(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
@@ -926,9 +927,10 @@
 }
 
 <span class="doccomment">/// Migrate trait which migrate a database according to requirements. This trait
-/// implements all methods which depends on DatabaseOperation trait and Info
+/// implements all methods which depends on `DatabaseOperation` trait and `Info`
 /// trait. This trait doesn't requires to implement any method since all
-/// function have default implementation
+/// function have default implementation and all methods are database
+/// agnostics
 </span><span class="attr">#[async_trait::async_trait]
 </span><span class="kw">pub trait </span>Migrate&lt;DB&gt;: Info&lt;DB&gt; + DatabaseOperation&lt;DB&gt; + Send + Sync
 <span class="kw">where
@@ -960,8 +962,7 @@
         <span class="prelude-val">Ok</span>(applied_migrations)
     }
 
-    <span class="doccomment">/// Generate migration plan for according to plan type. Returns a vector of
-    /// migration
+    <span class="doccomment">/// Generate migration plan according to plan. Returns a vector of migration
     </span><span class="kw">async fn </span>generate_migration_plan(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         plan: Plan,
@@ -990,27 +991,29 @@
 
         <span class="comment">// Create migration plan until migration plan length is equal to hashmap
         // length
-        </span><span class="kw">while </span>migration_plan.len() != <span class="self">self</span>.migrations().len() {
+        </span><span class="kw">let </span>migrations_len = <span class="self">self</span>.migrations().len();
+        <span class="kw">while </span>migration_plan.len() != migrations_len {
             <span class="kw">let </span>old_migration_plan_length = migration_plan.len();
             <span class="kw">for </span>migration <span class="kw">in </span><span class="self">self</span>.migrations() {
-                <span class="comment">// Check if all parents are applied or not
-                </span><span class="kw">let </span>all_parents_applied = migration
-                    .parents()
-                    .iter()
-                    .all(|migration| migration_plan.contains(<span class="kw-2">&amp;</span>migration));
+                <span class="kw">if </span>!migration_plan.contains(<span class="kw-2">&amp;</span>migration) {
+                    <span class="comment">// Check if all parents are applied or not
+                    </span><span class="kw">let </span>all_parents_applied = migration
+                        .parents()
+                        .iter()
+                        .all(|migration| migration_plan.contains(<span class="kw-2">&amp;</span>migration));
 
-                <span class="comment">// Check if all run before parents are added or not
-                </span><span class="kw">let </span>all_run_before_parents_added = parents_due_to_run_before
-                    .get(migration)
-                    .unwrap_or(<span class="kw-2">&amp;</span><span class="macro">vec!</span>[])
-                    .iter()
-                    .all(|migration| migration_plan.contains(migration));
+                    <span class="kw">if </span>all_parents_applied {
+                        <span class="comment">// Check if all run before parents are added or not
+                        </span><span class="kw">let </span>all_run_before_parents_added = parents_due_to_run_before
+                            .get(migration)
+                            .unwrap_or(<span class="kw-2">&amp;</span><span class="macro">vec!</span>[])
+                            .iter()
+                            .all(|migration| migration_plan.contains(migration));
 
-                <span class="kw">if </span>all_parents_applied
-                    &amp;&amp; all_run_before_parents_added
-                    &amp;&amp; !migration_plan.contains(<span class="kw-2">&amp;</span>migration)
-                {
-                    migration_plan.push(migration);
+                        <span class="kw">if </span>all_run_before_parents_added {
+                            migration_plan.push(migration);
+                        }
+                    }
                 }
             }
 
@@ -1205,11 +1208,13 @@
     }
 }
 
+<span class="kw">const </span>DEFAULT_TABLE_NAME: <span class="kw-2">&amp;</span>str = <span class="string">"_sqlx_migration_migrations"</span>;
+
 <span class="doccomment">/// Migrator struct which store migrations graph and information related to
 /// different library supported migrations
 </span><span class="kw">pub struct </span>Migrator&lt;DB&gt; {
     migrations: HashSet&lt;Box&lt;<span class="kw">dyn </span>Migration&lt;DB&gt;&gt;&gt;,
-    prefix: <span class="prelude-ty">Option</span>&lt;String&gt;,
+    table_name: String,
 }
 
 <span class="kw">impl</span>&lt;DB&gt; Migrator&lt;DB&gt; {
@@ -1228,18 +1233,15 @@
         {
             <span class="kw">return </span><span class="prelude-val">Err</span>(Error::NonAsciiAlphaNumeric);
         }
-        <span class="self">self</span>.prefix = <span class="prelude-val">Some</span>(prefix);
+        <span class="self">self</span>.table_name = <span class="macro">format!</span>(<span class="string">"_{prefix}{DEFAULT_TABLE_NAME}"</span>);
         <span class="prelude-val">Ok</span>(<span class="self">self</span>)
     }
 
-    <span class="attr">#[cfg(any(feature = <span class="string">"postgres"</span>, feature = <span class="string">"mysql"</span>, feature = <span class="string">"sqlite"</span>))]
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>table_name(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; String {
-        <span class="kw">let </span>default_table_name = <span class="string">"_sqlx_migrator_migrations"</span>.to_string();
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(prefix) = <span class="kw-2">&amp;</span><span class="self">self</span>.prefix {
-            <span class="macro">format!</span>(<span class="string">"_{prefix}{default_table_name}"</span>)
-        } <span class="kw">else </span>{
-            default_table_name
-        }
+    <span class="doccomment">/// Get name of table which is used for storing migrations related
+    /// information in database
+    </span><span class="attr">#[must_use]
+    </span><span class="kw">pub fn </span>table_name(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>str {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.table_name
     }
 }
 
@@ -1247,7 +1249,7 @@
     <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             migrations: HashSet::default(),
-            prefix: <span class="prelude-val">None</span>,
+            table_name: DEFAULT_TABLE_NAME.to_string(),
         }
     }
 }
