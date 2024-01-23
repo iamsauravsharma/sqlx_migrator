@@ -304,9 +304,9 @@ where
         &self,
         connection: &mut <DB as sqlx::Database>::Connection,
     ) -> MigrationVecResult<DB> {
-        if cfg!(feature = "tracing") {
-            tracing::info!("Fetching applied migrations");
-        }
+        #[cfg(feature = "tracing")]
+        tracing::debug!("fetching applied migrations");
+
         self.ensure_migration_table_exists(connection).await?;
         let applied_migration_list = self.fetch_applied_migration_from_db(connection).await?;
 
@@ -333,9 +333,8 @@ where
     ) -> MigrationVecResult<DB> {
         let applied_migrations = self.list_applied_migrations(connection).await?;
 
-        if cfg!(feature = "tracing") {
-            tracing::info!("Generating {:?} migration plan", plan);
-        }
+        #[cfg(feature = "tracing")]
+        tracing::debug!("generating {:?} migration plan", plan);
 
         let mut migration_plan = Vec::new();
 
@@ -469,9 +468,8 @@ where
     /// If failed to apply migration
     async fn apply_all(&self, pool: &Pool<DB>) -> Result<(), Error> {
         let mut connection = pool.acquire().await?;
-        if cfg!(feature = "tracing") {
-            tracing::info!("Applying all migration");
-        }
+        #[cfg(feature = "tracing")]
+        tracing::debug!("applying all migration");
         self.lock(&mut connection).await?;
         let plan = Plan::new(PlanType::Apply, None, None)?;
         for migration in self.generate_migration_plan(plan, &mut connection).await? {
@@ -489,13 +487,8 @@ where
         migration: &Box<dyn Migration<DB>>,
         connection: &mut <DB as sqlx::Database>::Connection,
     ) -> Result<(), Error> {
-        if cfg!(feature = "tracing") {
-            tracing::info!(
-                "Applying {} migration {}",
-                migration.app(),
-                migration.name()
-            );
-        }
+        #[cfg(feature = "tracing")]
+        tracing::debug!("applying {} : {}", migration.app(), migration.name());
         if migration.is_atomic() {
             let mut transaction = connection.begin().await?;
             for operation in migration.operations() {
@@ -520,9 +513,8 @@ where
     /// If any migration or operation fails
     async fn revert_all(&self, pool: &Pool<DB>) -> Result<(), Error> {
         let mut connection = pool.acquire().await?;
-        if cfg!(feature = "tracing") {
-            tracing::info!("Reverting all migration");
-        }
+        #[cfg(feature = "tracing")]
+        tracing::debug!("reverting all migration");
         self.lock(&mut connection).await?;
         let plan = Plan::new(PlanType::Revert, None, None)?;
         for migration in self.generate_migration_plan(plan, &mut connection).await? {
@@ -540,13 +532,8 @@ where
         migration: &Box<dyn Migration<DB>>,
         connection: &mut <DB as sqlx::Database>::Connection,
     ) -> Result<(), Error> {
-        if cfg!(feature = "tracing") {
-            tracing::info!(
-                "Reverting {} migration {}",
-                migration.app(),
-                migration.name()
-            );
-        }
+        #[cfg(feature = "tracing")]
+        tracing::debug!("reverting {} : {}", migration.app(), migration.name());
 
         // Reverse operation since last applied operation need to be reverted first
         let mut operations = migration.operations();
