@@ -341,7 +341,7 @@ impl Revert {
                     .await?;
             }
         } else {
-            if !self.force {
+            if !self.force && !revert_migrations.is_empty() {
                 let mut input = String::new();
                 println!(
                     "Do you want to revert {} migrations (y/N)",
