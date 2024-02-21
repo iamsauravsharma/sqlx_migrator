@@ -54,7 +54,7 @@ macro_rules! operation {
 ))]
 macro_rules! any_operation {
     ($op:ty, $up:literal, $down:literal) => {
-        sqlx_migrator::operation!(sqlx::Any, $op, $up, $down);
+        sqlx_migrator::operation!(sqlx_migrator::sqlx::Any, $op, $up, $down);
     };
 }
 
@@ -66,7 +66,7 @@ macro_rules! any_operation {
 #[cfg(feature = "mysql")]
 macro_rules! mysql_operation {
     ($op:ty, $up:literal, $down:literal) => {
-        sqlx_migrator::operation!(sqlx::MySql, $op, $up, $down);
+        sqlx_migrator::operation!(sqlx_migrator::sqlx::MySql, $op, $up, $down);
     };
 }
 
@@ -78,7 +78,7 @@ macro_rules! mysql_operation {
 #[cfg(feature = "postgres")]
 macro_rules! postgres_operation {
     ($op:ty, $up:literal, $down:literal) => {
-        sqlx_migrator::operation!(sqlx::Postgres, $op, $up, $down);
+        sqlx_migrator::operation!(sqlx_migrator::sqlx::Postgres, $op, $up, $down);
     };
 }
 
@@ -90,7 +90,7 @@ macro_rules! postgres_operation {
 #[cfg(feature = "sqlite")]
 macro_rules! sqlite_operation {
     ($op:ty, $up:literal, $down:literal) => {
-        sqlx_migrator::operation!(sqlx::Sqlite, $op, $up, $down);
+        sqlx_migrator::operation!(sqlx_migrator::sqlx::Sqlite, $op, $up, $down);
     };
 }
 
@@ -144,7 +144,13 @@ macro_rules! migration {
 ))]
 macro_rules! any_migration {
     ($app_name:literal, $op:ty, $parents:expr, $operations:expr) => {
-        sqlx_migrator::migration!(sqlx::Any, $app_name, $op, $parents, $operations);
+        sqlx_migrator::migration!(
+            sqlx_migrator::sqlx::Any,
+            $app_name,
+            $op,
+            $parents,
+            $operations
+        );
     };
 }
 
@@ -156,7 +162,13 @@ macro_rules! any_migration {
 #[cfg(feature = "mysql")]
 macro_rules! mysql_migration {
     ($app_name:literal, $op:ty, $parents:expr, $operations:expr) => {
-        sqlx_migrator::migration!(sqlx::MySql, $app_name, $op, $parents, $operations);
+        sqlx_migrator::migration!(
+            sqlx_migrator::sqlx::MySql,
+            $app_name,
+            $op,
+            $parents,
+            $operations
+        );
     };
 }
 
@@ -168,7 +180,13 @@ macro_rules! mysql_migration {
 #[cfg(feature = "postgres")]
 macro_rules! postgres_migration {
     ($app_name:literal, $op:ty, $parents:expr, $operations:expr) => {
-        sqlx_migrator::migration!(sqlx::Postgres, $app_name, $op, $parents, $operations);
+        sqlx_migrator::migration!(
+            sqlx_migrator::sqlx::Postgres,
+            $app_name,
+            $op,
+            $parents,
+            $operations
+        );
     };
 }
 
@@ -180,6 +198,12 @@ macro_rules! postgres_migration {
 #[cfg(feature = "sqlite")]
 macro_rules! sqlite_migration {
     ($app_name:literal, $op:ty, $parents:expr, $operations:expr) => {
-        sqlx_migrator::migration!(sqlx::Sqlite, $app_name, $op, $parents, $operations);
+        sqlx_migrator::migration!(
+            sqlx_migrator::sqlx::Sqlite,
+            $app_name,
+            $op,
+            $parents,
+            $operations
+        );
     };
 }
