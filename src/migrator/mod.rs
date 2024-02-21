@@ -558,7 +558,7 @@ where
     }
 }
 
-const DEFAULT_TABLE_NAME: &str = "_sqlx_migration_migrations";
+const DEFAULT_TABLE_NAME: &str = "_sqlx_migrator_migrations";
 
 /// Migrator struct which store migrations graph and information related to
 /// different library supported migrations
