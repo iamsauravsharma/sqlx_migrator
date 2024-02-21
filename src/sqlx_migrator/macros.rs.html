@@ -230,12 +230,12 @@
 ///   (backward migration).
 </span><span class="attr">#[macro_export]
 </span><span class="macro">macro_rules! </span>operation {
-    (<span class="macro-nonterminal">$db</span>:ty, <span class="macro-nonterminal">$op</span>:ty, <span class="macro-nonterminal">$up</span>:literal, <span class="macro-nonterminal">$down</span>:literal) =&gt; {
+    (<span class="macro-nonterminal">$db</span>:ty, <span class="macro-nonterminal">$op</span>:ty, <span class="macro-nonterminal">$up</span>:expr, <span class="macro-nonterminal">$down</span>:expr) =&gt; {
         <span class="attr">#[async_trait::async_trait]
         </span><span class="kw">impl </span>sqlx_migrator::operation::Operation&lt;<span class="macro-nonterminal">$db</span>&gt; <span class="kw">for </span><span class="macro-nonterminal">$op </span>{
             <span class="kw">async fn </span>up(
                 <span class="kw-2">&amp;</span><span class="self">self</span>,
-                connection: <span class="kw-2">&amp;mut </span>&lt;<span class="macro-nonterminal">$db </span><span class="kw">as </span>sqlx::Database&gt;::Connection,
+                connection: <span class="kw-2">&amp;mut </span>&lt;<span class="macro-nonterminal">$db </span><span class="kw">as </span>sqlx_migrator::sqlx::Database&gt;::Connection,
             ) -&gt; <span class="prelude-ty">Result</span>&lt;(), sqlx_migrator::error::Error&gt; {
                 sqlx_migrator::sqlx::query(<span class="macro-nonterminal">$up</span>).execute(connection).<span class="kw">await</span><span class="question-mark">?</span>;
                 <span class="prelude-val">Ok</span>(())
@@ -243,7 +243,7 @@
 
             <span class="kw">async fn </span>down(
                 <span class="kw-2">&amp;</span><span class="self">self</span>,
-                connection: <span class="kw-2">&amp;mut </span>&lt;<span class="macro-nonterminal">$db </span><span class="kw">as </span>sqlx::Database&gt;::Connection,
+                connection: <span class="kw-2">&amp;mut </span>&lt;<span class="macro-nonterminal">$db </span><span class="kw">as </span>sqlx_migrator::sqlx::Database&gt;::Connection,
             ) -&gt; <span class="prelude-ty">Result</span>&lt;(), sqlx_migrator::error::Error&gt; {
                 sqlx_migrator::sqlx::query(<span class="macro-nonterminal">$down</span>)
                     .execute(connection)
@@ -264,7 +264,7 @@
     feature = <span class="string">"any"
 </span>))]
 </span><span class="macro">macro_rules! </span>any_operation {
-    (<span class="macro-nonterminal">$op</span>:ty, <span class="macro-nonterminal">$up</span>:literal, <span class="macro-nonterminal">$down</span>:literal) =&gt; {
+    (<span class="macro-nonterminal">$op</span>:ty, <span class="macro-nonterminal">$up</span>:expr, <span class="macro-nonterminal">$down</span>:expr) =&gt; {
         <span class="macro">sqlx_migrator::operation!</span>(sqlx_migrator::sqlx::Any, <span class="macro-nonterminal">$op</span>, <span class="macro-nonterminal">$up</span>, <span class="macro-nonterminal">$down</span>);
     };
 }
@@ -276,7 +276,7 @@
 </span><span class="attr">#[macro_export]
 #[cfg(feature = <span class="string">"mysql"</span>)]
 </span><span class="macro">macro_rules! </span>mysql_operation {
-    (<span class="macro-nonterminal">$op</span>:ty, <span class="macro-nonterminal">$up</span>:literal, <span class="macro-nonterminal">$down</span>:literal) =&gt; {
+    (<span class="macro-nonterminal">$op</span>:ty, <span class="macro-nonterminal">$up</span>:expr, <span class="macro-nonterminal">$down</span>:expr) =&gt; {
         <span class="macro">sqlx_migrator::operation!</span>(sqlx_migrator::sqlx::MySql, <span class="macro-nonterminal">$op</span>, <span class="macro-nonterminal">$up</span>, <span class="macro-nonterminal">$down</span>);
     };
 }
@@ -288,7 +288,7 @@
 </span><span class="attr">#[macro_export]
 #[cfg(feature = <span class="string">"postgres"</span>)]
 </span><span class="macro">macro_rules! </span>postgres_operation {
-    (<span class="macro-nonterminal">$op</span>:ty, <span class="macro-nonterminal">$up</span>:literal, <span class="macro-nonterminal">$down</span>:literal) =&gt; {
+    (<span class="macro-nonterminal">$op</span>:ty, <span class="macro-nonterminal">$up</span>:expr, <span class="macro-nonterminal">$down</span>:expr) =&gt; {
         <span class="macro">sqlx_migrator::operation!</span>(sqlx_migrator::sqlx::Postgres, <span class="macro-nonterminal">$op</span>, <span class="macro-nonterminal">$up</span>, <span class="macro-nonterminal">$down</span>);
     };
 }
@@ -300,7 +300,7 @@
 </span><span class="attr">#[macro_export]
 #[cfg(feature = <span class="string">"sqlite"</span>)]
 </span><span class="macro">macro_rules! </span>sqlite_operation {
-    (<span class="macro-nonterminal">$op</span>:ty, <span class="macro-nonterminal">$up</span>:literal, <span class="macro-nonterminal">$down</span>:literal) =&gt; {
+    (<span class="macro-nonterminal">$op</span>:ty, <span class="macro-nonterminal">$up</span>:expr, <span class="macro-nonterminal">$down</span>:expr) =&gt; {
         <span class="macro">sqlx_migrator::operation!</span>(sqlx_migrator::sqlx::Sqlite, <span class="macro-nonterminal">$op</span>, <span class="macro-nonterminal">$up</span>, <span class="macro-nonterminal">$down</span>);
     };
 }
@@ -313,13 +313,13 @@
 ///
 /// This macro expects the following arguments:
 /// - `$db:ty`: the type of database
-/// - `$app_name:literal`: Name of app to be used for app variable
+/// - `$app_name:expr`: Name of app to be used for app variable
 /// - `$op:ty`: The type for which the migration is being implemented
 /// - `$parents:expr`: List of parents migration.
 /// - `$operations:expr`: List of operations
 </span><span class="attr">#[macro_export]
 </span><span class="macro">macro_rules! </span>migration {
-    (<span class="macro-nonterminal">$db</span>:ty, <span class="macro-nonterminal">$app_name</span>:literal, <span class="macro-nonterminal">$op</span>:ty, <span class="macro-nonterminal">$parents</span>:expr, <span class="macro-nonterminal">$operations</span>:expr) =&gt; {
+    (<span class="macro-nonterminal">$db</span>:ty, <span class="macro-nonterminal">$app_name</span>:expr, <span class="macro-nonterminal">$op</span>:ty, <span class="macro-nonterminal">$parents</span>:expr, <span class="macro-nonterminal">$operations</span>:expr) =&gt; {
         <span class="attr">#[async_trait::async_trait]
         </span><span class="kw">impl </span>sqlx_migrator::migration::Migration&lt;<span class="macro-nonterminal">$db</span>&gt; <span class="kw">for </span><span class="macro-nonterminal">$op </span>{
             <span class="kw">fn </span>app(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>str {
@@ -354,7 +354,7 @@
     feature = <span class="string">"any"
 </span>))]
 </span><span class="macro">macro_rules! </span>any_migration {
-    (<span class="macro-nonterminal">$app_name</span>:literal, <span class="macro-nonterminal">$op</span>:ty, <span class="macro-nonterminal">$parents</span>:expr, <span class="macro-nonterminal">$operations</span>:expr) =&gt; {
+    (<span class="macro-nonterminal">$app_name</span>:expr, <span class="macro-nonterminal">$op</span>:ty, <span class="macro-nonterminal">$parents</span>:expr, <span class="macro-nonterminal">$operations</span>:expr) =&gt; {
         <span class="macro">sqlx_migrator::migration!</span>(
             sqlx_migrator::sqlx::Any,
             <span class="macro-nonterminal">$app_name</span>,
@@ -372,7 +372,7 @@
 </span><span class="attr">#[macro_export]
 #[cfg(feature = <span class="string">"mysql"</span>)]
 </span><span class="macro">macro_rules! </span>mysql_migration {
-    (<span class="macro-nonterminal">$app_name</span>:literal, <span class="macro-nonterminal">$op</span>:ty, <span class="macro-nonterminal">$parents</span>:expr, <span class="macro-nonterminal">$operations</span>:expr) =&gt; {
+    (<span class="macro-nonterminal">$app_name</span>:expr, <span class="macro-nonterminal">$op</span>:ty, <span class="macro-nonterminal">$parents</span>:expr, <span class="macro-nonterminal">$operations</span>:expr) =&gt; {
         <span class="macro">sqlx_migrator::migration!</span>(
             sqlx_migrator::sqlx::MySql,
             <span class="macro-nonterminal">$app_name</span>,
@@ -390,7 +390,7 @@
 </span><span class="attr">#[macro_export]
 #[cfg(feature = <span class="string">"postgres"</span>)]
 </span><span class="macro">macro_rules! </span>postgres_migration {
-    (<span class="macro-nonterminal">$app_name</span>:literal, <span class="macro-nonterminal">$op</span>:ty, <span class="macro-nonterminal">$parents</span>:expr, <span class="macro-nonterminal">$operations</span>:expr) =&gt; {
+    (<span class="macro-nonterminal">$app_name</span>:expr, <span class="macro-nonterminal">$op</span>:ty, <span class="macro-nonterminal">$parents</span>:expr, <span class="macro-nonterminal">$operations</span>:expr) =&gt; {
         <span class="macro">sqlx_migrator::migration!</span>(
             sqlx_migrator::sqlx::Postgres,
             <span class="macro-nonterminal">$app_name</span>,
@@ -408,7 +408,7 @@
 </span><span class="attr">#[macro_export]
 #[cfg(feature = <span class="string">"sqlite"</span>)]
 </span><span class="macro">macro_rules! </span>sqlite_migration {
-    (<span class="macro-nonterminal">$app_name</span>:literal, <span class="macro-nonterminal">$op</span>:ty, <span class="macro-nonterminal">$parents</span>:expr, <span class="macro-nonterminal">$operations</span>:expr) =&gt; {
+    (<span class="macro-nonterminal">$app_name</span>:expr, <span class="macro-nonterminal">$op</span>:ty, <span class="macro-nonterminal">$parents</span>:expr, <span class="macro-nonterminal">$operations</span>:expr) =&gt; {
         <span class="macro">sqlx_migrator::migration!</span>(
             sqlx_migrator::sqlx::Sqlite,
             <span class="macro-nonterminal">$app_name</span>,
