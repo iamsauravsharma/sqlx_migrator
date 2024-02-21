@@ -25,12 +25,12 @@ sqlx = { version = "0.7.3", features = ["runtime-tokio", "tls-rustls"] }
 
 [features]
 default = ["cli", "tracing"]
+cli = ["dep:clap"]
 tracing = ["dep:tracing"]
 postgres = ["sqlx/postgres", "dep:crc32fast"]
 sqlite = ["sqlx/sqlite"]
 mysql = ["sqlx/mysql", "dep:crc32fast"]
 any = ["sqlx/any"]
-cli = ["dep:clap"]
 
 [[example]]
 name = "postgres"

@@ -4,6 +4,7 @@ use sqlx_migrator::migrator::{Info, Migrator};
 use sqlx_migrator::sqlx::MySql;
 
 mod migrations;
+
 #[tokio::main]
 async fn main() {
     let uri = std::env::var("MYSQL_DATABASE_URL").unwrap();

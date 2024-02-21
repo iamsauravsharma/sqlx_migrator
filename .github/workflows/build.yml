@@ -24,24 +24,24 @@ jobs:
             rust-version: "nightly"
     runs-on: ${{ matrix.os }}
     env:
-      MAKE_FEATURES_FLAG: "--features postgres,sqlite,mysql,any"
+      MAKE_FEATURES_FLAG: "--all-features"
     defaults:
       run:
         shell: bash
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Setup rust toolchain
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ matrix.rust-version }}
           components: rustfmt, clippy
       - name: Install cargo make
-        uses: davidB/rust-cargo-make@v1
+        uses: davidB/rust-cargo-make@v1.10.0
       - name: Create env file
-        uses: iamsauravsharma/create-dotenv@v1.2.2
+        uses: iamsauravsharma/create-dotenv@v2.0.1
         with:
-          env-prefix: "MAKE_"
+          input-prefix: "MAKE_"
       - name: Run tests
         run: |
           cargo make --env-file=.env full
@@ -72,11 +72,11 @@ jobs:
         options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Setup rust toolchain
         uses: dtolnay/rust-toolchain@nightly
       - name: Install cargo make
-        uses: davidB/rust-cargo-make@v1
+        uses: davidB/rust-cargo-make@v1.10.0
       - name: Print cli help message
         run: |
           cargo make run_postgres_example --help

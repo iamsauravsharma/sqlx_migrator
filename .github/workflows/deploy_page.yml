@@ -13,20 +13,20 @@ jobs:
     name: Deploy Github page
     runs-on: ubuntu-latest
     env:
-      MAKE_FEATURES_FLAG: "--features postgres,sqlite,mysql,any"
+      MAKE_FEATURES_FLAG: "--all-features"
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Setup rust toolchain
         uses: dtolnay/rust-toolchain@nightly
       - name: Install cargo make
-        uses: davidB/rust-cargo-make@v1
+        uses: davidB/rust-cargo-make@v1.10.0
       - name: Create env file
-        uses: iamsauravsharma/create-dotenv@v1.2.2
+        uses: iamsauravsharma/create-dotenv@v2.0.1
         with:
-          env-prefix: "MAKE_"
+          input-prefix: "MAKE_"
       - name: Generate documentation
         run: |
-          cargo make rustdoc --env-file=./.env
+          cargo make --env-file=.env rustdoc
       - name: Generate index page
         run: |
           echo "<meta http-equiv=refresh content=0;url=sqlx_migrator/index.html>" > target/doc/index.html
