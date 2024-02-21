@@ -71,6 +71,27 @@ impl Operation<sqlx::Postgres> for FirstOperation {
     }
 }
 ```
+If you have simple up operation and down operation than you can use macros for creating operation
+```rust
+use sqlx_migrator::sqlx;
+
+pub(crate) struct FirstOperation;
+
+sqlx_migrator::operation!(
+    sqlx::Postgres,
+    FirstOperation,
+    "CREATE TABLE sample (id INTEGER PRIMARY KEY, name TEXT)",
+    "DROP TABLE sample",
+    );
+```
+You can even simplify it using
+```rust
+sqlx_migrator::postgres_operation!(
+    FirstOperation,
+    "CREATE TABLE sample (id INTEGER PRIMARY KEY, name TEXT)",
+    "DROP TABLE sample",
+    );
+```
 
 After creation of operation you can implement Migration struct to create single migration
 
@@ -106,6 +127,14 @@ impl Migration<sqlx::Postgres> for FirstMigration {
 
     // Migration trait also have multiple other function see docs for usage
 }
+```
+
+Which can be represented in simple form as
+```rust
+use sqlx_migrator::vec_box;
+sqlx_migrator::migration!(sqlx::Postgres, "main", FirstMigration, vec_box![], vec_box![FirstOperation]);
+// OR
+sqlx_migrator::postgres_migration!("main", FirstMigration, vec_box![], vec_box![FirstOperation]);
 ```
 
 Now at last you need to create migrator for your database to run migrations

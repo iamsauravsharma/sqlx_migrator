@@ -7,6 +7,7 @@
 #[cfg(feature = "cli")]
 pub mod cli;
 pub mod error;
+mod macros;
 pub mod migration;
 pub mod migrator;
 pub mod operation;

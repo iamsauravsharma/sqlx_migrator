@@ -9,7 +9,7 @@ pub(crate) struct M0002Operation;
 #[async_trait::async_trait]
 impl Operation<Postgres> for M0002Operation {
     async fn up(&self, connection: &mut PgConnection) -> Result<(), Error> {
-        sqlx::query("INSERT INTO sample (id, name) VALUES (99, 'Some text') ")
+        sqlx::query("INSERT INTO sample (id, name) VALUES (99, 'Some text')")
             .execute(connection)
             .await?;
         Ok(())
