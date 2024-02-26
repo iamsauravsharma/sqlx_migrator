@@ -15,7 +15,10 @@ async fn main() {
     MigrationCommand::parse_and_run(Box::new(migrator), &pool)
         .await
         .unwrap();
-    // Or you can directly use migrator apply_all function instead of creating
+    // Or you can directly use migrator run function instead of creating
     // cli
-    // migrator.apply_all(&pool).await.unwrap();
+    // migrator
+    //     .run(&pool, sqlx_migrator::migrator::Plan::apply_all())
+    //     .await
+    //     .unwrap();
 }

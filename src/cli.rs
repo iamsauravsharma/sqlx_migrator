@@ -115,7 +115,7 @@ async fn list_migrations<DB>(
 where
     DB: sqlx::Database,
 {
-    migrator.ensure_migration_table_exists(connection).await?;
+    let migration_plan = migrator.generate_migration_plan(None, connection).await?;
     let applied_migrations = migrator.fetch_applied_migration_from_db(connection).await?;
 
     let widths = [5, 10, 50, 10, 40];
@@ -134,8 +134,7 @@ where
     );
 
     println!("{:^full_width$}", "-".repeat(full_width));
-    let plan = Plan::new(crate::migrator::PlanType::All, None, None, None)?;
-    for migration in migrator.generate_migration_plan(&plan, connection).await? {
+    for migration in migration_plan {
         let applied_migration_info = applied_migrations
             .iter()
             .find(|&applied_migration| applied_migration == migration);
@@ -200,14 +199,17 @@ impl Apply {
     where
         DB: sqlx::Database,
     {
-        migrator.lock(connection).await?;
-        let plan = Plan::new(
-            crate::migrator::PlanType::Apply,
-            self.app.clone(),
-            self.migration.clone(),
-            self.count,
-        )?;
-        let migrations = migrator.generate_migration_plan(&plan, connection).await?;
+        let plan;
+        if let Some(count) = self.count {
+            plan = Plan::apply_count(count);
+        } else if let Some(app) = &self.app {
+            plan = Plan::apply_name(app, &self.migration);
+        } else {
+            plan = Plan::apply_all();
+        };
+        let migrations = migrator
+            .generate_migration_plan(Some(&plan), connection)
+            .await?;
         if self.check && !migrations.is_empty() {
             return Err(Error::PendingMigrationPresent);
         }
@@ -252,12 +254,9 @@ impl Apply {
                     return Ok(());
                 }
             }
-            for migration in migrations {
-                migrator.apply_migration(migration, connection).await?;
-                println!("Applied {} : {}", migration.app(), migration.name());
-            }
+            migrator.run(connection, &plan).await?;
+            println!("Successfully applied migrations according to plan");
         }
-        migrator.unlock(connection).await?;
         Ok(())
     }
 }
@@ -298,21 +297,19 @@ impl Revert {
     where
         DB: sqlx::Database,
     {
-        migrator.lock(connection).await?;
-        let mut count = Some(1);
-        if self.count.is_some() {
-            count = self.count;
+        let plan;
+        if let Some(count) = self.count {
+            plan = Plan::revert_count(count);
+        } else if let Some(app) = &self.app {
+            plan = Plan::revert_name(app, &self.migration);
         } else if self.all {
-            count = None;
+            plan = Plan::revert_all();
+        } else {
+            plan = Plan::revert_count(1);
         };
-
-        let plan = Plan::new(
-            crate::migrator::PlanType::Revert,
-            self.app.clone(),
-            self.migration.clone(),
-            count,
-        )?;
-        let revert_migrations = migrator.generate_migration_plan(&plan, connection).await?;
+        let revert_migrations = migrator
+            .generate_migration_plan(Some(&plan), connection)
+            .await?;
 
         if self.plan {
             let first_width = 10;
@@ -351,12 +348,9 @@ impl Revert {
                     return Ok(());
                 }
             }
-            for migration in revert_migrations {
-                migrator.revert_migration(migration, connection).await?;
-                println!("Reverted {} : {}", migration.app(), migration.name());
-            }
+            migrator.run(connection, &plan).await?;
+            println!("Successfully reverted migrations according to plan");
         }
-        migrator.unlock(connection).await?;
         Ok(())
     }
 }

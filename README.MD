@@ -153,13 +153,13 @@ async fn main() {
 ```
 
 Now you can use two ways to run migrator either directly running migration or creating cli from migrator
-For directly run
+For direct run
 
 ```rust
 // use apply all to apply all pending migration
-migrator.apply_all(&pool).await.unwrap();
+migrator.run(&pool, sqlx_migrator::migrator::Plan::apply_all()).await.unwrap();
 // or use revert all to revert all applied migrations
-migrator.revert_all(&pool).await.unwrap();
+migrator.run(&pool, sqlx_migrator::migrator::Plan::revert_all()).await.unwrap();
 ```
 
 Or you can create cli using

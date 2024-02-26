@@ -135,7 +135,7 @@
 
 use std::collections::{HashMap, HashSet};
 
-use sqlx::{Connection, Pool};
+use sqlx::Connection;
 
 use crate::error::Error;
 use crate::migration::{AppliedMigrationSqlRow, Migration};
@@ -165,8 +165,6 @@ type MigrationVecResult<'a, DB> = Result<MigrationVec<'a, DB>, Error>;
 /// Type of plan which needs to be generate
 #[derive(Debug)]
 pub enum PlanType {
-    /// Plan type used when listing all migration in chronological order
-    All,
     /// Plan type used when listing migrations which can be applied
     Apply,
     /// Plan type when listing migrations which can be reverted
@@ -177,31 +175,61 @@ pub enum PlanType {
 #[derive(Debug)]
 pub struct Plan {
     plan_type: PlanType,
-    app: Option<String>,
-    migration: Option<String>,
+    app_migration: Option<(String, Option<String>)>,
     count: Option<usize>,
 }
 
 impl Plan {
-    /// Create new plan for provided plan type
-    ///
-    /// # Errors
-    /// When app value is none and migration value is some value
-    pub fn new(
+    fn new(
         plan_type: PlanType,
-        app: Option<String>,
-        migration: Option<String>,
+        app_migration: Option<(String, Option<String>)>,
         count: Option<usize>,
-    ) -> Result<Self, Error> {
-        if migration.is_some() && app.is_none() {
-            return Err(Error::AppNameRequired);
-        }
-        Ok(Self {
+    ) -> Self {
+        Self {
             plan_type,
-            app,
-            migration,
+            app_migration,
             count,
-        })
+        }
+    }
+
+    /// Create new plan for apply all
+    #[must_use]
+    pub fn apply_all() -> Self {
+        Self::new(PlanType::Apply, None, None)
+    }
+
+    /// Create new plan for apply for provided app and migration name
+    #[must_use]
+    pub fn apply_name(app: &str, name: &Option<String>) -> Self {
+        Self::new(PlanType::Apply, Some((app.to_string(), name.clone())), None)
+    }
+
+    /// Create new plan for apply count
+    #[must_use]
+    pub fn apply_count(count: usize) -> Self {
+        Self::new(PlanType::Apply, None, Some(count))
+    }
+
+    /// Create new plan for revert all
+    #[must_use]
+    pub fn revert_all() -> Self {
+        Self::new(PlanType::Revert, None, None)
+    }
+
+    /// Create new plan for revert for provided app and migration name
+    #[must_use]
+    pub fn revert_name(app: &str, name: &Option<String>) -> Self {
+        Self::new(
+            PlanType::Revert,
+            Some((app.to_string(), name.clone())),
+            None,
+        )
+    }
+
+    /// Create new plan for revert count
+    #[must_use]
+    pub fn revert_count(count: usize) -> Self {
+        Self::new(PlanType::Revert, None, Some(count))
     }
 }
 
@@ -293,36 +321,35 @@ where
     ) -> Result<(), Error>;
 }
 
-/// Apply plan to provided migrations list
-fn apply_plan<DB>(
-    migration_plan: &mut MigrationVec<DB>,
+/// Process plan to provided migrations list
+fn process_plan<DB>(
+    migration_list: &mut MigrationVec<DB>,
     applied_migrations: &MigrationVec<DB>,
     plan: &Plan,
 ) -> Result<(), Error>
 where
     DB: sqlx::Database,
 {
-    // Modify migration plan according to plan type
+    // Modify migration list according to plan type
     match plan.plan_type {
         PlanType::Apply => {
-            migration_plan.retain(|migration| !applied_migrations.contains(migration));
+            migration_list.retain(|migration| !applied_migrations.contains(migration));
         }
         PlanType::Revert => {
-            migration_plan.retain(|migration| applied_migrations.contains(migration));
-            migration_plan.reverse();
+            migration_list.retain(|migration| applied_migrations.contains(migration));
+            migration_list.reverse();
         }
-        PlanType::All => {}
     };
 
-    if let Some(app) = &plan.app {
+    if let Some((app, migration_name)) = &plan.app_migration {
         // Find position of last migration which matches condition of provided app and
         // migration name
-        let position = if let Some(name) = &plan.migration {
-            let Some(pos) = migration_plan
+        let position = if let Some(name) = migration_name {
+            let Some(pos) = migration_list
                 .iter()
                 .rposition(|migration| migration.app() == app && migration.name() == name)
             else {
-                if migration_plan
+                if migration_list
                     .iter()
                     .any(|migration| migration.app() == app)
                 {
@@ -337,7 +364,7 @@ where
             };
             pos
         } else {
-            let Some(pos) = migration_plan
+            let Some(pos) = migration_list
                 .iter()
                 .rposition(|migration| migration.app() == app)
             else {
@@ -347,13 +374,13 @@ where
             };
             pos
         };
-        migration_plan.truncate(position + 1);
+        migration_list.truncate(position + 1);
     } else if let Some(count) = plan.count {
-        let actual_len = migration_plan.len();
+        let actual_len = migration_list.len();
         if count > actual_len {
             return Err(Error::CountGreater { actual_len, count });
         }
-        migration_plan.truncate(count);
+        migration_list.truncate(count);
     }
     Ok(())
 }
@@ -361,17 +388,18 @@ where
 /// Migrate trait which migrate a database according to requirements. This trait
 /// implements all methods which depends on `DatabaseOperation` trait and `Info`
 /// trait. This trait doesn't requires to implement any method since all
-/// function have default implementation and all methods are database
-/// agnostics
+/// function have default implementation and all methods are database agnostics
 #[async_trait::async_trait]
 pub trait Migrate<DB>: Info<DB> + DatabaseOperation<DB> + Send + Sync
 where
     DB: sqlx::Database,
 {
-    /// Generate migration plan according to plan. Returns a vector of migration
+    /// Generate migration plan according to plan. Returns a vector of
+    /// migration. If plan is none than it will generate plan with all
+    /// migrations in chronological order of apply
     async fn generate_migration_plan(
         &self,
-        plan: &Plan,
+        plan: Option<&Plan>,
         connection: &mut <DB as sqlx::Database>::Connection,
     ) -> MigrationVecResult<DB> {
         tracing::debug!("fetching applied migrations");
@@ -392,7 +420,7 @@ where
         }
         tracing::debug!("generating {:?} migration plan", plan);
 
-        let mut migration_plan = Vec::new();
+        let mut migration_list = Vec::new();
 
         // Hashmap which contains key as migration name and value as list of migration
         // which becomes parent for key due to value having key as run before value
@@ -407,18 +435,18 @@ where
             }
         }
 
-        // Create migration plan until migration plan length is equal to hashmap
+        // Create migration list until migration list length is equal to hash set
         // length
-        let migrations_len = self.migrations().len();
-        while migration_plan.len() != migrations_len {
-            let old_migration_plan_length = migration_plan.len();
+        let migrations_hash_set_len = self.migrations().len();
+        while migration_list.len() != migrations_hash_set_len {
+            let old_migration_list_length = migration_list.len();
             for migration in self.migrations() {
-                if !migration_plan.contains(&migration) {
+                if !migration_list.contains(&migration) {
                     // Check if all parents are applied or not
                     let all_parents_applied = migration
                         .parents()
                         .iter()
-                        .all(|migration| migration_plan.contains(&migration));
+                        .all(|parent_migration| migration_list.contains(&parent_migration));
 
                     if all_parents_applied {
                         // Check if all run before parents are added or not
@@ -426,10 +454,12 @@ where
                             .get(migration)
                             .unwrap_or(&vec![])
                             .iter()
-                            .all(|migration| migration_plan.contains(migration));
+                            .all(|run_before_migration| {
+                                migration_list.contains(run_before_migration)
+                            });
 
                         if all_run_before_parents_added {
-                            migration_plan.push(migration);
+                            migration_list.push(migration);
                         }
                     }
                 }
@@ -437,15 +467,15 @@ where
 
             // If old migration plan length is equal to current length than no new migration
             // was added. Next loop also will not add migration so return error. This case
-            // can only occur when Migration 1 needs to run before Migration 2 as
-            // well as Migration 1 has Migration 2 as parents.
-            if old_migration_plan_length == migration_plan.len() {
+            // can only occur when Migration A needs to run before Migration B as
+            // well as Migration A has Migration B as parents.
+            if old_migration_list_length == migration_list.len() {
                 return Err(Error::FailedToCreateMigrationPlan);
             }
         }
 
-        // Remove migration from migration plan according to replaces vector
-        for migration in migration_plan.clone() {
+        // Remove migration from migration list according to replaces vector
+        for migration in migration_list.clone() {
             // Only need to check case when replaces contain value otherwise logic can be
             // ignored
             if !migration.replaces().is_empty() {
@@ -462,109 +492,80 @@ where
                     if applied_migrations.contains(&migration) {
                         return Err(Error::BothMigrationTypeApplied);
                     }
-                    migration_plan.retain(|&plan_migration| migration != plan_migration);
+                    migration_list.retain(|&plan_migration| migration != plan_migration);
                 } else {
                     for replaced_migration in migration.replaces() {
-                        migration_plan
+                        migration_list
                             .retain(|&plan_migration| &replaced_migration != plan_migration);
                     }
                 }
             }
         }
 
-        apply_plan(&mut migration_plan, &applied_migrations, plan)?;
+        if let Some(planned) = plan {
+            process_plan(&mut migration_list, &applied_migrations, planned)?;
+        }
 
-        Ok(migration_plan)
+        Ok(migration_list)
     }
 
-    /// Apply all migrations which are not applied till now
+    /// Run provided plan migrations
     ///
     /// # Errors
-    /// If failed to apply migration
-    async fn apply_all(&self, pool: &Pool<DB>) -> Result<(), Error> {
-        let mut connection = pool.acquire().await?;
-        tracing::debug!("applying all migration");
-        self.lock(&mut connection).await?;
-        let plan = Plan::new(PlanType::Apply, None, None, None)?;
-        for migration in self.generate_migration_plan(&plan, &mut connection).await? {
-            self.apply_migration(migration, &mut connection).await?;
-        }
-        self.unlock(&mut connection).await?;
-        connection.close().await?;
-        Ok(())
-    }
-
-    /// Apply given migration and add it to applied migration table
-    #[allow(clippy::borrowed_box)]
-    async fn apply_migration(
+    /// If failed to run provided plan migrations
+    async fn run(
         &self,
-        migration: &Box<dyn Migration<DB>>,
         connection: &mut <DB as sqlx::Database>::Connection,
+        plan: &Plan,
     ) -> Result<(), Error> {
-        tracing::debug!("applying {} : {}", migration.app(), migration.name());
-        if migration.is_atomic() {
-            let mut transaction = connection.begin().await?;
-            for operation in migration.operations() {
-                operation.up(&mut transaction).await?;
-            }
-            self.add_migration_to_db_table(migration, &mut transaction)
-                .await?;
-            transaction.commit().await?;
-        } else {
-            for operation in migration.operations() {
-                operation.up(connection).await?;
-            }
-            self.add_migration_to_db_table(migration, connection)
-                .await?;
+        tracing::debug!("running plan {:?}", plan);
+        self.lock(connection).await?;
+        for migration in self.generate_migration_plan(Some(plan), connection).await? {
+            match plan.plan_type {
+                PlanType::Apply => {
+                    tracing::debug!("applying {} : {}", migration.app(), migration.name());
+                    if migration.is_atomic() {
+                        let mut transaction = connection.begin().await?;
+                        for operation in migration.operations() {
+                            operation.up(&mut transaction).await?;
+                        }
+                        self.add_migration_to_db_table(migration, &mut transaction)
+                            .await?;
+                        transaction.commit().await?;
+                    } else {
+                        for operation in migration.operations() {
+                            operation.up(connection).await?;
+                        }
+                        self.add_migration_to_db_table(migration, connection)
+                            .await?;
+                    }
+                }
+                PlanType::Revert => {
+                    tracing::debug!("reverting {} : {}", migration.app(), migration.name());
+
+                    // Reverse operation since last applied operation need to be reverted first
+                    let mut operations = migration.operations();
+                    operations.reverse();
+
+                    if migration.is_atomic() {
+                        let mut transaction = connection.begin().await?;
+                        for operation in operations {
+                            operation.down(&mut transaction).await?;
+                        }
+                        self.delete_migration_from_db_table(migration, &mut transaction)
+                            .await?;
+                        transaction.commit().await?;
+                    } else {
+                        for operation in operations {
+                            operation.down(connection).await?;
+                        }
+                        self.delete_migration_from_db_table(migration, connection)
+                            .await?;
+                    }
+                }
+            };
         }
-        Ok(())
-    }
-
-    /// Revert all applied migration from database
-    ///
-    /// # Errors
-    /// If any migration or operation fails
-    async fn revert_all(&self, pool: &Pool<DB>) -> Result<(), Error> {
-        let mut connection = pool.acquire().await?;
-        tracing::debug!("reverting all migration");
-        self.lock(&mut connection).await?;
-        let plan = Plan::new(PlanType::Revert, None, None, None)?;
-        for migration in self.generate_migration_plan(&plan, &mut connection).await? {
-            self.revert_migration(migration, &mut connection).await?;
-        }
-        self.unlock(&mut connection).await?;
-        connection.close().await?;
-        Ok(())
-    }
-
-    /// Revert provided migration and remove migration from table
-    #[allow(clippy::borrowed_box)]
-    async fn revert_migration(
-        &self,
-        migration: &Box<dyn Migration<DB>>,
-        connection: &mut <DB as sqlx::Database>::Connection,
-    ) -> Result<(), Error> {
-        tracing::debug!("reverting {} : {}", migration.app(), migration.name());
-
-        // Reverse operation since last applied operation need to be reverted first
-        let mut operations = migration.operations();
-        operations.reverse();
-
-        if migration.is_atomic() {
-            let mut transaction = connection.begin().await?;
-            for operation in operations {
-                operation.down(&mut transaction).await?;
-            }
-            self.delete_migration_from_db_table(migration, &mut transaction)
-                .await?;
-            transaction.commit().await?;
-        } else {
-            for operation in operations {
-                operation.down(connection).await?;
-            }
-            self.delete_migration_from_db_table(migration, connection)
-                .await?;
-        }
+        self.unlock(connection).await?;
         Ok(())
     }
 }
