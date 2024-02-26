@@ -90,15 +90,18 @@ jobs:
           cargo make run_postgres_example list
           cargo make run_postgres_example revert --all --force
           cargo make run_postgres_example list
+          cargo make run_postgres_example drop
       - name: Run sqlite example
         run: |
           cargo make run_sqlite_example apply
           cargo make run_sqlite_example list
           cargo make run_sqlite_example revert --all --force
           cargo make run_sqlite_example list
+          cargo make run_sqlite_example drop
       - name: Run mysql example
         run: |
           cargo make run_mysql_example apply
           cargo make run_mysql_example list
           cargo make run_mysql_example revert --all --force
           cargo make run_mysql_example list
+          cargo make run_mysql_example drop
