@@ -135,7 +135,7 @@ where
 
     println!("{:^full_width$}", "-".repeat(full_width));
     let plan = Plan::new(crate::migrator::PlanType::All, None, None)?;
-    for migration in migrator.generate_migration_plan(plan, connection).await? {
+    for migration in migrator.generate_migration_plan(&plan, connection).await? {
         let applied_migration_info = applied_migrations
             .iter()
             .find(|&applied_migration| applied_migration == migration);
@@ -206,7 +206,7 @@ impl Apply {
             self.app.clone(),
             self.migration.clone(),
         )?;
-        let mut migrations = migrator.generate_migration_plan(plan, connection).await?;
+        let mut migrations = migrator.generate_migration_plan(&plan, connection).await?;
         if let Some(count) = self.count {
             let actual_len = migrations.len();
             if count > actual_len {
@@ -310,7 +310,7 @@ impl Revert {
             self.app.clone(),
             self.migration.clone(),
         )?;
-        let mut revert_migrations = migrator.generate_migration_plan(plan, connection).await?;
+        let mut revert_migrations = migrator.generate_migration_plan(&plan, connection).await?;
         if let Some(count) = self.count {
             let actual_len = revert_migrations.len();
             if count > actual_len {
