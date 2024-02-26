@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/migrator/mod.rs`."><title>mod.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-e935ef01ae1c1829.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="sqlx_migrator" data-themes="" data-resource-suffix="" data-rustdoc-version="1.78.0-nightly (bb594538f 2024-02-20)" data-channel="nightly" data-search-js="search-dd67cee4cfa65049.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../static.files/storage-4c98445ec4002617.js"></script><script defer src="../../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-c37d3936c59ababd.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-04d5337699b92874.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title">
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/migrator/mod.rs`."><title>mod.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-e935ef01ae1c1829.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="sqlx_migrator" data-themes="" data-resource-suffix="" data-rustdoc-version="1.78.0-nightly (0ecbd0605 2024-02-25)" data-channel="nightly" data-search-js="search-dd67cee4cfa65049.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../static.files/storage-4c98445ec4002617.js"></script><script defer src="../../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-c37d3936c59ababd.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-04d5337699b92874.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title">
             <h2>Files</h2></div></nav><div class="sidebar-resizer"></div>
     <main><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../../sqlx_migrator/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
@@ -928,8 +928,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         connection: <span class="kw-2">&amp;mut </span>&lt;DB <span class="kw">as </span>sqlx::Database&gt;::Connection,
     ) -&gt; MigrationVecResult&lt;DB&gt; {
-        <span class="attr">#[cfg(feature = <span class="string">"tracing"</span>)]
-        </span><span class="macro">tracing::debug!</span>(<span class="string">"fetching applied migrations"</span>);
+        <span class="macro">tracing::debug!</span>(<span class="string">"fetching applied migrations"</span>);
 
         <span class="self">self</span>.ensure_migration_table_exists(connection).<span class="kw">await</span><span class="question-mark">?</span>;
         <span class="kw">let </span>applied_migration_list = <span class="self">self</span>.fetch_applied_migration_from_db(connection).<span class="kw">await</span><span class="question-mark">?</span>;
@@ -952,13 +951,12 @@
     <span class="doccomment">/// Generate migration plan according to plan. Returns a vector of migration
     </span><span class="kw">async fn </span>generate_migration_plan(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        plan: Plan,
+        plan: <span class="kw-2">&amp;</span>Plan,
         connection: <span class="kw-2">&amp;mut </span>&lt;DB <span class="kw">as </span>sqlx::Database&gt;::Connection,
     ) -&gt; MigrationVecResult&lt;DB&gt; {
         <span class="kw">let </span>applied_migrations = <span class="self">self</span>.list_applied_migrations(connection).<span class="kw">await</span><span class="question-mark">?</span>;
 
-        <span class="attr">#[cfg(feature = <span class="string">"tracing"</span>)]
-        </span><span class="macro">tracing::debug!</span>(<span class="string">"generating {:?} migration plan"</span>, plan);
+        <span class="macro">tracing::debug!</span>(<span class="string">"generating {:?} migration plan"</span>, plan);
 
         <span class="kw">let </span><span class="kw-2">mut </span>migration_plan = Vec::new();
 
@@ -1052,10 +1050,10 @@
             PlanType::All =&gt; {}
         };
 
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(app) = plan.app {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(app) = <span class="kw-2">&amp;</span>plan.app {
             <span class="comment">// Find position of last migration which matches condition of provided app and
             // migration name
-            </span><span class="kw">let </span>position = <span class="kw">if let </span><span class="prelude-val">Some</span>(name) = plan.migration {
+            </span><span class="kw">let </span>position = <span class="kw">if let </span><span class="prelude-val">Some</span>(name) = <span class="kw-2">&amp;</span>plan.migration {
                 <span class="kw">let </span><span class="prelude-val">Some</span>(pos) = migration_plan
                     .iter()
                     .rposition(|migration| migration.app() == app &amp;&amp; migration.name() == name)
@@ -1065,11 +1063,13 @@
                         .any(|migration| migration.app() == app)
                     {
                         <span class="kw">return </span><span class="prelude-val">Err</span>(Error::MigrationNameNotExists {
-                            app,
-                            migration: name,
+                            app: app.to_string(),
+                            migration: name.to_string(),
                         });
                     }
-                    <span class="kw">return </span><span class="prelude-val">Err</span>(Error::AppNameNotExists { app });
+                    <span class="kw">return </span><span class="prelude-val">Err</span>(Error::AppNameNotExists {
+                        app: app.to_string(),
+                    });
                 };
                 pos
             } <span class="kw">else </span>{
@@ -1077,7 +1077,9 @@
                     .iter()
                     .rposition(|migration| migration.app() == app)
                 <span class="kw">else </span>{
-                    <span class="kw">return </span><span class="prelude-val">Err</span>(Error::AppNameNotExists { app });
+                    <span class="kw">return </span><span class="prelude-val">Err</span>(Error::AppNameNotExists {
+                        app: app.to_string(),
+                    });
                 };
                 pos
             };
@@ -1092,11 +1094,11 @@
     /// If failed to apply migration
     </span><span class="kw">async fn </span>apply_all(<span class="kw-2">&amp;</span><span class="self">self</span>, pool: <span class="kw-2">&amp;</span>Pool&lt;DB&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>connection = pool.acquire().<span class="kw">await</span><span class="question-mark">?</span>;
-        <span class="attr">#[cfg(feature = <span class="string">"tracing"</span>)]
-        </span><span class="macro">tracing::debug!</span>(<span class="string">"applying all migration"</span>);
+
+        <span class="macro">tracing::debug!</span>(<span class="string">"applying all migration"</span>);
         <span class="self">self</span>.lock(<span class="kw-2">&amp;mut </span>connection).<span class="kw">await</span><span class="question-mark">?</span>;
         <span class="kw">let </span>plan = Plan::new(PlanType::Apply, <span class="prelude-val">None</span>, <span class="prelude-val">None</span>)<span class="question-mark">?</span>;
-        <span class="kw">for </span>migration <span class="kw">in </span><span class="self">self</span>.generate_migration_plan(plan, <span class="kw-2">&amp;mut </span>connection).<span class="kw">await</span><span class="question-mark">? </span>{
+        <span class="kw">for </span>migration <span class="kw">in </span><span class="self">self</span>.generate_migration_plan(<span class="kw-2">&amp;</span>plan, <span class="kw-2">&amp;mut </span>connection).<span class="kw">await</span><span class="question-mark">? </span>{
             <span class="self">self</span>.apply_migration(migration, <span class="kw-2">&amp;mut </span>connection).<span class="kw">await</span><span class="question-mark">?</span>;
         }
         <span class="self">self</span>.unlock(<span class="kw-2">&amp;mut </span>connection).<span class="kw">await</span><span class="question-mark">?</span>;
@@ -1111,8 +1113,7 @@
         migration: <span class="kw-2">&amp;</span>Box&lt;<span class="kw">dyn </span>Migration&lt;DB&gt;&gt;,
         connection: <span class="kw-2">&amp;mut </span>&lt;DB <span class="kw">as </span>sqlx::Database&gt;::Connection,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
-        <span class="attr">#[cfg(feature = <span class="string">"tracing"</span>)]
-        </span><span class="macro">tracing::debug!</span>(<span class="string">"applying {} : {}"</span>, migration.app(), migration.name());
+        <span class="macro">tracing::debug!</span>(<span class="string">"applying {} : {}"</span>, migration.app(), migration.name());
         <span class="kw">if </span>migration.is_atomic() {
             <span class="kw">let </span><span class="kw-2">mut </span>transaction = connection.begin().<span class="kw">await</span><span class="question-mark">?</span>;
             <span class="kw">for </span>operation <span class="kw">in </span>migration.operations() {
@@ -1137,11 +1138,11 @@
     /// If any migration or operation fails
     </span><span class="kw">async fn </span>revert_all(<span class="kw-2">&amp;</span><span class="self">self</span>, pool: <span class="kw-2">&amp;</span>Pool&lt;DB&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>connection = pool.acquire().<span class="kw">await</span><span class="question-mark">?</span>;
-        <span class="attr">#[cfg(feature = <span class="string">"tracing"</span>)]
-        </span><span class="macro">tracing::debug!</span>(<span class="string">"reverting all migration"</span>);
+
+        <span class="macro">tracing::debug!</span>(<span class="string">"reverting all migration"</span>);
         <span class="self">self</span>.lock(<span class="kw-2">&amp;mut </span>connection).<span class="kw">await</span><span class="question-mark">?</span>;
         <span class="kw">let </span>plan = Plan::new(PlanType::Revert, <span class="prelude-val">None</span>, <span class="prelude-val">None</span>)<span class="question-mark">?</span>;
-        <span class="kw">for </span>migration <span class="kw">in </span><span class="self">self</span>.generate_migration_plan(plan, <span class="kw-2">&amp;mut </span>connection).<span class="kw">await</span><span class="question-mark">? </span>{
+        <span class="kw">for </span>migration <span class="kw">in </span><span class="self">self</span>.generate_migration_plan(<span class="kw-2">&amp;</span>plan, <span class="kw-2">&amp;mut </span>connection).<span class="kw">await</span><span class="question-mark">? </span>{
             <span class="self">self</span>.revert_migration(migration, <span class="kw-2">&amp;mut </span>connection).<span class="kw">await</span><span class="question-mark">?</span>;
         }
         <span class="self">self</span>.unlock(<span class="kw-2">&amp;mut </span>connection).<span class="kw">await</span><span class="question-mark">?</span>;
@@ -1156,8 +1157,7 @@
         migration: <span class="kw-2">&amp;</span>Box&lt;<span class="kw">dyn </span>Migration&lt;DB&gt;&gt;,
         connection: <span class="kw-2">&amp;mut </span>&lt;DB <span class="kw">as </span>sqlx::Database&gt;::Connection,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
-        <span class="attr">#[cfg(feature = <span class="string">"tracing"</span>)]
-        </span><span class="macro">tracing::debug!</span>(<span class="string">"reverting {} : {}"</span>, migration.app(), migration.name());
+        <span class="macro">tracing::debug!</span>(<span class="string">"reverting {} : {}"</span>, migration.app(), migration.name());
 
         <span class="comment">// Reverse operation since last applied operation need to be reverted first
         </span><span class="kw">let </span><span class="kw-2">mut </span>operations = migration.operations();
