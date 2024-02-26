@@ -56,7 +56,6 @@ pub enum Error {
     #[error("applied migrations exists. Revert all using revert subcommand")]
     AppliedMigrationExists,
 
-    #[cfg(feature = "cli")]
     /// Error when count of migrations is big than total number of migration
     #[error("count of migrations is big only {actual_len} present passed {count}")]
     CountGreater {

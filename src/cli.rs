@@ -134,7 +134,7 @@ where
     );
 
     println!("{:^full_width$}", "-".repeat(full_width));
-    let plan = Plan::new(crate::migrator::PlanType::All, None, None)?;
+    let plan = Plan::new(crate::migrator::PlanType::All, None, None, None)?;
     for migration in migrator.generate_migration_plan(&plan, connection).await? {
         let applied_migration_info = applied_migrations
             .iter()
@@ -205,15 +205,9 @@ impl Apply {
             crate::migrator::PlanType::Apply,
             self.app.clone(),
             self.migration.clone(),
+            self.count,
         )?;
-        let mut migrations = migrator.generate_migration_plan(&plan, connection).await?;
-        if let Some(count) = self.count {
-            let actual_len = migrations.len();
-            if count > actual_len {
-                return Err(Error::CountGreater { actual_len, count });
-            }
-            migrations.truncate(count);
-        }
+        let migrations = migrator.generate_migration_plan(&plan, connection).await?;
         if self.check && !migrations.is_empty() {
             return Err(Error::PendingMigrationPresent);
         }
@@ -305,21 +299,20 @@ impl Revert {
         DB: sqlx::Database,
     {
         migrator.lock(connection).await?;
+        let mut count = Some(1);
+        if self.count.is_some() {
+            count = self.count;
+        } else if self.all {
+            count = None;
+        };
+
         let plan = Plan::new(
             crate::migrator::PlanType::Revert,
             self.app.clone(),
             self.migration.clone(),
+            count,
         )?;
-        let mut revert_migrations = migrator.generate_migration_plan(&plan, connection).await?;
-        if let Some(count) = self.count {
-            let actual_len = revert_migrations.len();
-            if count > actual_len {
-                return Err(Error::CountGreater { actual_len, count });
-            }
-            revert_migrations.truncate(count);
-        } else if !self.all && self.app.is_none() && !revert_migrations.is_empty() {
-            revert_migrations.truncate(1);
-        }
+        let revert_migrations = migrator.generate_migration_plan(&plan, connection).await?;
 
         if self.plan {
             let first_width = 10;

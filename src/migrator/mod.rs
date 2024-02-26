@@ -159,7 +159,8 @@ mod sqlite;
 #[cfg(feature = "postgres")]
 mod postgres;
 
-type MigrationVecResult<'a, DB> = Result<Vec<&'a Box<dyn Migration<DB>>>, Error>;
+type MigrationVec<'a, DB> = Vec<&'a Box<dyn Migration<DB>>>;
+type MigrationVecResult<'a, DB> = Result<MigrationVec<'a, DB>, Error>;
 
 /// Type of plan which needs to be generate
 #[derive(Debug)]
@@ -178,10 +179,11 @@ pub struct Plan {
     plan_type: PlanType,
     app: Option<String>,
     migration: Option<String>,
+    count: Option<usize>,
 }
 
 impl Plan {
-    /// Create new plan using plan type, app name and migration name
+    /// Create new plan for provided plan type
     ///
     /// # Errors
     /// When app value is none and migration value is some value
@@ -189,6 +191,7 @@ impl Plan {
         plan_type: PlanType,
         app: Option<String>,
         migration: Option<String>,
+        count: Option<usize>,
     ) -> Result<Self, Error> {
         if migration.is_some() && app.is_none() {
             return Err(Error::AppNameRequired);
@@ -197,6 +200,7 @@ impl Plan {
             plan_type,
             app,
             migration,
+            count,
         })
     }
 }
@@ -289,6 +293,71 @@ where
     ) -> Result<(), Error>;
 }
 
+/// Apply plan to provided migrations list
+fn apply_plan<DB>(
+    migration_plan: &mut MigrationVec<DB>,
+    applied_migrations: &MigrationVec<DB>,
+    plan: &Plan,
+) -> Result<(), Error>
+where
+    DB: sqlx::Database,
+{
+    // Modify migration plan according to plan type
+    match plan.plan_type {
+        PlanType::Apply => {
+            migration_plan.retain(|migration| !applied_migrations.contains(migration));
+        }
+        PlanType::Revert => {
+            migration_plan.retain(|migration| applied_migrations.contains(migration));
+            migration_plan.reverse();
+        }
+        PlanType::All => {}
+    };
+
+    if let Some(app) = &plan.app {
+        // Find position of last migration which matches condition of provided app and
+        // migration name
+        let position = if let Some(name) = &plan.migration {
+            let Some(pos) = migration_plan
+                .iter()
+                .rposition(|migration| migration.app() == app && migration.name() == name)
+            else {
+                if migration_plan
+                    .iter()
+                    .any(|migration| migration.app() == app)
+                {
+                    return Err(Error::MigrationNameNotExists {
+                        app: app.to_string(),
+                        migration: name.to_string(),
+                    });
+                }
+                return Err(Error::AppNameNotExists {
+                    app: app.to_string(),
+                });
+            };
+            pos
+        } else {
+            let Some(pos) = migration_plan
+                .iter()
+                .rposition(|migration| migration.app() == app)
+            else {
+                return Err(Error::AppNameNotExists {
+                    app: app.to_string(),
+                });
+            };
+            pos
+        };
+        migration_plan.truncate(position + 1);
+    } else if let Some(count) = plan.count {
+        let actual_len = migration_plan.len();
+        if count > actual_len {
+            return Err(Error::CountGreater { actual_len, count });
+        }
+        migration_plan.truncate(count);
+    }
+    Ok(())
+}
+
 /// Migrate trait which migrate a database according to requirements. This trait
 /// implements all methods which depends on `DatabaseOperation` trait and `Info`
 /// trait. This trait doesn't requires to implement any method since all
@@ -299,9 +368,10 @@ pub trait Migrate<DB>: Info<DB> + DatabaseOperation<DB> + Send + Sync
 where
     DB: sqlx::Database,
 {
-    /// List all applied migrations. Returns a vector of migration
-    async fn list_applied_migrations(
+    /// Generate migration plan according to plan. Returns a vector of migration
+    async fn generate_migration_plan(
         &self,
+        plan: &Plan,
         connection: &mut <DB as sqlx::Database>::Connection,
     ) -> MigrationVecResult<DB> {
         tracing::debug!("fetching applied migrations");
@@ -320,18 +390,6 @@ where
                 applied_migrations.push(migration);
             }
         }
-
-        Ok(applied_migrations)
-    }
-
-    /// Generate migration plan according to plan. Returns a vector of migration
-    async fn generate_migration_plan(
-        &self,
-        plan: &Plan,
-        connection: &mut <DB as sqlx::Database>::Connection,
-    ) -> MigrationVecResult<DB> {
-        let applied_migrations = self.list_applied_migrations(connection).await?;
-
         tracing::debug!("generating {:?} migration plan", plan);
 
         let mut migration_plan = Vec::new();
@@ -414,53 +472,8 @@ where
             }
         }
 
-        // Modify migration plan according to plan type
-        match plan.plan_type {
-            PlanType::Apply => {
-                migration_plan.retain(|migration| !applied_migrations.contains(migration));
-            }
-            PlanType::Revert => {
-                migration_plan.retain(|migration| applied_migrations.contains(migration));
-                migration_plan.reverse();
-            }
-            PlanType::All => {}
-        };
+        apply_plan(&mut migration_plan, &applied_migrations, plan)?;
 
-        if let Some(app) = &plan.app {
-            // Find position of last migration which matches condition of provided app and
-            // migration name
-            let position = if let Some(name) = &plan.migration {
-                let Some(pos) = migration_plan
-                    .iter()
-                    .rposition(|migration| migration.app() == app && migration.name() == name)
-                else {
-                    if migration_plan
-                        .iter()
-                        .any(|migration| migration.app() == app)
-                    {
-                        return Err(Error::MigrationNameNotExists {
-                            app: app.to_string(),
-                            migration: name.to_string(),
-                        });
-                    }
-                    return Err(Error::AppNameNotExists {
-                        app: app.to_string(),
-                    });
-                };
-                pos
-            } else {
-                let Some(pos) = migration_plan
-                    .iter()
-                    .rposition(|migration| migration.app() == app)
-                else {
-                    return Err(Error::AppNameNotExists {
-                        app: app.to_string(),
-                    });
-                };
-                pos
-            };
-            migration_plan.truncate(position + 1);
-        }
         Ok(migration_plan)
     }
 
@@ -470,10 +483,9 @@ where
     /// If failed to apply migration
     async fn apply_all(&self, pool: &Pool<DB>) -> Result<(), Error> {
         let mut connection = pool.acquire().await?;
-
         tracing::debug!("applying all migration");
         self.lock(&mut connection).await?;
-        let plan = Plan::new(PlanType::Apply, None, None)?;
+        let plan = Plan::new(PlanType::Apply, None, None, None)?;
         for migration in self.generate_migration_plan(&plan, &mut connection).await? {
             self.apply_migration(migration, &mut connection).await?;
         }
@@ -514,10 +526,9 @@ where
     /// If any migration or operation fails
     async fn revert_all(&self, pool: &Pool<DB>) -> Result<(), Error> {
         let mut connection = pool.acquire().await?;
-
         tracing::debug!("reverting all migration");
         self.lock(&mut connection).await?;
-        let plan = Plan::new(PlanType::Revert, None, None)?;
+        let plan = Plan::new(PlanType::Revert, None, None, None)?;
         for migration in self.generate_migration_plan(&plan, &mut connection).await? {
             self.revert_migration(migration, &mut connection).await?;
         }
