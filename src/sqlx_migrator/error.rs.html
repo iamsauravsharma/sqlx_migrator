@@ -75,7 +75,6 @@
 <a href="#73" id="73">73</a>
 <a href="#74" id="74">74</a>
 <a href="#75" id="75">75</a>
-<a href="#76" id="76">76</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Module for library error
 
 /// Error enum to store different types of error
@@ -134,8 +133,7 @@
     </span><span class="attr">#[error(<span class="string">"applied migrations exists. Revert all using revert subcommand"</span>)]
     </span>AppliedMigrationExists,
 
-    <span class="attr">#[cfg(feature = <span class="string">"cli"</span>)]
-    </span><span class="doccomment">/// Error when count of migrations is big than total number of migration
+    <span class="doccomment">/// Error when count of migrations is big than total number of migration
     </span><span class="attr">#[error(<span class="string">"count of migrations is big only {actual_len} present passed {count}"</span>)]
     </span>CountGreater {
         <span class="doccomment">/// Actual length of migration

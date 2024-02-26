@@ -622,6 +622,17 @@
 <a href="#620" id="620">620</a>
 <a href="#621" id="621">621</a>
 <a href="#622" id="622">622</a>
+<a href="#623" id="623">623</a>
+<a href="#624" id="624">624</a>
+<a href="#625" id="625">625</a>
+<a href="#626" id="626">626</a>
+<a href="#627" id="627">627</a>
+<a href="#628" id="628">628</a>
+<a href="#629" id="629">629</a>
+<a href="#630" id="630">630</a>
+<a href="#631" id="631">631</a>
+<a href="#632" id="632">632</a>
+<a href="#633" id="633">633</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Migrator module
 //!
 //! It contains common enum and trait for implementing migrator for sqlx
@@ -783,7 +794,8 @@
 </span><span class="attr">#[cfg(feature = <span class="string">"postgres"</span>)]
 </span><span class="kw">mod </span>postgres;
 
-<span class="kw">type </span>MigrationVecResult&lt;<span class="lifetime">'a</span>, DB&gt; = <span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>Box&lt;<span class="kw">dyn </span>Migration&lt;DB&gt;&gt;&gt;, Error&gt;;
+<span class="kw">type </span>MigrationVec&lt;<span class="lifetime">'a</span>, DB&gt; = Vec&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>Box&lt;<span class="kw">dyn </span>Migration&lt;DB&gt;&gt;&gt;;
+<span class="kw">type </span>MigrationVecResult&lt;<span class="lifetime">'a</span>, DB&gt; = <span class="prelude-ty">Result</span>&lt;MigrationVec&lt;<span class="lifetime">'a</span>, DB&gt;, Error&gt;;
 
 <span class="doccomment">/// Type of plan which needs to be generate
 </span><span class="attr">#[derive(Debug)]
@@ -802,10 +814,11 @@
     plan_type: PlanType,
     app: <span class="prelude-ty">Option</span>&lt;String&gt;,
     migration: <span class="prelude-ty">Option</span>&lt;String&gt;,
+    count: <span class="prelude-ty">Option</span>&lt;usize&gt;,
 }
 
 <span class="kw">impl </span>Plan {
-    <span class="doccomment">/// Create new plan using plan type, app name and migration name
+    <span class="doccomment">/// Create new plan for provided plan type
     ///
     /// # Errors
     /// When app value is none and migration value is some value
@@ -813,6 +826,7 @@
         plan_type: PlanType,
         app: <span class="prelude-ty">Option</span>&lt;String&gt;,
         migration: <span class="prelude-ty">Option</span>&lt;String&gt;,
+        count: <span class="prelude-ty">Option</span>&lt;usize&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, Error&gt; {
         <span class="kw">if </span>migration.is_some() &amp;&amp; app.is_none() {
             <span class="kw">return </span><span class="prelude-val">Err</span>(Error::AppNameRequired);
@@ -821,6 +835,7 @@
             plan_type,
             app,
             migration,
+            count,
         })
     }
 }
@@ -913,6 +928,71 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt;;
 }
 
+<span class="doccomment">/// Apply plan to provided migrations list
+</span><span class="kw">fn </span>apply_plan&lt;DB&gt;(
+    migration_plan: <span class="kw-2">&amp;mut </span>MigrationVec&lt;DB&gt;,
+    applied_migrations: <span class="kw-2">&amp;</span>MigrationVec&lt;DB&gt;,
+    plan: <span class="kw-2">&amp;</span>Plan,
+) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt;
+<span class="kw">where
+    </span>DB: sqlx::Database,
+{
+    <span class="comment">// Modify migration plan according to plan type
+    </span><span class="kw">match </span>plan.plan_type {
+        PlanType::Apply =&gt; {
+            migration_plan.retain(|migration| !applied_migrations.contains(migration));
+        }
+        PlanType::Revert =&gt; {
+            migration_plan.retain(|migration| applied_migrations.contains(migration));
+            migration_plan.reverse();
+        }
+        PlanType::All =&gt; {}
+    };
+
+    <span class="kw">if let </span><span class="prelude-val">Some</span>(app) = <span class="kw-2">&amp;</span>plan.app {
+        <span class="comment">// Find position of last migration which matches condition of provided app and
+        // migration name
+        </span><span class="kw">let </span>position = <span class="kw">if let </span><span class="prelude-val">Some</span>(name) = <span class="kw-2">&amp;</span>plan.migration {
+            <span class="kw">let </span><span class="prelude-val">Some</span>(pos) = migration_plan
+                .iter()
+                .rposition(|migration| migration.app() == app &amp;&amp; migration.name() == name)
+            <span class="kw">else </span>{
+                <span class="kw">if </span>migration_plan
+                    .iter()
+                    .any(|migration| migration.app() == app)
+                {
+                    <span class="kw">return </span><span class="prelude-val">Err</span>(Error::MigrationNameNotExists {
+                        app: app.to_string(),
+                        migration: name.to_string(),
+                    });
+                }
+                <span class="kw">return </span><span class="prelude-val">Err</span>(Error::AppNameNotExists {
+                    app: app.to_string(),
+                });
+            };
+            pos
+        } <span class="kw">else </span>{
+            <span class="kw">let </span><span class="prelude-val">Some</span>(pos) = migration_plan
+                .iter()
+                .rposition(|migration| migration.app() == app)
+            <span class="kw">else </span>{
+                <span class="kw">return </span><span class="prelude-val">Err</span>(Error::AppNameNotExists {
+                    app: app.to_string(),
+                });
+            };
+            pos
+        };
+        migration_plan.truncate(position + <span class="number">1</span>);
+    } <span class="kw">else if let </span><span class="prelude-val">Some</span>(count) = plan.count {
+        <span class="kw">let </span>actual_len = migration_plan.len();
+        <span class="kw">if </span>count &gt; actual_len {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(Error::CountGreater { actual_len, count });
+        }
+        migration_plan.truncate(count);
+    }
+    <span class="prelude-val">Ok</span>(())
+}
+
 <span class="doccomment">/// Migrate trait which migrate a database according to requirements. This trait
 /// implements all methods which depends on `DatabaseOperation` trait and `Info`
 /// trait. This trait doesn't requires to implement any method since all
@@ -923,9 +1003,10 @@
 <span class="kw">where
     </span>DB: sqlx::Database,
 {
-    <span class="doccomment">/// List all applied migrations. Returns a vector of migration
-    </span><span class="kw">async fn </span>list_applied_migrations(
+    <span class="doccomment">/// Generate migration plan according to plan. Returns a vector of migration
+    </span><span class="kw">async fn </span>generate_migration_plan(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
+        plan: <span class="kw-2">&amp;</span>Plan,
         connection: <span class="kw-2">&amp;mut </span>&lt;DB <span class="kw">as </span>sqlx::Database&gt;::Connection,
     ) -&gt; MigrationVecResult&lt;DB&gt; {
         <span class="macro">tracing::debug!</span>(<span class="string">"fetching applied migrations"</span>);
@@ -944,18 +1025,6 @@
                 applied_migrations.push(migration);
             }
         }
-
-        <span class="prelude-val">Ok</span>(applied_migrations)
-    }
-
-    <span class="doccomment">/// Generate migration plan according to plan. Returns a vector of migration
-    </span><span class="kw">async fn </span>generate_migration_plan(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        plan: <span class="kw-2">&amp;</span>Plan,
-        connection: <span class="kw-2">&amp;mut </span>&lt;DB <span class="kw">as </span>sqlx::Database&gt;::Connection,
-    ) -&gt; MigrationVecResult&lt;DB&gt; {
-        <span class="kw">let </span>applied_migrations = <span class="self">self</span>.list_applied_migrations(connection).<span class="kw">await</span><span class="question-mark">?</span>;
-
         <span class="macro">tracing::debug!</span>(<span class="string">"generating {:?} migration plan"</span>, plan);
 
         <span class="kw">let </span><span class="kw-2">mut </span>migration_plan = Vec::new();
@@ -1038,53 +1107,8 @@
             }
         }
 
-        <span class="comment">// Modify migration plan according to plan type
-        </span><span class="kw">match </span>plan.plan_type {
-            PlanType::Apply =&gt; {
-                migration_plan.retain(|migration| !applied_migrations.contains(migration));
-            }
-            PlanType::Revert =&gt; {
-                migration_plan.retain(|migration| applied_migrations.contains(migration));
-                migration_plan.reverse();
-            }
-            PlanType::All =&gt; {}
-        };
+        apply_plan(<span class="kw-2">&amp;mut </span>migration_plan, <span class="kw-2">&amp;</span>applied_migrations, plan)<span class="question-mark">?</span>;
 
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(app) = <span class="kw-2">&amp;</span>plan.app {
-            <span class="comment">// Find position of last migration which matches condition of provided app and
-            // migration name
-            </span><span class="kw">let </span>position = <span class="kw">if let </span><span class="prelude-val">Some</span>(name) = <span class="kw-2">&amp;</span>plan.migration {
-                <span class="kw">let </span><span class="prelude-val">Some</span>(pos) = migration_plan
-                    .iter()
-                    .rposition(|migration| migration.app() == app &amp;&amp; migration.name() == name)
-                <span class="kw">else </span>{
-                    <span class="kw">if </span>migration_plan
-                        .iter()
-                        .any(|migration| migration.app() == app)
-                    {
-                        <span class="kw">return </span><span class="prelude-val">Err</span>(Error::MigrationNameNotExists {
-                            app: app.to_string(),
-                            migration: name.to_string(),
-                        });
-                    }
-                    <span class="kw">return </span><span class="prelude-val">Err</span>(Error::AppNameNotExists {
-                        app: app.to_string(),
-                    });
-                };
-                pos
-            } <span class="kw">else </span>{
-                <span class="kw">let </span><span class="prelude-val">Some</span>(pos) = migration_plan
-                    .iter()
-                    .rposition(|migration| migration.app() == app)
-                <span class="kw">else </span>{
-                    <span class="kw">return </span><span class="prelude-val">Err</span>(Error::AppNameNotExists {
-                        app: app.to_string(),
-                    });
-                };
-                pos
-            };
-            migration_plan.truncate(position + <span class="number">1</span>);
-        }
         <span class="prelude-val">Ok</span>(migration_plan)
     }
 
@@ -1094,10 +1118,9 @@
     /// If failed to apply migration
     </span><span class="kw">async fn </span>apply_all(<span class="kw-2">&amp;</span><span class="self">self</span>, pool: <span class="kw-2">&amp;</span>Pool&lt;DB&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>connection = pool.acquire().<span class="kw">await</span><span class="question-mark">?</span>;
-
         <span class="macro">tracing::debug!</span>(<span class="string">"applying all migration"</span>);
         <span class="self">self</span>.lock(<span class="kw-2">&amp;mut </span>connection).<span class="kw">await</span><span class="question-mark">?</span>;
-        <span class="kw">let </span>plan = Plan::new(PlanType::Apply, <span class="prelude-val">None</span>, <span class="prelude-val">None</span>)<span class="question-mark">?</span>;
+        <span class="kw">let </span>plan = Plan::new(PlanType::Apply, <span class="prelude-val">None</span>, <span class="prelude-val">None</span>, <span class="prelude-val">None</span>)<span class="question-mark">?</span>;
         <span class="kw">for </span>migration <span class="kw">in </span><span class="self">self</span>.generate_migration_plan(<span class="kw-2">&amp;</span>plan, <span class="kw-2">&amp;mut </span>connection).<span class="kw">await</span><span class="question-mark">? </span>{
             <span class="self">self</span>.apply_migration(migration, <span class="kw-2">&amp;mut </span>connection).<span class="kw">await</span><span class="question-mark">?</span>;
         }
@@ -1138,10 +1161,9 @@
     /// If any migration or operation fails
     </span><span class="kw">async fn </span>revert_all(<span class="kw-2">&amp;</span><span class="self">self</span>, pool: <span class="kw-2">&amp;</span>Pool&lt;DB&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>connection = pool.acquire().<span class="kw">await</span><span class="question-mark">?</span>;
-
         <span class="macro">tracing::debug!</span>(<span class="string">"reverting all migration"</span>);
         <span class="self">self</span>.lock(<span class="kw-2">&amp;mut </span>connection).<span class="kw">await</span><span class="question-mark">?</span>;
-        <span class="kw">let </span>plan = Plan::new(PlanType::Revert, <span class="prelude-val">None</span>, <span class="prelude-val">None</span>)<span class="question-mark">?</span>;
+        <span class="kw">let </span>plan = Plan::new(PlanType::Revert, <span class="prelude-val">None</span>, <span class="prelude-val">None</span>, <span class="prelude-val">None</span>)<span class="question-mark">?</span>;
         <span class="kw">for </span>migration <span class="kw">in </span><span class="self">self</span>.generate_migration_plan(<span class="kw-2">&amp;</span>plan, <span class="kw-2">&amp;mut </span>connection).<span class="kw">await</span><span class="question-mark">? </span>{
             <span class="self">self</span>.revert_migration(migration, <span class="kw-2">&amp;mut </span>connection).<span class="kw">await</span><span class="question-mark">?</span>;
         }
