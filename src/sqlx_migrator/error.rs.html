@@ -60,21 +60,6 @@
 <a href="#58" id="58">58</a>
 <a href="#59" id="59">59</a>
 <a href="#60" id="60">60</a>
-<a href="#61" id="61">61</a>
-<a href="#62" id="62">62</a>
-<a href="#63" id="63">63</a>
-<a href="#64" id="64">64</a>
-<a href="#65" id="65">65</a>
-<a href="#66" id="66">66</a>
-<a href="#67" id="67">67</a>
-<a href="#68" id="68">68</a>
-<a href="#69" id="69">69</a>
-<a href="#70" id="70">70</a>
-<a href="#71" id="71">71</a>
-<a href="#72" id="72">72</a>
-<a href="#73" id="73">73</a>
-<a href="#74" id="74">74</a>
-<a href="#75" id="75">75</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Module for library error
 
 /// Error enum to store different types of error
@@ -83,42 +68,31 @@
 </span><span class="kw">pub enum </span>Error {
     <span class="doccomment">/// Error type created from error raised by sqlx
     </span><span class="attr">#[error(transparent)]
-    </span>SqlxError(<span class="attr">#[from] </span>sqlx::error::Error),
-
+    </span>Sqlx(<span class="attr">#[from] </span>sqlx::Error),
     <span class="attr">#[cfg(feature = <span class="string">"cli"</span>)]
     </span><span class="doccomment">/// Error type created from error raised by std input output
     </span><span class="attr">#[error(transparent)]
-    </span>StdIoError(<span class="attr">#[from] </span>std::io::Error),
-
+    </span>StdIo(<span class="attr">#[from] </span>std::io::Error),
     <span class="doccomment">/// Error for failed to create migrations plan
     </span><span class="attr">#[error(<span class="string">"failed to create migrations plan"</span>)]
     </span>FailedToCreateMigrationPlan,
-
     <span class="doccomment">/// Error when migration plan has applied replaces migrations as well as
     /// current migration
     </span><span class="attr">#[error(<span class="string">"both replace migrations and current migration are applied"</span>)]
     </span>BothMigrationTypeApplied,
-
     <span class="doccomment">/// Error for irreversible operation
     </span><span class="attr">#[error(<span class="string">"operation is irreversible"</span>)]
     </span>IrreversibleOperation,
-
     <span class="attr">#[cfg(feature = <span class="string">"cli"</span>)]
     </span><span class="doccomment">/// Error for pending migration present
     </span><span class="attr">#[error(<span class="string">"pending migration present"</span>)]
     </span>PendingMigrationPresent,
-
-    <span class="doccomment">/// Error when migration name is only present but not app name
-    </span><span class="attr">#[error(<span class="string">"app name required only migration name present"</span>)]
-    </span>AppNameRequired,
-
     <span class="doccomment">/// Error when provided app name doesn't exists
     </span><span class="attr">#[error(<span class="string">"provided app {app} doesn't exists"</span>)]
     </span>AppNameNotExists {
         <span class="doccomment">/// Name of app
         </span>app: String,
     },
-
     <span class="doccomment">/// Error when provided migration name doesn't exists for app
     </span><span class="attr">#[error(<span class="string">"provided migration {migration} doesn't exists for app {app}"</span>)]
     </span>MigrationNameNotExists {
@@ -127,12 +101,10 @@
         <span class="doccomment">/// Name of migration
         </span>migration: String,
     },
-
     <span class="attr">#[cfg(feature = <span class="string">"cli"</span>)]
     </span><span class="doccomment">/// Error when applied migrations exists
     </span><span class="attr">#[error(<span class="string">"applied migrations exists. Revert all using revert subcommand"</span>)]
     </span>AppliedMigrationExists,
-
     <span class="doccomment">/// Error when count of migrations is big than total number of migration
     </span><span class="attr">#[error(<span class="string">"count of migrations is big only {actual_len} present passed {count}"</span>)]
     </span>CountGreater {
@@ -141,11 +113,9 @@
         <span class="doccomment">/// Count passed in option
         </span>count: usize,
     },
-
     <span class="doccomment">/// Error when unsupported database is used as any database
     </span><span class="attr">#[error(<span class="string">"database not supported for any migrator"</span>)]
     </span>UnsupportedDatabase,
-
     <span class="doccomment">/// Error when passed prefix is not alpha numeric
     </span><span class="attr">#[error(<span class="string">"prefix can only be ascii alphanumeric and underscore character"</span>)]
     </span>NonAsciiAlphaNumeric,
