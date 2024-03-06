@@ -493,13 +493,13 @@
 
     <span class="macro">println!</span>(<span class="string">"{:^full_width$}"</span>, <span class="string">"-"</span>.repeat(full_width));
     <span class="kw">for </span>migration <span class="kw">in </span>migration_plan {
-        <span class="kw">let </span>applied_migration_info = applied_migrations
-            .iter()
-            .find(|<span class="kw-2">&amp;</span>applied_migration| applied_migration == migration);
-
         <span class="kw">let </span><span class="kw-2">mut </span>id = String::from(<span class="string">"N/A"</span>);
         <span class="kw">let </span><span class="kw-2">mut </span>status = <span class="string">"\u{2717}"</span>;
         <span class="kw">let </span><span class="kw-2">mut </span>applied_time = String::from(<span class="string">"N/A"</span>);
+
+        <span class="kw">let </span>applied_migration_info = applied_migrations
+            .iter()
+            .find(|<span class="kw-2">&amp;</span>applied_migration| applied_migration == migration);
 
         <span class="kw">if let </span><span class="prelude-val">Some</span>(sqlx_migration) = applied_migration_info {
             id = sqlx_migration.id().to_string();

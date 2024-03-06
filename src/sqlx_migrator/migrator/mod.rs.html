@@ -635,6 +635,12 @@
 <a href="#633" id="633">633</a>
 <a href="#634" id="634">634</a>
 <a href="#635" id="635">635</a>
+<a href="#636" id="636">636</a>
+<a href="#637" id="637">637</a>
+<a href="#638" id="638">638</a>
+<a href="#639" id="639">639</a>
+<a href="#640" id="640">640</a>
+<a href="#641" id="641">641</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Migrator module
 //!
 //! It contains common enum and trait for implementing migrator for sqlx
@@ -1043,19 +1049,7 @@
         <span class="macro">tracing::debug!</span>(<span class="string">"fetching applied migrations"</span>);
 
         <span class="self">self</span>.ensure_migration_table_exists(connection).<span class="kw">await</span><span class="question-mark">?</span>;
-        <span class="kw">let </span>applied_migration_list = <span class="self">self</span>.fetch_applied_migration_from_db(connection).<span class="kw">await</span><span class="question-mark">?</span>;
 
-        <span class="comment">// convert applied migration string name to vector of migration implemented
-        // objects
-        </span><span class="kw">let </span><span class="kw-2">mut </span>applied_migrations = Vec::new();
-        <span class="kw">for </span>migration <span class="kw">in </span><span class="self">self</span>.migrations() {
-            <span class="kw">if </span>applied_migration_list
-                .iter()
-                .any(|sqlx_migration| sqlx_migration == migration)
-            {
-                applied_migrations.push(migration);
-            }
-        }
         <span class="macro">tracing::debug!</span>(<span class="string">"generating {:?} migration plan"</span>, plan);
 
         <span class="kw">let </span><span class="kw-2">mut </span>migration_list = Vec::new();
@@ -1112,35 +1106,53 @@
             }
         }
 
-        <span class="comment">// Remove migration from migration list according to replaces vector
-        </span><span class="kw">for </span>migration <span class="kw">in </span>migration_list.clone() {
-            <span class="comment">// Only need to check case when replaces contain value otherwise logic can be
-            // ignored
-            </span><span class="kw">if </span>!migration.replaces().is_empty() {
-                <span class="comment">// Check if any replaces migration are applied for not
-                </span><span class="kw">let </span>replaces_applied = migration
-                    .replaces()
-                    .iter()
-                    .any(|replace_migration| applied_migrations.contains(<span class="kw-2">&amp;</span>replace_migration));
+        <span class="comment">// if there is only plan than further process. In further process replaces
+        // migrations are also handled for removing conflicting migrations where certain
+        // migrations replaces certain other migrations
+        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(planned) = plan {
+            <span class="kw">let </span>applied_migration_sql_rows =
+                <span class="self">self</span>.fetch_applied_migration_from_db(connection).<span class="kw">await</span><span class="question-mark">?</span>;
 
-                <span class="comment">// If any one of replaced migrations is applied than do not add current
-                // migration to migration plan else add only current migration to migration plan
-                </span><span class="kw">if </span>replaces_applied {
-                    <span class="comment">// Error if current migration as well as replace migration both are applied
-                    </span><span class="kw">if </span>applied_migrations.contains(<span class="kw-2">&amp;</span>migration) {
-                        <span class="kw">return </span><span class="prelude-val">Err</span>(Error::BothMigrationTypeApplied);
-                    }
-                    migration_list.retain(|<span class="kw-2">&amp;</span>plan_migration| migration != plan_migration);
-                } <span class="kw">else </span>{
-                    <span class="kw">for </span>replaced_migration <span class="kw">in </span>migration.replaces() {
-                        migration_list
-                            .retain(|<span class="kw-2">&amp;</span>plan_migration| <span class="kw-2">&amp;</span>replaced_migration != plan_migration);
+            <span class="comment">// convert applied migration sql rows to vector of migration implemented
+            // objects
+            </span><span class="kw">let </span><span class="kw-2">mut </span>applied_migrations = Vec::new();
+            <span class="kw">for </span>migration <span class="kw">in </span><span class="self">self</span>.migrations() {
+                <span class="kw">if </span>applied_migration_sql_rows
+                    .iter()
+                    .any(|sqlx_migration| sqlx_migration == migration)
+                {
+                    applied_migrations.push(migration);
+                }
+            }
+
+            <span class="comment">// Remove migration from migration list according to replaces vector
+            </span><span class="kw">for </span>migration <span class="kw">in </span>migration_list.clone() {
+                <span class="comment">// Only need to check case when replaces contain value otherwise logic can be
+                // ignored
+                </span><span class="kw">if </span>!migration.replaces().is_empty() {
+                    <span class="comment">// Check if any replaces migration are applied for not
+                    </span><span class="kw">let </span>replaces_applied = migration
+                        .replaces()
+                        .iter()
+                        .any(|replace_migration| applied_migrations.contains(<span class="kw-2">&amp;</span>replace_migration));
+
+                    <span class="comment">// If any one of replaced migrations is applied than do not add current
+                    // migration to migration plan else add only current migration to migration plan
+                    </span><span class="kw">if </span>replaces_applied {
+                        <span class="comment">// Error if current migration as well as replace migration both are applied
+                        </span><span class="kw">if </span>applied_migrations.contains(<span class="kw-2">&amp;</span>migration) {
+                            <span class="kw">return </span><span class="prelude-val">Err</span>(Error::BothMigrationTypeApplied);
+                        }
+                        migration_list.retain(|<span class="kw-2">&amp;</span>plan_migration| migration != plan_migration);
+                    } <span class="kw">else </span>{
+                        <span class="kw">for </span>replaced_migration <span class="kw">in </span>migration.replaces() {
+                            migration_list
+                                .retain(|<span class="kw-2">&amp;</span>plan_migration| <span class="kw-2">&amp;</span>replaced_migration != plan_migration);
+                        }
                     }
                 }
             }
-        }
 
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(planned) = plan {
             process_plan(<span class="kw-2">&amp;mut </span>migration_list, <span class="kw-2">&amp;</span>applied_migrations, planned)<span class="question-mark">?</span>;
         }
 
