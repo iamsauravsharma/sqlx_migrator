@@ -135,13 +135,13 @@ where
 
     println!("{:^full_width$}", "-".repeat(full_width));
     for migration in migration_plan {
-        let applied_migration_info = applied_migrations
-            .iter()
-            .find(|&applied_migration| applied_migration == migration);
-
         let mut id = String::from("N/A");
         let mut status = "\u{2717}";
         let mut applied_time = String::from("N/A");
+
+        let applied_migration_info = applied_migrations
+            .iter()
+            .find(|&applied_migration| applied_migration == migration);
 
         if let Some(sqlx_migration) = applied_migration_info {
             id = sqlx_migration.id().to_string();

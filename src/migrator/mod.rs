@@ -406,19 +406,7 @@ where
         tracing::debug!("fetching applied migrations");
 
         self.ensure_migration_table_exists(connection).await?;
-        let applied_migration_list = self.fetch_applied_migration_from_db(connection).await?;
 
-        // convert applied migration string name to vector of migration implemented
-        // objects
-        let mut applied_migrations = Vec::new();
-        for migration in self.migrations() {
-            if applied_migration_list
-                .iter()
-                .any(|sqlx_migration| sqlx_migration == migration)
-            {
-                applied_migrations.push(migration);
-            }
-        }
         tracing::debug!("generating {:?} migration plan", plan);
 
         let mut migration_list = Vec::new();
@@ -475,35 +463,53 @@ where
             }
         }
 
-        // Remove migration from migration list according to replaces vector
-        for migration in migration_list.clone() {
-            // Only need to check case when replaces contain value otherwise logic can be
-            // ignored
-            if !migration.replaces().is_empty() {
-                // Check if any replaces migration are applied for not
-                let replaces_applied = migration
-                    .replaces()
-                    .iter()
-                    .any(|replace_migration| applied_migrations.contains(&replace_migration));
+        // if there is only plan than further process. In further process replaces
+        // migrations are also handled for removing conflicting migrations where certain
+        // migrations replaces certain other migrations
+        if let Some(planned) = plan {
+            let applied_migration_sql_rows =
+                self.fetch_applied_migration_from_db(connection).await?;
 
-                // If any one of replaced migrations is applied than do not add current
-                // migration to migration plan else add only current migration to migration plan
-                if replaces_applied {
-                    // Error if current migration as well as replace migration both are applied
-                    if applied_migrations.contains(&migration) {
-                        return Err(Error::BothMigrationTypeApplied);
-                    }
-                    migration_list.retain(|&plan_migration| migration != plan_migration);
-                } else {
-                    for replaced_migration in migration.replaces() {
-                        migration_list
-                            .retain(|&plan_migration| &replaced_migration != plan_migration);
+            // convert applied migration sql rows to vector of migration implemented
+            // objects
+            let mut applied_migrations = Vec::new();
+            for migration in self.migrations() {
+                if applied_migration_sql_rows
+                    .iter()
+                    .any(|sqlx_migration| sqlx_migration == migration)
+                {
+                    applied_migrations.push(migration);
+                }
+            }
+
+            // Remove migration from migration list according to replaces vector
+            for migration in migration_list.clone() {
+                // Only need to check case when replaces contain value otherwise logic can be
+                // ignored
+                if !migration.replaces().is_empty() {
+                    // Check if any replaces migration are applied for not
+                    let replaces_applied = migration
+                        .replaces()
+                        .iter()
+                        .any(|replace_migration| applied_migrations.contains(&replace_migration));
+
+                    // If any one of replaced migrations is applied than do not add current
+                    // migration to migration plan else add only current migration to migration plan
+                    if replaces_applied {
+                        // Error if current migration as well as replace migration both are applied
+                        if applied_migrations.contains(&migration) {
+                            return Err(Error::BothMigrationTypeApplied);
+                        }
+                        migration_list.retain(|&plan_migration| migration != plan_migration);
+                    } else {
+                        for replaced_migration in migration.replaces() {
+                            migration_list
+                                .retain(|&plan_migration| &replaced_migration != plan_migration);
+                        }
                     }
                 }
             }
-        }
 
-        if let Some(planned) = plan {
             process_plan(&mut migration_list, &applied_migrations, planned)?;
         }
 
