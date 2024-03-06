@@ -159,11 +159,12 @@ mod sqlite;
 #[cfg(feature = "postgres")]
 mod postgres;
 
-type MigrationVec<'a, DB> = Vec<&'a Box<dyn Migration<DB>>>;
-type MigrationVecResult<'a, DB> = Result<MigrationVec<'a, DB>, Error>;
+type MigrationVec<'migration, DB> = Vec<&'migration Box<dyn Migration<DB>>>;
+type MigrationVecResult<'migration, DB> = Result<MigrationVec<'migration, DB>, Error>;
 
 /// Type of plan which needs to be generate
 #[derive(Debug)]
+#[non_exhaustive]
 pub enum PlanType {
     /// Plan type used when listing migrations which can be applied
     Apply,
@@ -588,14 +589,14 @@ impl<DB> Migrator<DB> {
     /// # Errors
     /// When passed prefix is not ascii alpha numeric or underscore character
     pub fn with_prefix(mut self, prefix: impl Into<String>) -> Result<Self, Error> {
-        let prefix = prefix.into();
-        if !prefix
+        let prefix_str = prefix.into();
+        if !prefix_str
             .chars()
             .all(|c| char::is_ascii_alphanumeric(&c) || c == '_')
         {
             return Err(Error::NonAsciiAlphaNumeric);
         }
-        self.table_name = format!("_{prefix}{DEFAULT_TABLE_NAME}");
+        self.table_name = format!("_{prefix_str}{DEFAULT_TABLE_NAME}");
         Ok(self)
     }
 

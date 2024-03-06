@@ -156,16 +156,19 @@ Now you can use two ways to run migrator either directly running migration or cr
 For direct run
 
 ```rust
+use sqlx_migrator::migrator::Plan;
+
 // use apply all to apply all pending migration
-migrator.run(&pool, sqlx_migrator::migrator::Plan::apply_all()).await.unwrap();
+migrator.run(&pool, Plan::apply_all()).await.unwrap();
 // or use revert all to revert all applied migrations
-migrator.run(&pool, sqlx_migrator::migrator::Plan::revert_all()).await.unwrap();
+migrator.run(&pool, Plan::revert_all()).await.unwrap();
 ```
 
 Or you can create cli using
 
 ```rust
 use sqlx_migrator::cli::MigrationCommand;
+
 MigrationCommand::parse_and_run(Box::new(migrator), &pool).await.unwrap();
 ```
 

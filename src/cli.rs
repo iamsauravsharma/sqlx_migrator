@@ -248,9 +248,9 @@ impl Apply {
                 }
                 std::io::stdout().flush()?;
                 std::io::stdin().read_line(&mut input)?;
-                let input = input.trim().to_ascii_lowercase();
+                let input_trimmed = input.trim().to_ascii_lowercase();
                 // If answer is not y or yes then return
-                if !["y", "yes"].contains(&input.as_str()) {
+                if !["y", "yes"].contains(&input_trimmed.as_str()) {
                     return Ok(());
                 }
             }
@@ -342,9 +342,9 @@ impl Revert {
                 }
                 std::io::stdout().flush()?;
                 std::io::stdin().read_line(&mut input)?;
-                let input = input.trim().to_ascii_lowercase();
+                let input_trimmed = input.trim().to_ascii_lowercase();
                 // If answer is not y or yes then return
-                if !["y", "yes"].contains(&input.as_str()) {
+                if !["y", "yes"].contains(&input_trimmed.as_str()) {
                     return Ok(());
                 }
             }
