@@ -129,6 +129,8 @@
 <a href="#127" id="127">127</a>
 <a href="#128" id="128">128</a>
 <a href="#129" id="129">129</a>
+<a href="#130" id="130">130</a>
+<a href="#131" id="131">131</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Module defining migration trait
 //!
 //! To create own implement migration trait for type
@@ -195,19 +197,21 @@
     </span><span class="kw">fn </span>operations(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;Box&lt;<span class="kw">dyn </span>Operation&lt;DB, State&gt;&gt;&gt;;
 
     <span class="doccomment">/// Replace certain migrations. If any one of listed migration is applied
-    /// than migration will not be applied else migration will apply instead of
-    /// applying those migration.
+    /// than migration will not be applied else migration will apply/revert
+    /// instead of applying/reverting those migration.
     </span><span class="kw">fn </span>replaces(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;Box&lt;<span class="kw">dyn </span>Migration&lt;DB, State&gt;&gt;&gt; {
         <span class="macro">vec!</span>[]
     }
 
-    <span class="doccomment">/// Run before certain migration. This can be helpful in condition where
-    /// other library migration need to be applied after this migration
+    <span class="doccomment">/// Run before(for applying)/after(for reverting) certain migration. This
+    /// can be helpful in condition where other library migration need to be
+    /// applied after this migration or reverted before this migration
     </span><span class="kw">fn </span>run_before(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;Box&lt;<span class="kw">dyn </span>Migration&lt;DB, State&gt;&gt;&gt; {
         <span class="macro">vec!</span>[]
     }
 
-    <span class="doccomment">/// Whether migration is atomic or not. By default it is true
+    <span class="doccomment">/// Whether migration is atomic or not. By default it is atomic so this
+    /// function returns `true`
     </span><span class="kw">fn </span>is_atomic(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
         <span class="bool-val">true
     </span>}
