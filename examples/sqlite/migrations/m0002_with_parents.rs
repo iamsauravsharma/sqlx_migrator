@@ -8,14 +8,14 @@ pub(crate) struct M0002Operation;
 
 #[async_trait::async_trait]
 impl Operation<Sqlite> for M0002Operation {
-    async fn up(&self, connection: &mut SqliteConnection) -> Result<(), Error> {
+    async fn up(&self, connection: &mut SqliteConnection, _state: &()) -> Result<(), Error> {
         sqlx::query("INSERT INTO sample (id, name) VALUES (99, 'Some text')")
             .execute(connection)
             .await?;
         Ok(())
     }
 
-    async fn down(&self, connection: &mut SqliteConnection) -> Result<(), Error> {
+    async fn down(&self, connection: &mut SqliteConnection, _state: &()) -> Result<(), Error> {
         sqlx::query("DELETE FROM sample WHERE id = 99")
             .execute(connection)
             .await?;

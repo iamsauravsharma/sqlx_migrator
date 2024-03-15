@@ -57,7 +57,10 @@ pub(crate) struct FirstOperation;
 #[async_trait::async_trait]
 impl Operation<sqlx::Postgres> for FirstOperation {
     // Up function runs apply migration
-    async fn up(&self, connection: &mut sqlx::PgConnection) -> Result<(), Error> {
+    async fn up(&self,
+        connection: &mut sqlx::PgConnection,
+        state: &(),
+    ) -> Result<(), Error> {
         sqlx::query("CREATE TABLE sample (id INTEGER PRIMARY KEY, name TEXT)")
             .execute(connection)
             .await?;
@@ -65,34 +68,15 @@ impl Operation<sqlx::Postgres> for FirstOperation {
     }
 
     // down migration runs down migration
-    async fn down(&self, connection: &mut sqlx::PgConnection) -> Result<(), Error> {
+    async fn down(
+        connection: &mut sqlx::PgConnection,
+        state: &(),
+    ) -> Result<(), Error> {
         sqlx::query("DROP TABLE sample").execute(connection).await?;
         Ok(())
     }
 }
 ```
-If you have simple up operation and down operation than you can use macros for creating operation
-```rust
-use sqlx_migrator::sqlx;
-
-pub(crate) struct FirstOperation;
-
-sqlx_migrator::operation!(
-    sqlx::Postgres,
-    FirstOperation,
-    "CREATE TABLE sample (id INTEGER PRIMARY KEY, name TEXT)",
-    "DROP TABLE sample",
-    );
-```
-You can even simplify it using
-```rust
-sqlx_migrator::postgres_operation!(
-    FirstOperation,
-    "CREATE TABLE sample (id INTEGER PRIMARY KEY, name TEXT)",
-    "DROP TABLE sample",
-    );
-```
-
 After creation of operation you can implement Migration struct to create single migration
 
 ```rust
@@ -132,9 +116,36 @@ impl Migration<sqlx::Postgres> for FirstMigration {
 Which can be represented in simple form as
 ```rust
 use sqlx_migrator::vec_box;
-sqlx_migrator::migration!(sqlx::Postgres, "main", FirstMigration, vec_box![], vec_box![FirstOperation]);
+sqlx_migrator::migration!(
+    sqlx::Postgres,
+    FirstMigration,
+    "main",
+    vec_box![], 
+    vec_box![FirstOperation]
+);
 // OR
-sqlx_migrator::postgres_migration!("main", FirstMigration, vec_box![], vec_box![FirstOperation]);
+sqlx_migrator::postgres_migration!(
+    FirstMigration,
+    "main",
+    vec_box![], 
+    vec_box![FirstOperation]
+);
+```
+
+If your up and down query are simple string only than you can directly uses `(U,D) where U: AsRef<str>, D: AsRef<str>` to implement `Operation` trait
+So above example can be further simplified as
+```rust
+sqlx_migrator::postgres_migration!(
+    FirstMigration,
+    "main",
+    sqlx_migrator::vec_box![],
+    sqlx_migrator::vec_box![
+        (
+            "CREATE TABLE sample (id INTEGER PRIMARY KEY, name TEXT)",
+            "DROP TABLE sample"
+        )
+    ]
+);
 ```
 
 Now at last you need to create migrator for your database to run migrations
@@ -157,11 +168,11 @@ For direct run
 
 ```rust
 use sqlx_migrator::migrator::Plan;
-
+let mut conn = pool.acquire().await?;
 // use apply all to apply all pending migration
-migrator.run(&pool, Plan::apply_all()).await.unwrap();
+migrator.run(&mut conn, Plan::apply_all()).await.unwrap();
 // or use revert all to revert all applied migrations
-migrator.run(&pool, Plan::revert_all()).await.unwrap();
+migrator.run(&mut conn, Plan::revert_all()).await.unwrap();
 ```
 
 Or you can create cli using
@@ -169,7 +180,7 @@ Or you can create cli using
 ```rust
 use sqlx_migrator::cli::MigrationCommand;
 
-MigrationCommand::parse_and_run(Box::new(migrator), &pool).await.unwrap();
+MigrationCommand::parse_and_run(Box::new(migrator), &mut conn).await.unwrap();
 ```
 
 If you want to extend your own clap based cli then you can add migrator to sub command enum and then run migrator
@@ -191,7 +202,7 @@ impl Cli {
         let cli = Self::parse();
         match cli.sub_command {
             Migrator(m) => {
-                m.run(Box::new(migrator), &pool).await.unwrap()
+                m.run(Box::new(migrator), &mut conn).await.unwrap()
             }
         }
     }
@@ -212,7 +223,7 @@ Then you can create cli for migrator
 
 ```rust
 use sqlx_migrator::cli::MigrationCommand;
-MigrationCommand::parse_and_run(Box::new(migrator), &pool).await.unwrap();
+MigrationCommand::parse_and_run(Box::new(migrator), &mut conn).await.unwrap();
 ```
 
 and run fake apply cli command

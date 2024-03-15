@@ -1,116 +1,29 @@
-/// Macro for vector of box
+/// Macro for vector of [`Box`]
 #[macro_export]
 macro_rules! vec_box {
     ($elem:expr; $n:expr) => (vec![Box::new($elem); $n]);
     ($($x:expr),*) => (vec![$(Box::new($x)),*]);
     ($($x:expr,)*) => (vec![$(Box::new($x)),*]);
-    ($($x:expr,)*) => (vec_box![$($x),*]);
+    ($($x:expr,)*) => (sqlx_migrator::vec_box![$($x),*]);
 }
 
-/// Macro for defining SQL operations.
+/// Macro for implementing the `Migration` trait for the provided database.
 ///
-/// This macro expects four arguments:
-///
-/// - `$db`: the type of database
-/// - `$op`: The type of for which operation is defined.
-/// - `$up`: The SQL query string for performing the migration 'up' (forward
-///   migration).
-/// - `$down`: The SQL query string for performing the migration 'down'
-///   (backward migration).
-#[macro_export]
-macro_rules! operation {
-    ($db:ty, $op:ty, $up:expr, $down:expr) => {
-        #[async_trait::async_trait]
-        impl sqlx_migrator::operation::Operation<$db> for $op {
-            async fn up(
-                &self,
-                connection: &mut <$db as sqlx_migrator::sqlx::Database>::Connection,
-            ) -> Result<(), sqlx_migrator::error::Error> {
-                sqlx_migrator::sqlx::query($up).execute(connection).await?;
-                Ok(())
-            }
-
-            async fn down(
-                &self,
-                connection: &mut <$db as sqlx_migrator::sqlx::Database>::Connection,
-            ) -> Result<(), sqlx_migrator::error::Error> {
-                sqlx_migrator::sqlx::query($down)
-                    .execute(connection)
-                    .await?;
-                Ok(())
-            }
-        }
-    };
-}
-
-/// Macro for defining any SQL operations.
-///
-/// This macro is extend of operation macro which has already set db to
-/// `sqlx::Any`
-#[macro_export]
-#[cfg(all(
-    any(feature = "postgres", feature = "mysql", feature = "sqlite"),
-    feature = "any"
-))]
-macro_rules! any_operation {
-    ($op:ty, $up:expr, $down:expr) => {
-        sqlx_migrator::operation!(sqlx_migrator::sqlx::Any, $op, $up, $down);
-    };
-}
-
-/// Macro for defining mysql SQL operations.
-///
-/// This macro is extend of operation macro which has already set db to
-/// `sqlx::MySql`
-#[macro_export]
-#[cfg(feature = "mysql")]
-macro_rules! mysql_operation {
-    ($op:ty, $up:expr, $down:expr) => {
-        sqlx_migrator::operation!(sqlx_migrator::sqlx::MySql, $op, $up, $down);
-    };
-}
-
-/// Macro for defining postgres SQL operations.
-///
-/// This macro is extend of operation macro which has already set db to
-/// `sqlx::Postgres`
-#[macro_export]
-#[cfg(feature = "postgres")]
-macro_rules! postgres_operation {
-    ($op:ty, $up:expr, $down:expr) => {
-        sqlx_migrator::operation!(sqlx_migrator::sqlx::Postgres, $op, $up, $down);
-    };
-}
-
-/// Macro for defining sqlite SQL operations.
-///
-/// This macro is extend of operation macro which has already set db to
-/// `sqlx::Sqlite`
-#[macro_export]
-#[cfg(feature = "sqlite")]
-macro_rules! sqlite_operation {
-    ($op:ty, $up:expr, $down:expr) => {
-        sqlx_migrator::operation!(sqlx_migrator::sqlx::Sqlite, $op, $up, $down);
-    };
-}
-
-/// Macro for implementing the `Migration` trait for the provided type.
-///
-/// This macro generates implementations for the `Migration` trait from the
-/// `sqlx_migrator` crate.
 /// This macro will use current file name as name for migration
 ///
 /// This macro expects the following arguments:
 /// - `$db:ty`: the type of database
-/// - `$app_name:expr`: Name of app to be used for app variable
+/// - `$state:ty`: the type of state for migration (optional). If not present
+///   this will by default set as `()`
 /// - `$op:ty`: The type for which the migration is being implemented
+/// - `$app_name:expr`: Name of app to be used for app variable
 /// - `$parents:expr`: List of parents migration.
 /// - `$operations:expr`: List of operations
 #[macro_export]
 macro_rules! migration {
-    ($db:ty, $app_name:expr, $op:ty, $parents:expr, $operations:expr) => {
+    ($db:ty, $state:ty, $op:ty, $app_name:expr, $parents:expr, $operations:expr) => {
         #[async_trait::async_trait]
-        impl sqlx_migrator::migration::Migration<$db> for $op {
+        impl sqlx_migrator::migration::Migration<$db, $state> for $op {
             fn app(&self) -> &str {
                 $app_name
             }
@@ -122,20 +35,23 @@ macro_rules! migration {
                     .unwrap_or_default()
             }
 
-            fn parents(&self) -> Vec<Box<dyn sqlx_migrator::migration::Migration<$db>>> {
+            fn parents(&self) -> Vec<Box<dyn sqlx_migrator::migration::Migration<$db, $state>>> {
                 $parents
             }
 
-            fn operations(&self) -> Vec<Box<dyn sqlx_migrator::operation::Operation<$db>>> {
+            fn operations(&self) -> Vec<Box<dyn sqlx_migrator::operation::Operation<$db, $state>>> {
                 $operations
             }
         }
     };
+    ($db:ty, $op:ty, $app_name:expr, $parents:expr, $operations:expr) => {
+        sqlx_migrator::migration!($db, (), $op, $app_name, $parents, $operations);
+    };
 }
 
-/// Macro for implementing the `Migration` trait for the `Any`.
+/// Macro for implementing the [`migration`] macro for the `Any`.
 ///
-/// This macro is extend of migration macro which has already set db to
+/// This macro calls [`migration`] macro with db value already set asg
 /// `sqlx::Any`
 #[macro_export]
 #[cfg(all(
@@ -143,67 +59,83 @@ macro_rules! migration {
     feature = "any"
 ))]
 macro_rules! any_migration {
-    ($app_name:expr, $op:ty, $parents:expr, $operations:expr) => {
+    ($state:ty, $op:ty, $app_name:expr, $parents:expr, $operations:expr) => {
         sqlx_migrator::migration!(
             sqlx_migrator::sqlx::Any,
-            $app_name,
+            $state,
             $op,
+            $app_name,
             $parents,
             $operations
         );
     };
+    ($op:ty, $app_name:expr, $parents:expr, $operations:expr) => {
+        sqlx_migrator::any_migration!((), $op, $app_name, $parents, $operations);
+    };
 }
 
-/// Macro for implementing the `Migration` trait for the `MySql`.
+/// Macro for implementing the [`migration`] macro for the `MySql`.
 ///
-/// This macro is extend of migration macro which has already set db to
+/// This macro calls [`migration`] macro with db value already set asg
 /// `sqlx::MySql`
 #[macro_export]
 #[cfg(feature = "mysql")]
 macro_rules! mysql_migration {
-    ($app_name:expr, $op:ty, $parents:expr, $operations:expr) => {
+    ($state:ty, $op:ty, $app_name:expr, $parents:expr, $operations:expr) => {
         sqlx_migrator::migration!(
             sqlx_migrator::sqlx::MySql,
-            $app_name,
+            $state,
             $op,
+            $app_name,
             $parents,
             $operations
         );
     };
+    ($op:ty, $app_name:expr, $parents:expr, $operations:expr) => {
+        sqlx_migrator::mysql_migration!((), $op, $app_name, $parents, $operations);
+    };
 }
 
-/// Macro for implementing the `Migration` trait for the `Postgres`.
+/// Macro for implementing the [`migration`] macro for the `Postgres`.
 ///
-/// This macro is extend of migration macro which has already set db to
+/// This macro calls [`migration`] macro with db value already set asg
 /// `sqlx::Postgres`
 #[macro_export]
 #[cfg(feature = "postgres")]
 macro_rules! postgres_migration {
-    ($app_name:expr, $op:ty, $parents:expr, $operations:expr) => {
+    ($state:ty, $op:ty, $app_name:expr, $parents:expr, $operations:expr) => {
         sqlx_migrator::migration!(
             sqlx_migrator::sqlx::Postgres,
-            $app_name,
+            $state,
             $op,
+            $app_name,
             $parents,
             $operations
         );
     };
+    ($op:ty, $app_name:expr, $parents:expr, $operations:expr) => {
+        sqlx_migrator::postgres_migration!((), $op, $app_name, $parents, $operations);
+    };
 }
 
-/// Macro for implementing the `Migration` trait for the `Sqlite`.
+/// Macro for implementing the [`migration`] macro for the `Sqlite`.
 ///
-/// This macro is extend of migration macro which has already set db to
+/// This macro calls [`migration`] macro with db value already set as
 /// `sqlx::Sqlite`
 #[macro_export]
 #[cfg(feature = "sqlite")]
 macro_rules! sqlite_migration {
-    ($app_name:expr, $op:ty, $parents:expr, $operations:expr) => {
+    ($state:ty, $op:ty, $app_name:expr, $parents:expr, $operations:expr) => {
         sqlx_migrator::migration!(
             sqlx_migrator::sqlx::Sqlite,
-            $app_name,
+            $state,
             $op,
+            $app_name,
             $parents,
             $operations
         );
+    };
+    ($op:ty, $app_name:expr, $parents:expr, $operations:expr) => {
+        sqlx_migrator::sqlite_migration!((), $op, $app_name, $parents, $operations);
     };
 }

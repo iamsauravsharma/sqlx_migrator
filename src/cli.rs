@@ -3,7 +3,6 @@ use std::io::Write;
 use std::ops::Not;
 
 use clap::{Parser, Subcommand};
-use sqlx::Pool;
 
 use crate::error::Error;
 use crate::migrator::{Migrate, Plan};
@@ -20,30 +19,34 @@ impl MigrationCommand {
     ///
     /// # Errors
     /// If migration command fails to complete and raise some issue
-    pub async fn parse_and_run<DB>(
-        migrator: Box<dyn Migrate<DB>>,
-        pool: &Pool<DB>,
+    pub async fn parse_and_run<DB, State>(
+        migrator: Box<dyn Migrate<DB, State>>,
+        connection: &mut <DB as sqlx::Database>::Connection,
     ) -> Result<(), Error>
     where
         DB: sqlx::Database,
+        State: Send + Sync,
     {
         let migration_command = Self::parse();
-        migration_command.run(migrator, pool).await
+        migration_command.run(migrator, connection).await
     }
 
     /// Run migration command line interface
     ///
     /// # Errors
     /// If migration command fails to complete and raise some issue
-    pub async fn run<DB>(
+    pub async fn run<DB, State>(
         &self,
-        migrator: Box<dyn Migrate<DB>>,
-        pool: &Pool<DB>,
+        migrator: Box<dyn Migrate<DB, State>>,
+        connection: &mut <DB as sqlx::Database>::Connection,
     ) -> Result<(), Error>
     where
         DB: sqlx::Database,
+        State: Send + Sync,
     {
-        self.sub_command.handle_subcommand(migrator, pool).await?;
+        self.sub_command
+            .handle_subcommand(migrator, connection)
+            .await?;
         Ok(())
     }
 }
@@ -67,28 +70,27 @@ enum SubCommand {
 }
 
 impl SubCommand {
-    async fn handle_subcommand<DB>(
+    async fn handle_subcommand<DB, State>(
         &self,
-        migrator: Box<dyn Migrate<DB>>,
-        pool: &Pool<DB>,
+        migrator: Box<dyn Migrate<DB, State>>,
+        connection: &mut <DB as sqlx::Database>::Connection,
     ) -> Result<(), Error>
     where
         DB: sqlx::Database,
+        State: Send + Sync,
     {
-        let mut connection = pool.acquire().await?;
         match self {
-            SubCommand::Apply(apply) => apply.run(migrator, &mut connection).await?,
-            SubCommand::Drop => drop_migrations(migrator, &mut connection).await?,
-            SubCommand::List => list_migrations(migrator, &mut connection).await?,
-            SubCommand::Revert(revert) => revert.run(migrator, &mut connection).await?,
+            SubCommand::Apply(apply) => apply.run(migrator, connection).await?,
+            SubCommand::Drop => drop_migrations(migrator, connection).await?,
+            SubCommand::List => list_migrations(migrator, connection).await?,
+            SubCommand::Revert(revert) => revert.run(migrator, connection).await?,
         }
-        connection.close().await?;
         Ok(())
     }
 }
 
-async fn drop_migrations<DB>(
-    migrator: Box<dyn Migrate<DB>>,
+async fn drop_migrations<DB, State>(
+    migrator: Box<dyn Migrate<DB, State>>,
     connection: &mut <DB as sqlx::Database>::Connection,
 ) -> Result<(), Error>
 where
@@ -108,12 +110,13 @@ where
     Ok(())
 }
 
-async fn list_migrations<DB>(
-    migrator: Box<dyn Migrate<DB>>,
+async fn list_migrations<DB, State>(
+    migrator: Box<dyn Migrate<DB, State>>,
     connection: &mut <DB as sqlx::Database>::Connection,
 ) -> Result<(), Error>
 where
     DB: sqlx::Database,
+    State: Send + Sync,
 {
     let migration_plan = migrator.generate_migration_plan(None, connection).await?;
     let applied_migrations = migrator.fetch_applied_migration_from_db(connection).await?;
@@ -191,13 +194,14 @@ struct Apply {
     plan: bool,
 }
 impl Apply {
-    async fn run<DB>(
+    async fn run<DB, State>(
         &self,
-        migrator: Box<dyn Migrate<DB>>,
+        migrator: Box<dyn Migrate<DB, State>>,
         connection: &mut <DB as sqlx::Database>::Connection,
     ) -> Result<(), Error>
     where
         DB: sqlx::Database,
+        State: Send + Sync,
     {
         let plan;
         if let Some(count) = self.count {
@@ -289,13 +293,14 @@ struct Revert {
     plan: bool,
 }
 impl Revert {
-    async fn run<DB>(
+    async fn run<DB, State>(
         &self,
-        migrator: Box<dyn Migrate<DB>>,
+        migrator: Box<dyn Migrate<DB, State>>,
         connection: &mut <DB as sqlx::Database>::Connection,
     ) -> Result<(), Error>
     where
         DB: sqlx::Database,
+        State: Send + Sync,
     {
         let plan;
         if let Some(count) = self.count {

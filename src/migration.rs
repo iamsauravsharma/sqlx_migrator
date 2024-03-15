@@ -48,7 +48,7 @@ use crate::operation::Operation;
 
 /// Trait for migration
 #[allow(clippy::module_name_repetitions)]
-pub trait Migration<DB>: Send + Sync {
+pub trait Migration<DB, State = ()>: Send + Sync {
     /// Migration app name. Can be name of folder or library where migration is
     /// located
     fn app(&self) -> &str;
@@ -58,21 +58,21 @@ pub trait Migration<DB>: Send + Sync {
 
     /// Parents of migration (migrations that should be applied before this
     /// migration)
-    fn parents(&self) -> Vec<Box<dyn Migration<DB>>>;
+    fn parents(&self) -> Vec<Box<dyn Migration<DB, State>>>;
 
     /// Operation performed for migration (create, drop, etc.)
-    fn operations(&self) -> Vec<Box<dyn Operation<DB>>>;
+    fn operations(&self) -> Vec<Box<dyn Operation<DB, State>>>;
 
     /// Replace certain migrations. If any one of listed migration is applied
     /// than migration will not be applied else migration will apply instead of
     /// applying those migration.
-    fn replaces(&self) -> Vec<Box<dyn Migration<DB>>> {
+    fn replaces(&self) -> Vec<Box<dyn Migration<DB, State>>> {
         vec![]
     }
 
     /// Run before certain migration. This can be helpful in condition where
     /// other library migration need to be applied after this migration
-    fn run_before(&self) -> Vec<Box<dyn Migration<DB>>> {
+    fn run_before(&self) -> Vec<Box<dyn Migration<DB, State>>> {
         vec![]
     }
 
@@ -82,15 +82,15 @@ pub trait Migration<DB>: Send + Sync {
     }
 }
 
-impl<DB> PartialEq for dyn Migration<DB> {
+impl<DB, State> PartialEq for dyn Migration<DB, State> {
     fn eq(&self, other: &Self) -> bool {
         self.app() == other.app() && self.name() == other.name()
     }
 }
 
-impl<DB> Eq for dyn Migration<DB> {}
+impl<DB, State> Eq for dyn Migration<DB, State> {}
 
-impl<DB> Hash for dyn Migration<DB> {
+impl<DB, State> Hash for dyn Migration<DB, State> {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.app().hash(state);
         self.name().hash(state);
@@ -122,8 +122,8 @@ impl AppliedMigrationSqlRow {
     }
 }
 
-impl<DB> PartialEq<Box<dyn Migration<DB>>> for AppliedMigrationSqlRow {
-    fn eq(&self, other: &Box<dyn Migration<DB>>) -> bool {
+impl<DB, State> PartialEq<Box<dyn Migration<DB, State>>> for AppliedMigrationSqlRow {
+    fn eq(&self, other: &Box<dyn Migration<DB, State>>) -> bool {
         self.app == other.app() && self.name == other.name()
     }
 }
