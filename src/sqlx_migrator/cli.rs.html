@@ -383,59 +383,27 @@
 <a href="#381" id="381">381</a>
 <a href="#382" id="382">382</a>
 <a href="#383" id="383">383</a>
-<a href="#384" id="384">384</a>
-<a href="#385" id="385">385</a>
-<a href="#386" id="386">386</a>
-<a href="#387" id="387">387</a>
-<a href="#388" id="388">388</a>
-<a href="#389" id="389">389</a>
-<a href="#390" id="390">390</a>
-<a href="#391" id="391">391</a>
-<a href="#392" id="392">392</a>
-<a href="#393" id="393">393</a>
-<a href="#394" id="394">394</a>
-<a href="#395" id="395">395</a>
-<a href="#396" id="396">396</a>
-<a href="#397" id="397">397</a>
-<a href="#398" id="398">398</a>
-<a href="#399" id="399">399</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Module for creating and running cli with help of migrator
 //!
 //! CLI Command can directly used or extended
 //!
 //! For direct usage you can run `parse_and_run` function for `MigrationCommand`
-
-//! ```rust
-//! use sqlx_migrator::cli::MigrationCommand;
-
-//! MigrationCommand::parse_and_run(Box::new(migrator), &amp;mut
-//! conn).await.unwrap();
-//! ```
+//!
+//! OR
 //!
 //! If you want to extend your own clap based cli then you can add migrator to
 //! sub command enum and then run migrator
-//! ```rust
+//! ```rust,no_run
 //! #[derive(clap::Parser)]
 //! struct Cli {
 //!     #[command(subcommand)]
-//!     sub_command: CliSubcommand
+//!     sub_command: CliSubcommand,
 //! }
 //!
 //! #[derive(clap::Subcommand)]
 //! enum CliSubcommand {
 //!     #[command()]
-//!     Migrator(sqlx_migrator::cli::MigrationCommand)
-//! }
-//!
-//! impl Cli {
-//!     async fn run() {
-//!         let cli = Self::parse();
-//!         match cli.sub_command {
-//!             Migrator(m) =&gt; {
-//!                 m.run(Box::new(migrator), &amp;mut conn).await.unwrap()
-//!             }
-//!         }
-//!     }
+//!     Migrator(sqlx_migrator::cli::MigrationCommand),
 //! }
 //! ```
 </span><span class="kw">use </span>std::io::Write;
