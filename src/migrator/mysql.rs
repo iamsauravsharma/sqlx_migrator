@@ -70,7 +70,10 @@ pub(crate) fn get_lock_id(database_name: &str, table_name: &str) -> String {
 }
 
 #[async_trait::async_trait]
-impl DatabaseOperation<MySql> for Migrator<MySql> {
+impl<State> DatabaseOperation<MySql, State> for Migrator<MySql, State>
+where
+    State: Send + Sync,
+{
     async fn ensure_migration_table_exists(
         &self,
         connection: &mut <MySql as sqlx::Database>::Connection,
@@ -93,7 +96,7 @@ impl DatabaseOperation<MySql> for Migrator<MySql> {
 
     async fn add_migration_to_db_table(
         &self,
-        migration: &Box<dyn Migration<MySql>>,
+        migration: &Box<dyn Migration<MySql, State>>,
         connection: &mut <MySql as sqlx::Database>::Connection,
     ) -> Result<(), Error> {
         sqlx::query(&add_migration_query(self.table_name()))
@@ -106,7 +109,7 @@ impl DatabaseOperation<MySql> for Migrator<MySql> {
 
     async fn delete_migration_from_db_table(
         &self,
-        migration: &Box<dyn Migration<MySql>>,
+        migration: &Box<dyn Migration<MySql, State>>,
         connection: &mut <MySql as sqlx::Database>::Connection,
     ) -> Result<(), Error> {
         sqlx::query(&delete_migration_query(self.table_name()))

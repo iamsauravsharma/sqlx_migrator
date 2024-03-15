@@ -23,7 +23,7 @@
 //!     migrations: HashSet<Box<dyn Migration<Postgres>>>,
 //! }
 //!
-//! impl Info<Postgres> for CustomMigrator {
+//! impl Info<Postgres, ()> for CustomMigrator {
 //!     fn migrations(&self) -> &HashSet<Box<dyn Migration<Postgres>>> {
 //!         &self.migrations
 //!     }
@@ -31,9 +31,13 @@
 //!     fn migrations_mut(&mut self) -> &mut HashSet<Box<dyn Migration<Postgres>>> {
 //!         &mut self.migrations
 //!     }
+//!
+//!     fn state(&self) -> &() {
+//!         &()
+//!     }
 //! }
 //! #[async_trait::async_trait]
-//! impl DatabaseOperation<Postgres> for CustomMigrator {
+//! impl DatabaseOperation<Postgres, ()> for CustomMigrator {
 //!     async fn ensure_migration_table_exists(
 //!         &self,
 //!         connection: &mut <Postgres as sqlx::Database>::Connection,
@@ -130,7 +134,7 @@
 //!     }
 //! }
 //!
-//! impl Migrate<Postgres> for CustomMigrator {}
+//! impl Migrate<Postgres, ()> for CustomMigrator {}
 //! ```
 
 use std::collections::{HashMap, HashSet};
@@ -159,8 +163,8 @@ mod sqlite;
 #[cfg(feature = "postgres")]
 mod postgres;
 
-type MigrationVec<'migration, DB> = Vec<&'migration Box<dyn Migration<DB>>>;
-type MigrationVecResult<'migration, DB> = Result<MigrationVec<'migration, DB>, Error>;
+type MigrationVec<'migration, DB, State> = Vec<&'migration Box<dyn Migration<DB, State>>>;
+type MigrationVecResult<'migration, DB, State> = Result<MigrationVec<'migration, DB, State>, Error>;
 
 /// Type of plan which needs to be generate
 #[derive(Debug)]
@@ -236,22 +240,25 @@ impl Plan {
 
 /// Info trait which implements some of database agnostic methods to add
 /// migration or returns immutable or mutable migrations list
-pub trait Info<DB> {
+pub trait Info<DB, State> {
+    /// Return state used in migrator
+    fn state(&self) -> &State;
+
     /// Return migrations
-    fn migrations(&self) -> &HashSet<Box<dyn Migration<DB>>>;
+    fn migrations(&self) -> &HashSet<Box<dyn Migration<DB, State>>>;
 
     /// Return mutable reference of migrations
-    fn migrations_mut(&mut self) -> &mut HashSet<Box<dyn Migration<DB>>>;
+    fn migrations_mut(&mut self) -> &mut HashSet<Box<dyn Migration<DB, State>>>;
 
     /// Add vector of migrations to Migrator object
-    fn add_migrations(&mut self, migrations: Vec<Box<dyn Migration<DB>>>) {
+    fn add_migrations(&mut self, migrations: Vec<Box<dyn Migration<DB, State>>>) {
         for migration in migrations {
             self.add_migration(migration);
         }
     }
 
     /// Add single migration to migrator object
-    fn add_migration(&mut self, migration: Box<dyn Migration<DB>>) {
+    fn add_migration(&mut self, migration: Box<dyn Migration<DB, State>>) {
         let migration_parents = migration.parents();
         let migration_replaces = migration.replaces();
         let is_new_value = self.migrations_mut().insert(migration);
@@ -273,7 +280,7 @@ pub trait Info<DB> {
 /// operations/action on database. Usually this trait is implemented for
 /// database to support database along with info trait
 #[async_trait::async_trait]
-pub trait DatabaseOperation<DB>
+pub trait DatabaseOperation<DB, State>
 where
     DB: sqlx::Database,
 {
@@ -294,7 +301,7 @@ where
     #[allow(clippy::borrowed_box)]
     async fn add_migration_to_db_table(
         &self,
-        migration: &Box<dyn Migration<DB>>,
+        migration: &Box<dyn Migration<DB, State>>,
         connection: &mut <DB as sqlx::Database>::Connection,
     ) -> Result<(), Error>;
 
@@ -302,7 +309,7 @@ where
     #[allow(clippy::borrowed_box)]
     async fn delete_migration_from_db_table(
         &self,
-        migration: &Box<dyn Migration<DB>>,
+        migration: &Box<dyn Migration<DB, State>>,
         connection: &mut <DB as sqlx::Database>::Connection,
     ) -> Result<(), Error>;
 
@@ -323,9 +330,9 @@ where
 }
 
 /// Process plan to provided migrations list
-fn process_plan<DB>(
-    migration_list: &mut MigrationVec<DB>,
-    applied_migrations: &MigrationVec<DB>,
+fn process_plan<DB, State>(
+    migration_list: &mut MigrationVec<DB, State>,
+    applied_migrations: &MigrationVec<DB, State>,
     plan: &Plan,
 ) -> Result<(), Error>
 where
@@ -391,9 +398,10 @@ where
 /// trait. This trait doesn't requires to implement any method since all
 /// function have default implementation and all methods are database agnostics
 #[async_trait::async_trait]
-pub trait Migrate<DB>: Info<DB> + DatabaseOperation<DB> + Send + Sync
+pub trait Migrate<DB, State>: Info<DB, State> + DatabaseOperation<DB, State> + Send + Sync
 where
     DB: sqlx::Database,
+    State: Send + Sync,
 {
     /// Generate migration plan according to plan. Returns a vector of
     /// migration. If plan is none than it will generate plan with all
@@ -402,7 +410,7 @@ where
         &self,
         plan: Option<&Plan>,
         connection: &mut <DB as sqlx::Database>::Connection,
-    ) -> MigrationVecResult<DB> {
+    ) -> MigrationVecResult<DB, State> {
         tracing::debug!("fetching applied migrations");
 
         self.ensure_migration_table_exists(connection).await?;
@@ -534,14 +542,14 @@ where
                     if migration.is_atomic() {
                         let mut transaction = connection.begin().await?;
                         for operation in migration.operations() {
-                            operation.up(&mut transaction).await?;
+                            operation.up(&mut transaction, self.state()).await?;
                         }
                         self.add_migration_to_db_table(migration, &mut transaction)
                             .await?;
                         transaction.commit().await?;
                     } else {
                         for operation in migration.operations() {
-                            operation.up(connection).await?;
+                            operation.up(connection, self.state()).await?;
                         }
                         self.add_migration_to_db_table(migration, connection)
                             .await?;
@@ -557,14 +565,14 @@ where
                     if migration.is_atomic() {
                         let mut transaction = connection.begin().await?;
                         for operation in operations {
-                            operation.down(&mut transaction).await?;
+                            operation.down(&mut transaction, self.state()).await?;
                         }
                         self.delete_migration_from_db_table(migration, &mut transaction)
                             .await?;
                         transaction.commit().await?;
                     } else {
                         for operation in operations {
-                            operation.down(connection).await?;
+                            operation.down(connection, self.state()).await?;
                         }
                         self.delete_migration_from_db_table(migration, connection)
                             .await?;
@@ -581,12 +589,22 @@ const DEFAULT_TABLE_NAME: &str = "_sqlx_migrator_migrations";
 
 /// Migrator struct which store migrations graph and information related to
 /// different library supported migrations
-pub struct Migrator<DB> {
-    migrations: HashSet<Box<dyn Migration<DB>>>,
+pub struct Migrator<DB, State> {
+    migrations: HashSet<Box<dyn Migration<DB, State>>>,
     table_name: String,
+    state: State,
 }
 
-impl<DB> Migrator<DB> {
+impl<DB, State> Migrator<DB, State> {
+    /// Create new migrator with provided state
+    fn new(state: State) -> Self {
+        Self {
+            migrations: HashSet::default(),
+            table_name: DEFAULT_TABLE_NAME.to_string(),
+            state,
+        }
+    }
+
     /// Use prefix for migrator table name only ascii alpha numeric and
     /// underscore characters are supported for table name. prefix will set
     /// table name as `_{prefix}{default_table_name}` where default table
@@ -614,28 +632,33 @@ impl<DB> Migrator<DB> {
     }
 }
 
-impl<DB> Default for Migrator<DB> {
+impl<DB, State> Default for Migrator<DB, State>
+where
+    State: Default,
+{
     fn default() -> Self {
-        Self {
-            migrations: HashSet::default(),
-            table_name: DEFAULT_TABLE_NAME.to_string(),
-        }
+        Self::new(State::default())
     }
 }
 
-impl<DB> Info<DB> for Migrator<DB> {
-    fn migrations(&self) -> &HashSet<Box<dyn Migration<DB>>> {
+impl<DB, State> Info<DB, State> for Migrator<DB, State> {
+    fn state(&self) -> &State {
+        &self.state
+    }
+
+    fn migrations(&self) -> &HashSet<Box<dyn Migration<DB, State>>> {
         &self.migrations
     }
 
-    fn migrations_mut(&mut self) -> &mut HashSet<Box<dyn Migration<DB>>> {
+    fn migrations_mut(&mut self) -> &mut HashSet<Box<dyn Migration<DB, State>>> {
         &mut self.migrations
     }
 }
 
-impl<DB> Migrate<DB> for Migrator<DB>
+impl<DB, State> Migrate<DB, State> for Migrator<DB, State>
 where
     DB: sqlx::Database,
-    Self: DatabaseOperation<DB>,
+    Self: DatabaseOperation<DB, State>,
+    State: Send + Sync,
 {
 }

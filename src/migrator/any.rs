@@ -41,7 +41,10 @@ async fn get_database_name(
 }
 
 #[async_trait::async_trait]
-impl DatabaseOperation<Any> for Migrator<Any> {
+impl<State> DatabaseOperation<Any, State> for Migrator<Any, State>
+where
+    State: Send + Sync,
+{
     async fn ensure_migration_table_exists(
         &self,
         connection: &mut <Any as sqlx::Database>::Connection,
@@ -84,7 +87,7 @@ impl DatabaseOperation<Any> for Migrator<Any> {
 
     async fn add_migration_to_db_table(
         &self,
-        migration: &Box<dyn Migration<Any>>,
+        migration: &Box<dyn Migration<Any, State>>,
         connection: &mut <Any as sqlx::Database>::Connection,
     ) -> Result<(), Error> {
         let sql_query = match connection.backend_name() {
@@ -106,7 +109,7 @@ impl DatabaseOperation<Any> for Migrator<Any> {
 
     async fn delete_migration_from_db_table(
         &self,
-        migration: &Box<dyn Migration<Any>>,
+        migration: &Box<dyn Migration<Any, State>>,
         connection: &mut <Any as sqlx::Database>::Connection,
     ) -> Result<(), Error> {
         let sql_query = match connection.backend_name() {
