@@ -1,4 +1,42 @@
 //! Module for creating and running cli with help of migrator
+//!
+//! CLI Command can directly used or extended
+//!
+//! For direct usage you can run `parse_and_run` function for `MigrationCommand`
+
+//! ```rust
+//! use sqlx_migrator::cli::MigrationCommand;
+
+//! MigrationCommand::parse_and_run(Box::new(migrator), &mut
+//! conn).await.unwrap();
+//! ```
+//!
+//! If you want to extend your own clap based cli then you can add migrator to
+//! sub command enum and then run migrator
+//! ```rust
+//! #[derive(clap::Parser)]
+//! struct Cli {
+//!     #[command(subcommand)]
+//!     sub_command: CliSubcommand
+//! }
+//!
+//! #[derive(clap::Subcommand)]
+//! enum CliSubcommand {
+//!     #[command()]
+//!     Migrator(sqlx_migrator::cli::MigrationCommand)
+//! }
+//!
+//! impl Cli {
+//!     async fn run() {
+//!         let cli = Self::parse();
+//!         match cli.sub_command {
+//!             Migrator(m) => {
+//!                 m.run(Box::new(migrator), &mut conn).await.unwrap()
+//!             }
+//!         }
+//!     }
+//! }
+//! ```
 use std::io::Write;
 use std::ops::Not;
 

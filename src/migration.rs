@@ -64,19 +64,21 @@ pub trait Migration<DB, State = ()>: Send + Sync {
     fn operations(&self) -> Vec<Box<dyn Operation<DB, State>>>;
 
     /// Replace certain migrations. If any one of listed migration is applied
-    /// than migration will not be applied else migration will apply instead of
-    /// applying those migration.
+    /// than migration will not be applied else migration will apply/revert
+    /// instead of applying/reverting those migration.
     fn replaces(&self) -> Vec<Box<dyn Migration<DB, State>>> {
         vec![]
     }
 
-    /// Run before certain migration. This can be helpful in condition where
-    /// other library migration need to be applied after this migration
+    /// Run before(for applying)/after(for reverting) certain migration. This
+    /// can be helpful in condition where other library migration need to be
+    /// applied after this migration or reverted before this migration
     fn run_before(&self) -> Vec<Box<dyn Migration<DB, State>>> {
         vec![]
     }
 
-    /// Whether migration is atomic or not. By default it is true
+    /// Whether migration is atomic or not. By default it is atomic so this
+    /// function returns `true`
     fn is_atomic(&self) -> bool {
         true
     }

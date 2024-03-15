@@ -36,6 +36,7 @@
 //!         &()
 //!     }
 //! }
+//!
 //! #[async_trait::async_trait]
 //! impl DatabaseOperation<Postgres, ()> for CustomMigrator {
 //!     async fn ensure_migration_table_exists(
