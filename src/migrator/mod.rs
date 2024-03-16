@@ -265,16 +265,21 @@ pub trait Info<DB, State> {
     fn add_migration(&mut self, migration: BoxMigration<DB, State>) {
         let migration_parents = migration.parents();
         let migration_replaces = migration.replaces();
+        let migration_run_before = migration.run_before();
+
         let is_new_value = self.migrations_mut().insert(migration);
-        // Only add parents and replaces migrations if current migration was added first
-        // time. This can increase performance of recursive addition by ignoring
-        // parent and replace migration recursive addition
+
+        // Only add parents, replaces and run before migrations if current migration was
+        // added first time. This can increase performance of recursive addition
         if is_new_value {
             for parent in migration_parents {
                 self.add_migration(parent);
             }
             for replace in migration_replaces {
                 self.add_migration(replace);
+            }
+            for run_before in migration_run_before {
+                self.add_migration(run_before);
             }
         }
     }
