@@ -152,41 +152,49 @@
 <a href="#150" id="150">150</a>
 <a href="#151" id="151">151</a>
 <a href="#152" id="152">152</a>
+<a href="#153" id="153">153</a>
+<a href="#154" id="154">154</a>
+<a href="#155" id="155">155</a>
+<a href="#156" id="156">156</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Operation module
-//!
-//! To create own operation implement trait for type
-//!
-//! ### Example
-//!
-//! ```rust,no_run
-//! use sqlx_migrator::error::Error;
-//! use sqlx_migrator::operation::Operation;
-//! use sqlx_migrator::sqlx::Sqlite;
-//!
-//! struct ExampleOperation;
-//! #[async_trait::async_trait]
-//! impl Operation&lt;Sqlite&gt; for ExampleOperation {
-//!     async fn up(
-//!         &amp;self,
-//!         connection: &amp;mut sqlx::SqliteConnection,
-//!         state: &amp;(),
-//!     ) -&gt; Result&lt;(), Error&gt; {
-//!         // Do some operations
-//!         Ok(())
-//!     }
-//!
-//!     // By default operation is irreversible and cannot be reversed if you want to support
-//!     // reverse of migration than add down function as well
-//!     async fn down(
-//!         &amp;self,
-//!         connection: &amp;mut sqlx::SqliteConnection,
-//!         state: &amp;(),
-//!     ) -&gt; Result&lt;(), Error&gt; {
-//!         // Do some operations
-//!         Ok(())
-//!     }
-//! }
-//! ```
+</span><span class="attr">#![cfg_attr(
+    feature = <span class="string">"sqlite"</span>,
+    doc = <span class="string">r##"
+To create own operation implement trait for type
+
+### Example
+```rust,no_run
+use sqlx_migrator::error::Error;
+use sqlx_migrator::operation::Operation;
+use sqlx_migrator::sqlx::Sqlite;
+
+struct ExampleOperation;
+
+#[async_trait::async_trait]
+impl Operation&lt;Sqlite&gt; for ExampleOperation {
+    async fn up(
+        &amp;self,
+        connection: &amp;mut sqlx::SqliteConnection,
+        state: &amp;(),
+    ) -&gt; Result&lt;(), Error&gt; {
+        // Do some operations
+        Ok(())
+    }
+
+    // By default operation is irreversible and cannot be reversed if you want to support
+    // reverse of migration than add down function as well
+    async fn down(
+        &amp;self,
+        connection: &amp;mut sqlx::SqliteConnection,
+        state: &amp;(),
+    ) -&gt; Result&lt;(), Error&gt; {
+        // Do some operations
+        Ok(())
+    }
+}
+```
+"##
+</span>)]
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::Error;
 

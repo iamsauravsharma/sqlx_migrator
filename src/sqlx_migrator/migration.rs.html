@@ -131,49 +131,57 @@
 <a href="#129" id="129">129</a>
 <a href="#130" id="130">130</a>
 <a href="#131" id="131">131</a>
+<a href="#132" id="132">132</a>
+<a href="#133" id="133">133</a>
+<a href="#134" id="134">134</a>
+<a href="#135" id="135">135</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Module defining migration trait
-//!
-//! To create own implement migration trait for type
-//!
-//! ### Example
-//!
-//! ```rust,no_run
-//! use sqlx_migrator::error::Error;
-//! use sqlx_migrator::migration::Migration;
-//! use sqlx_migrator::operation::Operation;
-//! use sqlx_migrator::sqlx::Sqlite;
-//!
-//! struct ExampleMigration;
-//! impl Migration&lt;Sqlite&gt; for ExampleMigration {
-//!     fn app(&amp;self) -&gt; &amp;str {
-//!         "example"
-//!     }
-//!
-//!     fn name(&amp;self) -&gt; &amp;str {
-//!         "first_migration"
-//!     }
-//!
-//!     fn parents(&amp;self) -&gt; Vec&lt;Box&lt;dyn Migration&lt;Sqlite&gt;&gt;&gt; {
-//!         vec![]
-//!     }
-//!
-//!     fn operations(&amp;self) -&gt; Vec&lt;Box&lt;dyn Operation&lt;Sqlite&gt;&gt;&gt; {
-//!         vec![]
-//!     }
-//!
-//!     fn replaces(&amp;self) -&gt; Vec&lt;Box&lt;dyn Migration&lt;Sqlite&gt;&gt;&gt; {
-//!         vec![]
-//!     }
-//!
-//!     fn run_before(&amp;self) -&gt; Vec&lt;Box&lt;dyn Migration&lt;Sqlite&gt;&gt;&gt; {
-//!         vec![]
-//!     }
-//!
-//!     fn is_atomic(&amp;self) -&gt; bool {
-//!         true
-//!     }
-//! }
-//! ```
+</span><span class="attr">#![cfg_attr(
+    feature = <span class="string">"sqlite"</span>,
+    doc = <span class="string">r##"
+To create own implement migration trait for type
+
+### Example
+```rust,no_run
+use sqlx_migrator::error::Error;
+use sqlx_migrator::migration::Migration;
+use sqlx_migrator::operation::Operation;
+use sqlx_migrator::sqlx::Sqlite;
+
+struct ExampleMigration;
+
+impl Migration&lt;Sqlite&gt; for ExampleMigration {
+    fn app(&amp;self) -&gt; &amp;str {
+        "example"
+    }
+
+    fn name(&amp;self) -&gt; &amp;str {
+        "first_migration"
+    }
+
+    fn parents(&amp;self) -&gt; Vec&lt;Box&lt;dyn Migration&lt;Sqlite&gt;&gt;&gt; {
+        vec![]
+    }
+
+    fn operations(&amp;self) -&gt; Vec&lt;Box&lt;dyn Operation&lt;Sqlite&gt;&gt;&gt; {
+        vec![]
+    }
+
+    fn replaces(&amp;self) -&gt; Vec&lt;Box&lt;dyn Migration&lt;Sqlite&gt;&gt;&gt; {
+        vec![]
+    }
+
+    fn run_before(&amp;self) -&gt; Vec&lt;Box&lt;dyn Migration&lt;Sqlite&gt;&gt;&gt; {
+        vec![]
+    }
+
+    fn is_atomic(&amp;self) -&gt; bool {
+        true
+    }
+}
+```
+"##
+</span>)]
 
 </span><span class="kw">use </span>std::hash::Hash;
 
