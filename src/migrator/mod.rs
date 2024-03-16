@@ -164,7 +164,8 @@ mod sqlite;
 #[cfg(feature = "postgres")]
 mod postgres;
 
-type MigrationVec<'migration, DB, State> = Vec<&'migration Box<dyn Migration<DB, State>>>;
+type BoxMigration<DB, State> = Box<dyn Migration<DB, State>>;
+type MigrationVec<'migration, DB, State> = Vec<&'migration BoxMigration<DB, State>>;
 type MigrationVecResult<'migration, DB, State> = Result<MigrationVec<'migration, DB, State>, Error>;
 
 /// Type of plan which needs to be generate
@@ -246,20 +247,20 @@ pub trait Info<DB, State> {
     fn state(&self) -> &State;
 
     /// Return migrations
-    fn migrations(&self) -> &HashSet<Box<dyn Migration<DB, State>>>;
+    fn migrations(&self) -> &HashSet<BoxMigration<DB, State>>;
 
     /// Return mutable reference of migrations
-    fn migrations_mut(&mut self) -> &mut HashSet<Box<dyn Migration<DB, State>>>;
+    fn migrations_mut(&mut self) -> &mut HashSet<BoxMigration<DB, State>>;
 
     /// Add vector of migrations to Migrator object
-    fn add_migrations(&mut self, migrations: Vec<Box<dyn Migration<DB, State>>>) {
+    fn add_migrations(&mut self, migrations: Vec<BoxMigration<DB, State>>) {
         for migration in migrations {
             self.add_migration(migration);
         }
     }
 
     /// Add single migration to migrator object
-    fn add_migration(&mut self, migration: Box<dyn Migration<DB, State>>) {
+    fn add_migration(&mut self, migration: BoxMigration<DB, State>) {
         let migration_parents = migration.parents();
         let migration_replaces = migration.replaces();
         let is_new_value = self.migrations_mut().insert(migration);
@@ -302,7 +303,7 @@ where
     #[allow(clippy::borrowed_box)]
     async fn add_migration_to_db_table(
         &self,
-        migration: &Box<dyn Migration<DB, State>>,
+        migration: &BoxMigration<DB, State>,
         connection: &mut <DB as sqlx::Database>::Connection,
     ) -> Result<(), Error>;
 
@@ -310,7 +311,7 @@ where
     #[allow(clippy::borrowed_box)]
     async fn delete_migration_from_db_table(
         &self,
-        migration: &Box<dyn Migration<DB, State>>,
+        migration: &BoxMigration<DB, State>,
         connection: &mut <DB as sqlx::Database>::Connection,
     ) -> Result<(), Error>;
 
@@ -394,6 +395,33 @@ where
     Ok(())
 }
 
+fn populate_descendants<'populate, DB, State>(
+    populate_children: &mut HashMap<
+        &'populate BoxMigration<DB, State>,
+        HashSet<&'populate BoxMigration<DB, State>>,
+    >,
+    parent: &'populate BoxMigration<DB, State>,
+    child: &'populate BoxMigration<DB, State>,
+) {
+    populate_children.entry(parent).or_default().insert(child);
+    if let Some(grand_children) = populate_children.clone().get(child) {
+        for grand_child in grand_children {
+            populate_descendants(populate_children, parent, grand_child);
+        }
+    }
+}
+
+fn get_root<'ascendant, DB, State>(
+    hash_map: &'ascendant HashMap<BoxMigration<DB, State>, &'ascendant BoxMigration<DB, State>>,
+    val: &'ascendant BoxMigration<DB, State>,
+) -> &'ascendant BoxMigration<DB, State> {
+    if let Some(&parent) = hash_map.get(val) {
+        get_root(hash_map, parent)
+    } else {
+        val
+    }
+}
+
 /// Migrate trait which migrate a database according to requirements. This trait
 /// implements all methods which depends on `DatabaseOperation` trait and `Info`
 /// trait. This trait doesn't requires to implement any method since all
@@ -407,6 +435,7 @@ where
     /// Generate migration plan according to plan. Returns a vector of
     /// migration. If plan is none than it will generate plan with all
     /// migrations in chronological order of apply
+    #[allow(clippy::too_many_lines)]
     async fn generate_migration_plan(
         &self,
         plan: Option<&Plan>,
@@ -418,20 +447,77 @@ where
 
         tracing::debug!("generating {:?} migration plan", plan);
 
-        let mut migration_list = Vec::new();
+        // Hashmap which contains key as migration name and value as one replaces
+        // migrations which replace it this should be parent of replaces migration since
+        // we cannot remove replaces migration down below until migration is
+        // parent without possible children side effect.
+        let mut parent_due_to_replaces = HashMap::new();
+
+        for parent_migration in self.migrations() {
+            for child_migration in parent_migration.replaces() {
+                if parent_due_to_replaces
+                    .insert(child_migration, parent_migration)
+                    .is_some()
+                {
+                    return Err(Error::MigrationReplacedMultipleTimes);
+                }
+            }
+        }
+
+        // Hashmap which contains all children generated from replace list
+        let mut replace_children = HashMap::<_, HashSet<_>>::new();
+        // in first loop add initial parent and child from parent due to replace
+        for (child, &parent) in &parent_due_to_replaces {
+            replace_children.entry(parent).or_default().insert(child);
+        }
+        // in second loop through recursive add all descendants
+        for (child, &parent) in &parent_due_to_replaces {
+            populate_descendants(&mut replace_children, parent, child);
+        }
 
         // Hashmap which contains key as migration name and value as list of migration
         // which becomes parent for key due to value having key as run before value
         let mut parents_due_to_run_before = HashMap::<_, Vec<_>>::new();
 
-        for migration in self.migrations() {
-            for run_before_migration in migration.run_before() {
+        for parent_migration in self.migrations() {
+            for run_before_migration in parent_migration.run_before() {
                 parents_due_to_run_before
                     .entry(run_before_migration)
                     .or_default()
-                    .push(migration);
+                    .push(parent_migration);
             }
         }
+
+        // Hashmap which contains all children generated from run before list
+        let mut run_before_children = HashMap::<_, HashSet<_>>::new();
+        // in first loop add initial parent and child from parent due to run before
+        for (child, parents) in &parents_due_to_run_before {
+            for &parent in parents {
+                run_before_children.entry(parent).or_default().insert(child);
+            }
+        }
+        // in second loop through recursive add all descendants
+        for (child, parents) in &parents_due_to_run_before {
+            for parent in parents {
+                populate_descendants(&mut run_before_children, parent, child);
+            }
+        }
+
+        // check for inconsistent order of migration for replace and run before
+        for (parent_migration, children_hash_set) in &run_before_children {
+            for &child in children_hash_set {
+                let root = get_root(&parent_due_to_replaces, child);
+                if !children_hash_set.contains(root) {
+                    if let Some(replace_children_hash_set) = replace_children.get(root) {
+                        if !replace_children_hash_set.contains(parent_migration) {
+                            return Err(Error::ReplaceRunBeforeMisMatch);
+                        }
+                    }
+                }
+            }
+        }
+
+        let mut migration_list = Vec::new();
 
         // Create migration list until migration list length is equal to hash set
         // length
@@ -457,7 +543,16 @@ where
                             });
 
                         if all_run_before_parents_added {
-                            migration_list.push(migration);
+                            // check if all replaces parents are added or not if migrations do not
+                            // have replace parent than it returns true
+                            let replace_added = parent_due_to_replaces
+                                .get(migration)
+                                .map_or(true, |replace_migration| {
+                                    migration_list.contains(replace_migration)
+                                });
+                            if replace_added {
+                                migration_list.push(migration);
+                            }
                         }
                     }
                 }
@@ -465,8 +560,8 @@ where
 
             // If old migration plan length is equal to current length than no new migration
             // was added. Next loop also will not add migration so return error. This case
-            // can only occur when Migration A needs to run before Migration B as
-            // well as Migration A has Migration B as parents.
+            // can arise due to looping in migration plan i.e If there is two migration A
+            // and B, than when B is ancestor of A as well as descendants of A
             if old_migration_list_length == migration_list.len() {
                 return Err(Error::FailedToCreateMigrationPlan);
             }
@@ -491,16 +586,38 @@ where
                 }
             }
 
+            // Check if any of parents are applied or not. If any parents are not applied
+            // for applied migration than raises error also takes consideration of replace
+            // migration
+            for &migration in &applied_migrations {
+                let mut parents = vec![];
+                if let Some(run_before_list) = parents_due_to_run_before.get(migration) {
+                    for &run_before in run_before_list {
+                        parents.push(run_before);
+                    }
+                }
+                let main_parents = migration.parents();
+                for parent in &main_parents {
+                    parents.push(parent);
+                }
+                for parent in parents {
+                    if !applied_migrations.contains(&parent) {
+                        let root = get_root(&parent_due_to_replaces, parent);
+                        if !applied_migrations.contains(&root) {
+                            return Err(Error::ParentIsNotApplied);
+                        }
+                    }
+                }
+            }
+
             // Remove migration from migration list according to replaces vector
             for migration in migration_list.clone() {
-                // Only need to check case when replaces contain value otherwise logic can be
-                // ignored
-                if !migration.replaces().is_empty() {
-                    // Check if any replaces migration are applied for not
-                    let replaces_applied = migration
-                        .replaces()
+                // Only need to check case when migration have children
+                if let Some(children) = replace_children.get(&migration) {
+                    // Check if any replaces children are applied or not
+                    let replaces_applied = children
                         .iter()
-                        .any(|replace_migration| applied_migrations.contains(&replace_migration));
+                        .any(|&replace_migration| applied_migrations.contains(&replace_migration));
 
                     // If any one of replaced migrations is applied than do not add current
                     // migration to migration plan else add only current migration to migration plan
@@ -511,9 +628,11 @@ where
                         }
                         migration_list.retain(|&plan_migration| migration != plan_migration);
                     } else {
-                        for replaced_migration in migration.replaces() {
+                        // we can remove all children migrations here since migrations which
+                        // replaced them will be parent of them so there will be no side effect
+                        for replaced_migration in children {
                             migration_list
-                                .retain(|&plan_migration| &replaced_migration != plan_migration);
+                                .retain(|plan_migration| replaced_migration != plan_migration);
                         }
                     }
                 }
@@ -591,7 +710,7 @@ const DEFAULT_TABLE_NAME: &str = "_sqlx_migrator_migrations";
 /// Migrator struct which store migrations graph and information related to
 /// different library supported migrations
 pub struct Migrator<DB, State> {
-    migrations: HashSet<Box<dyn Migration<DB, State>>>,
+    migrations: HashSet<BoxMigration<DB, State>>,
     table_name: String,
     state: State,
 }
@@ -647,11 +766,11 @@ impl<DB, State> Info<DB, State> for Migrator<DB, State> {
         &self.state
     }
 
-    fn migrations(&self) -> &HashSet<Box<dyn Migration<DB, State>>> {
+    fn migrations(&self) -> &HashSet<BoxMigration<DB, State>> {
         &self.migrations
     }
 
-    fn migrations_mut(&mut self) -> &mut HashSet<Box<dyn Migration<DB, State>>> {
+    fn migrations_mut(&mut self) -> &mut HashSet<BoxMigration<DB, State>> {
         &mut self.migrations
     }
 }

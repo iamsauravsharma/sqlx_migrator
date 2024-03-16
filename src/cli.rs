@@ -142,6 +142,9 @@ where
 {
     let migration_plan = migrator.generate_migration_plan(None, connection).await?;
     let applied_migrations = migrator.fetch_applied_migration_from_db(connection).await?;
+    let apply_plan = migrator
+        .generate_migration_plan(Some(&Plan::apply_all()), connection)
+        .await?;
 
     let widths = [5, 10, 50, 10, 40];
     let full_width = widths.iter().sum::<usize>() + widths.len() * 3;
@@ -164,14 +167,19 @@ where
         let mut status = "\u{2717}";
         let mut applied_time = String::from("N/A");
 
-        let applied_migration_info = applied_migrations
+        let find_applied_migrations = applied_migrations
             .iter()
             .find(|&applied_migration| applied_migration == migration);
 
-        if let Some(sqlx_migration) = applied_migration_info {
+        if let Some(sqlx_migration) = find_applied_migrations {
             id = sqlx_migration.id().to_string();
             status = "\u{2713}";
             applied_time = sqlx_migration.applied_time().to_string();
+        } else if !apply_plan
+            .iter()
+            .any(|&plan_migration| plan_migration == migration)
+        {
+            status = "\u{2194}";
         }
 
         println!(
