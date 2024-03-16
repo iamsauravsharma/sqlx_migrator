@@ -1,46 +1,50 @@
 //! Module defining migration trait
-//!
-//! To create own implement migration trait for type
-//!
-//! ### Example
-//!
-//! ```rust,no_run
-//! use sqlx_migrator::error::Error;
-//! use sqlx_migrator::migration::Migration;
-//! use sqlx_migrator::operation::Operation;
-//! use sqlx_migrator::sqlx::Sqlite;
-//!
-//! struct ExampleMigration;
-//! impl Migration<Sqlite> for ExampleMigration {
-//!     fn app(&self) -> &str {
-//!         "example"
-//!     }
-//!
-//!     fn name(&self) -> &str {
-//!         "first_migration"
-//!     }
-//!
-//!     fn parents(&self) -> Vec<Box<dyn Migration<Sqlite>>> {
-//!         vec![]
-//!     }
-//!
-//!     fn operations(&self) -> Vec<Box<dyn Operation<Sqlite>>> {
-//!         vec![]
-//!     }
-//!
-//!     fn replaces(&self) -> Vec<Box<dyn Migration<Sqlite>>> {
-//!         vec![]
-//!     }
-//!
-//!     fn run_before(&self) -> Vec<Box<dyn Migration<Sqlite>>> {
-//!         vec![]
-//!     }
-//!
-//!     fn is_atomic(&self) -> bool {
-//!         true
-//!     }
-//! }
-//! ```
+#![cfg_attr(
+    feature = "sqlite",
+    doc = r##"
+To create own implement migration trait for type
+
+### Example
+```rust,no_run
+use sqlx_migrator::error::Error;
+use sqlx_migrator::migration::Migration;
+use sqlx_migrator::operation::Operation;
+use sqlx_migrator::sqlx::Sqlite;
+
+struct ExampleMigration;
+
+impl Migration<Sqlite> for ExampleMigration {
+    fn app(&self) -> &str {
+        "example"
+    }
+
+    fn name(&self) -> &str {
+        "first_migration"
+    }
+
+    fn parents(&self) -> Vec<Box<dyn Migration<Sqlite>>> {
+        vec![]
+    }
+
+    fn operations(&self) -> Vec<Box<dyn Operation<Sqlite>>> {
+        vec![]
+    }
+
+    fn replaces(&self) -> Vec<Box<dyn Migration<Sqlite>>> {
+        vec![]
+    }
+
+    fn run_before(&self) -> Vec<Box<dyn Migration<Sqlite>>> {
+        vec![]
+    }
+
+    fn is_atomic(&self) -> bool {
+        true
+    }
+}
+```
+"##
+)]
 
 use std::hash::Hash;
 
