@@ -13,7 +13,6 @@ Create own custom Migrator which only supports postgres and uses own unique
 table name instead of default table name
 
 ```rust,no_run
-use std::collections::HashSet;
 use sqlx::{Pool, Postgres};
 use sqlx_migrator::error::Error;
 use sqlx_migrator::migration::{AppliedMigrationSqlRow, Migration};
@@ -21,15 +20,15 @@ use sqlx_migrator::migrator::{DatabaseOperation, Info, Migrate};
 
 #[derive(Default)]
 pub struct CustomMigrator {
-    migrations: HashSet<Box<dyn Migration<Postgres>>>,
+    migrations: Vec<Box<dyn Migration<Postgres>>>,
 }
 
 impl Info<Postgres, ()> for CustomMigrator {
-    fn migrations(&self) -> &HashSet<Box<dyn Migration<Postgres>>> {
+    fn migrations(&self) -> &Vec<Box<dyn Migration<Postgres>>> {
         &self.migrations
     }
 
-    fn migrations_mut(&mut self) -> &mut HashSet<Box<dyn Migration<Postgres>>> {
+    fn migrations_mut(&mut self) -> &mut Vec<Box<dyn Migration<Postgres>>> {
         &mut self.migrations
     }
 
@@ -140,7 +139,7 @@ impl Migrate<Postgres, ()> for CustomMigrator {}
 "##
 )]
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 use sqlx::Connection;
 
@@ -249,10 +248,10 @@ pub trait Info<DB, State> {
     fn state(&self) -> &State;
 
     /// Return migrations
-    fn migrations(&self) -> &HashSet<BoxMigration<DB, State>>;
+    fn migrations(&self) -> &Vec<BoxMigration<DB, State>>;
 
     /// Return mutable reference of migrations
-    fn migrations_mut(&mut self) -> &mut HashSet<BoxMigration<DB, State>>;
+    fn migrations_mut(&mut self) -> &mut Vec<BoxMigration<DB, State>>;
 
     /// Add vector of migrations to Migrator object
     fn add_migrations(&mut self, migrations: Vec<BoxMigration<DB, State>>) {
@@ -267,11 +266,13 @@ pub trait Info<DB, State> {
         let migration_replaces = migration.replaces();
         let migration_run_before = migration.run_before();
 
-        let is_new_value = self.migrations_mut().insert(migration);
+        // check if migration is already added or not we want to use vec here even if
+        // hash set can be used but hash set do not have consistent order which may
+        // bring issue such as plan may be different between between dry run and
+        // actually running migration
+        if !self.migrations().contains(&migration) {
+            self.migrations_mut().push(migration);
 
-        // Only add parents, replaces and run before migrations if current migration was
-        // added first time. This can increase performance of recursive addition
-        if is_new_value {
             for parent in migration_parents {
                 self.add_migration(parent);
             }
@@ -405,15 +406,18 @@ where
 fn populate_descendants<'populate, DB, State>(
     populate_children: &mut HashMap<
         &'populate BoxMigration<DB, State>,
-        HashSet<&'populate BoxMigration<DB, State>>,
+        Vec<&'populate BoxMigration<DB, State>>,
     >,
     parent: &'populate BoxMigration<DB, State>,
     child: &'populate BoxMigration<DB, State>,
 ) {
-    populate_children.entry(parent).or_default().insert(child);
-    if let Some(grand_children) = populate_children.clone().get(child) {
-        for grand_child in grand_children {
-            populate_descendants(populate_children, parent, grand_child);
+    let populate_children_vec = populate_children.entry(parent).or_default();
+    if !populate_children_vec.contains(&child) {
+        populate_children_vec.push(child);
+        if let Some(grand_children) = populate_children.clone().get(child) {
+            for grand_child in grand_children {
+                populate_descendants(populate_children, parent, grand_child);
+            }
         }
     }
 }
@@ -472,10 +476,12 @@ where
         }
 
         // Hashmap which contains all children generated from replace list
-        let mut replace_children = HashMap::<_, HashSet<_>>::new();
+        let mut replace_children = HashMap::<_, Vec<_>>::new();
         // in first loop add initial parent and child from parent due to replace
         for (child, &parent) in &parent_due_to_replaces {
-            replace_children.entry(parent).or_default().insert(child);
+            // since parent due to replaces is hash map we can have only one child
+            // occurrence
+            replace_children.entry(parent).or_default().push(child);
         }
         // in second loop through recursive add all descendants
         for (child, &parent) in &parent_due_to_replaces {
@@ -496,11 +502,12 @@ where
         }
 
         // Hashmap which contains all children generated from run before list
-        let mut run_before_children = HashMap::<_, HashSet<_>>::new();
+        let mut run_before_children = HashMap::<_, Vec<_>>::new();
         // in first loop add initial parent and child from parent due to run before
         for (child, parents) in &parents_due_to_run_before {
             for &parent in parents {
-                run_before_children.entry(parent).or_default().insert(child);
+                // since run before children is hash map we can have only one child occurrence
+                run_before_children.entry(parent).or_default().push(child);
             }
         }
         // in second loop through recursive add all descendants
@@ -511,12 +518,12 @@ where
         }
 
         // check for inconsistent order of migration for replace and run before
-        for (parent_migration, children_hash_set) in &run_before_children {
-            for &child in children_hash_set {
+        for (parent_migration, children_vec) in &run_before_children {
+            for &child in children_vec {
                 let root = get_root(&parent_due_to_replaces, child);
-                if !children_hash_set.contains(root) {
-                    if let Some(replace_children_hash_set) = replace_children.get(root) {
-                        if !replace_children_hash_set.contains(parent_migration) {
+                if !children_vec.contains(&root) {
+                    if let Some(replace_children_vec) = replace_children.get(root) {
+                        if !replace_children_vec.contains(parent_migration) {
                             return Err(Error::ReplaceRunBeforeMisMatch);
                         }
                     }
@@ -727,7 +734,7 @@ const DEFAULT_TABLE_NAME: &str = "_sqlx_migrator_migrations";
 /// Migrator struct which store migrations graph and information related to
 /// different library supported migrations
 pub struct Migrator<DB, State> {
-    migrations: HashSet<BoxMigration<DB, State>>,
+    migrations: Vec<BoxMigration<DB, State>>,
     table_name: String,
     state: State,
 }
@@ -736,7 +743,7 @@ impl<DB, State> Migrator<DB, State> {
     /// Create new migrator with provided state
     fn new(state: State) -> Self {
         Self {
-            migrations: HashSet::default(),
+            migrations: Vec::default(),
             table_name: DEFAULT_TABLE_NAME.to_string(),
             state,
         }
@@ -783,11 +790,11 @@ impl<DB, State> Info<DB, State> for Migrator<DB, State> {
         &self.state
     }
 
-    fn migrations(&self) -> &HashSet<BoxMigration<DB, State>> {
+    fn migrations(&self) -> &Vec<BoxMigration<DB, State>> {
         &self.migrations
     }
 
-    fn migrations_mut(&mut self) -> &mut HashSet<BoxMigration<DB, State>> {
+    fn migrations_mut(&mut self) -> &mut Vec<BoxMigration<DB, State>> {
         &mut self.migrations
     }
 }

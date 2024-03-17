@@ -1,5 +1,3 @@
-use std::collections::HashSet;
-
 use sqlx::{Sqlite, SqlitePool};
 
 use super::{DatabaseOperation, Info, Migrate};
@@ -10,15 +8,15 @@ use crate::vec_box;
 
 #[derive(Default)]
 struct CustomMigrator {
-    migrations: HashSet<Box<dyn Migration<Sqlite>>>,
+    migrations: Vec<Box<dyn Migration<Sqlite>>>,
 }
 
 impl Info<Sqlite, ()> for CustomMigrator {
-    fn migrations(&self) -> &HashSet<Box<dyn Migration<Sqlite>>> {
+    fn migrations(&self) -> &Vec<Box<dyn Migration<Sqlite>>> {
         &self.migrations
     }
 
-    fn migrations_mut(&mut self) -> &mut HashSet<Box<dyn Migration<Sqlite>>> {
+    fn migrations_mut(&mut self) -> &mut Vec<Box<dyn Migration<Sqlite>>> {
         &mut self.migrations
     }
 
