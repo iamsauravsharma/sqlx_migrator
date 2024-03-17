@@ -166,6 +166,10 @@ mod sqlite;
 #[cfg(feature = "postgres")]
 mod postgres;
 
+/// Module for testing
+#[cfg(all(test, feature = "sqlite"))]
+mod tests;
+
 type BoxMigration<DB, State> = Box<dyn Migration<DB, State>>;
 type MigrationVec<'migration, DB, State> = Vec<&'migration BoxMigration<DB, State>>;
 type MigrationVecResult<'migration, DB, State> = Result<MigrationVec<'migration, DB, State>, Error>;
