@@ -174,13 +174,9 @@ type BoxMigration<DB, State> = Box<dyn Migration<DB, State>>;
 type MigrationVec<'migration, DB, State> = Vec<&'migration BoxMigration<DB, State>>;
 type MigrationVecResult<'migration, DB, State> = Result<MigrationVec<'migration, DB, State>, Error>;
 
-/// Type of plan which needs to be generate
 #[derive(Debug)]
-#[non_exhaustive]
-pub enum PlanType {
-    /// Plan type used when listing migrations which can be applied
+enum PlanType {
     Apply,
-    /// Plan type when listing migrations which can be reverted
     Revert,
 }
 
