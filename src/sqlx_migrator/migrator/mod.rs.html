@@ -801,6 +801,13 @@
 <a href="#799" id="799">799</a>
 <a href="#800" id="800">800</a>
 <a href="#801" id="801">801</a>
+<a href="#802" id="802">802</a>
+<a href="#803" id="803">803</a>
+<a href="#804" id="804">804</a>
+<a href="#805" id="805">805</a>
+<a href="#806" id="806">806</a>
+<a href="#807" id="807">807</a>
+<a href="#808" id="808">808</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Migrator module
 //!
 //! It contains common enum and trait for implementing migrator for sqlx
@@ -816,7 +823,6 @@ Create own custom Migrator which only supports postgres and uses own unique
 table name instead of default table name
 
 ```rust,no_run
-use std::collections::HashSet;
 use sqlx::{Pool, Postgres};
 use sqlx_migrator::error::Error;
 use sqlx_migrator::migration::{AppliedMigrationSqlRow, Migration};
@@ -824,15 +830,15 @@ use sqlx_migrator::migrator::{DatabaseOperation, Info, Migrate};
 
 #[derive(Default)]
 pub struct CustomMigrator {
-    migrations: HashSet&lt;Box&lt;dyn Migration&lt;Postgres&gt;&gt;&gt;,
+    migrations: Vec&lt;Box&lt;dyn Migration&lt;Postgres&gt;&gt;&gt;,
 }
 
 impl Info&lt;Postgres, ()&gt; for CustomMigrator {
-    fn migrations(&amp;self) -&gt; &amp;HashSet&lt;Box&lt;dyn Migration&lt;Postgres&gt;&gt;&gt; {
+    fn migrations(&amp;self) -&gt; &amp;Vec&lt;Box&lt;dyn Migration&lt;Postgres&gt;&gt;&gt; {
         &amp;self.migrations
     }
 
-    fn migrations_mut(&amp;mut self) -&gt; &amp;mut HashSet&lt;Box&lt;dyn Migration&lt;Postgres&gt;&gt;&gt; {
+    fn migrations_mut(&amp;mut self) -&gt; &amp;mut Vec&lt;Box&lt;dyn Migration&lt;Postgres&gt;&gt;&gt; {
         &amp;mut self.migrations
     }
 
@@ -943,7 +949,7 @@ impl Migrate&lt;Postgres, ()&gt; for CustomMigrator {}
 "##
 </span>)]
 
-</span><span class="kw">use </span>std::collections::{HashMap, HashSet};
+</span><span class="kw">use </span>std::collections::HashMap;
 
 <span class="kw">use </span>sqlx::Connection;
 
@@ -1052,10 +1058,10 @@ impl Migrate&lt;Postgres, ()&gt; for CustomMigrator {}
     </span><span class="kw">fn </span>state(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>State;
 
     <span class="doccomment">/// Return migrations
-    </span><span class="kw">fn </span>migrations(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>HashSet&lt;BoxMigration&lt;DB, State&gt;&gt;;
+    </span><span class="kw">fn </span>migrations(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Vec&lt;BoxMigration&lt;DB, State&gt;&gt;;
 
     <span class="doccomment">/// Return mutable reference of migrations
-    </span><span class="kw">fn </span>migrations_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>HashSet&lt;BoxMigration&lt;DB, State&gt;&gt;;
+    </span><span class="kw">fn </span>migrations_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>Vec&lt;BoxMigration&lt;DB, State&gt;&gt;;
 
     <span class="doccomment">/// Add vector of migrations to Migrator object
     </span><span class="kw">fn </span>add_migrations(<span class="kw-2">&amp;mut </span><span class="self">self</span>, migrations: Vec&lt;BoxMigration&lt;DB, State&gt;&gt;) {
@@ -1070,11 +1076,13 @@ impl Migrate&lt;Postgres, ()&gt; for CustomMigrator {}
         <span class="kw">let </span>migration_replaces = migration.replaces();
         <span class="kw">let </span>migration_run_before = migration.run_before();
 
-        <span class="kw">let </span>is_new_value = <span class="self">self</span>.migrations_mut().insert(migration);
+        <span class="comment">// check if migration is already added or not we want to use vec here even if
+        // hash set can be used but hash set do not have consistent order which may
+        // bring issue such as plan may be different between between dry run and
+        // actually running migration
+        </span><span class="kw">if </span>!<span class="self">self</span>.migrations().contains(<span class="kw-2">&amp;</span>migration) {
+            <span class="self">self</span>.migrations_mut().push(migration);
 
-        <span class="comment">// Only add parents, replaces and run before migrations if current migration was
-        // added first time. This can increase performance of recursive addition
-        </span><span class="kw">if </span>is_new_value {
             <span class="kw">for </span>parent <span class="kw">in </span>migration_parents {
                 <span class="self">self</span>.add_migration(parent);
             }
@@ -1208,15 +1216,18 @@ impl Migrate&lt;Postgres, ()&gt; for CustomMigrator {}
 <span class="kw">fn </span>populate_descendants&lt;<span class="lifetime">'populate</span>, DB, State&gt;(
     populate_children: <span class="kw-2">&amp;mut </span>HashMap&lt;
         <span class="kw-2">&amp;</span><span class="lifetime">'populate </span>BoxMigration&lt;DB, State&gt;,
-        HashSet&lt;<span class="kw-2">&amp;</span><span class="lifetime">'populate </span>BoxMigration&lt;DB, State&gt;&gt;,
+        Vec&lt;<span class="kw-2">&amp;</span><span class="lifetime">'populate </span>BoxMigration&lt;DB, State&gt;&gt;,
     &gt;,
     parent: <span class="kw-2">&amp;</span><span class="lifetime">'populate </span>BoxMigration&lt;DB, State&gt;,
     child: <span class="kw-2">&amp;</span><span class="lifetime">'populate </span>BoxMigration&lt;DB, State&gt;,
 ) {
-    populate_children.entry(parent).or_default().insert(child);
-    <span class="kw">if let </span><span class="prelude-val">Some</span>(grand_children) = populate_children.clone().get(child) {
-        <span class="kw">for </span>grand_child <span class="kw">in </span>grand_children {
-            populate_descendants(populate_children, parent, grand_child);
+    <span class="kw">let </span>populate_children_vec = populate_children.entry(parent).or_default();
+    <span class="kw">if </span>!populate_children_vec.contains(<span class="kw-2">&amp;</span>child) {
+        populate_children_vec.push(child);
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(grand_children) = populate_children.clone().get(child) {
+            <span class="kw">for </span>grand_child <span class="kw">in </span>grand_children {
+                populate_descendants(populate_children, parent, grand_child);
+            }
         }
     }
 }
@@ -1275,10 +1286,12 @@ impl Migrate&lt;Postgres, ()&gt; for CustomMigrator {}
         }
 
         <span class="comment">// Hashmap which contains all children generated from replace list
-        </span><span class="kw">let </span><span class="kw-2">mut </span>replace_children = HashMap::&lt;<span class="kw">_</span>, HashSet&lt;<span class="kw">_</span>&gt;&gt;::new();
+        </span><span class="kw">let </span><span class="kw-2">mut </span>replace_children = HashMap::&lt;<span class="kw">_</span>, Vec&lt;<span class="kw">_</span>&gt;&gt;::new();
         <span class="comment">// in first loop add initial parent and child from parent due to replace
         </span><span class="kw">for </span>(child, <span class="kw-2">&amp;</span>parent) <span class="kw">in </span><span class="kw-2">&amp;</span>parent_due_to_replaces {
-            replace_children.entry(parent).or_default().insert(child);
+            <span class="comment">// since parent due to replaces is hash map we can have only one child
+            // occurrence
+            </span>replace_children.entry(parent).or_default().push(child);
         }
         <span class="comment">// in second loop through recursive add all descendants
         </span><span class="kw">for </span>(child, <span class="kw-2">&amp;</span>parent) <span class="kw">in </span><span class="kw-2">&amp;</span>parent_due_to_replaces {
@@ -1299,11 +1312,12 @@ impl Migrate&lt;Postgres, ()&gt; for CustomMigrator {}
         }
 
         <span class="comment">// Hashmap which contains all children generated from run before list
-        </span><span class="kw">let </span><span class="kw-2">mut </span>run_before_children = HashMap::&lt;<span class="kw">_</span>, HashSet&lt;<span class="kw">_</span>&gt;&gt;::new();
+        </span><span class="kw">let </span><span class="kw-2">mut </span>run_before_children = HashMap::&lt;<span class="kw">_</span>, Vec&lt;<span class="kw">_</span>&gt;&gt;::new();
         <span class="comment">// in first loop add initial parent and child from parent due to run before
         </span><span class="kw">for </span>(child, parents) <span class="kw">in </span><span class="kw-2">&amp;</span>parents_due_to_run_before {
             <span class="kw">for </span><span class="kw-2">&amp;</span>parent <span class="kw">in </span>parents {
-                run_before_children.entry(parent).or_default().insert(child);
+                <span class="comment">// since run before children is hash map we can have only one child occurrence
+                </span>run_before_children.entry(parent).or_default().push(child);
             }
         }
         <span class="comment">// in second loop through recursive add all descendants
@@ -1314,12 +1328,12 @@ impl Migrate&lt;Postgres, ()&gt; for CustomMigrator {}
         }
 
         <span class="comment">// check for inconsistent order of migration for replace and run before
-        </span><span class="kw">for </span>(parent_migration, children_hash_set) <span class="kw">in </span><span class="kw-2">&amp;</span>run_before_children {
-            <span class="kw">for </span><span class="kw-2">&amp;</span>child <span class="kw">in </span>children_hash_set {
+        </span><span class="kw">for </span>(parent_migration, children_vec) <span class="kw">in </span><span class="kw-2">&amp;</span>run_before_children {
+            <span class="kw">for </span><span class="kw-2">&amp;</span>child <span class="kw">in </span>children_vec {
                 <span class="kw">let </span>root = get_root(<span class="kw-2">&amp;</span>parent_due_to_replaces, child);
-                <span class="kw">if </span>!children_hash_set.contains(root) {
-                    <span class="kw">if let </span><span class="prelude-val">Some</span>(replace_children_hash_set) = replace_children.get(root) {
-                        <span class="kw">if </span>!replace_children_hash_set.contains(parent_migration) {
+                <span class="kw">if </span>!children_vec.contains(<span class="kw-2">&amp;</span>root) {
+                    <span class="kw">if let </span><span class="prelude-val">Some</span>(replace_children_vec) = replace_children.get(root) {
+                        <span class="kw">if </span>!replace_children_vec.contains(parent_migration) {
                             <span class="kw">return </span><span class="prelude-val">Err</span>(Error::ReplaceRunBeforeMisMatch);
                         }
                     }
@@ -1530,7 +1544,7 @@ impl Migrate&lt;Postgres, ()&gt; for CustomMigrator {}
 <span class="doccomment">/// Migrator struct which store migrations graph and information related to
 /// different library supported migrations
 </span><span class="kw">pub struct </span>Migrator&lt;DB, State&gt; {
-    migrations: HashSet&lt;BoxMigration&lt;DB, State&gt;&gt;,
+    migrations: Vec&lt;BoxMigration&lt;DB, State&gt;&gt;,
     table_name: String,
     state: State,
 }
@@ -1539,7 +1553,7 @@ impl Migrate&lt;Postgres, ()&gt; for CustomMigrator {}
     <span class="doccomment">/// Create new migrator with provided state
     </span><span class="kw">fn </span>new(state: State) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
-            migrations: HashSet::default(),
+            migrations: Vec::default(),
             table_name: DEFAULT_TABLE_NAME.to_string(),
             state,
         }
@@ -1586,11 +1600,11 @@ impl Migrate&lt;Postgres, ()&gt; for CustomMigrator {}
         <span class="kw-2">&amp;</span><span class="self">self</span>.state
     }
 
-    <span class="kw">fn </span>migrations(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>HashSet&lt;BoxMigration&lt;DB, State&gt;&gt; {
+    <span class="kw">fn </span>migrations(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Vec&lt;BoxMigration&lt;DB, State&gt;&gt; {
         <span class="kw-2">&amp;</span><span class="self">self</span>.migrations
     }
 
-    <span class="kw">fn </span>migrations_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>HashSet&lt;BoxMigration&lt;DB, State&gt;&gt; {
+    <span class="kw">fn </span>migrations_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>Vec&lt;BoxMigration&lt;DB, State&gt;&gt; {
         <span class="kw-2">&amp;mut </span><span class="self">self</span>.migrations
     }
 }
