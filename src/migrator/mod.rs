@@ -562,7 +562,17 @@ where
                                     migration_list.contains(replace_migration)
                                 });
                             if replace_added {
-                                migration_list.push(migration);
+                                let all_replace_child_parent_added =
+                                    replace_children.get(migration).map_or(true, |children| {
+                                        children.iter().all(|child| {
+                                            child.parents().iter().all(|child_parent| {
+                                                migration_list.contains(&child_parent)
+                                            })
+                                        })
+                                    });
+                                if all_replace_child_parent_added {
+                                    migration_list.push(migration);
+                                }
                             }
                         }
                     }

@@ -157,6 +157,15 @@ async fn replace_test() {
     let plan = generate_plan(&mut migrator, vec_box!(A, B, C, D))
         .await
         .unwrap();
+    let d_position = plan
+        .iter()
+        .position(|p| p == &&(Box::new(D) as Box<dyn Migration<Sqlite>>))
+        .unwrap();
+    let a_position = plan
+        .iter()
+        .position(|p| p == &&(Box::new(A) as Box<dyn Migration<Sqlite>>))
+        .unwrap();
+    assert!(a_position < d_position);
     assert!(!plan.contains(&&(Box::new(B) as Box<dyn Migration<Sqlite>>)));
     assert!(!plan.contains(&&(Box::new(C) as Box<dyn Migration<Sqlite>>)));
     assert!(plan.contains(&&(Box::new(D) as Box<dyn Migration<Sqlite>>)));
@@ -176,18 +185,20 @@ async fn run_before_test() {
     let plan = generate_plan(&mut migrator, vec_box!(A, B, C, D))
         .await
         .unwrap();
-    assert!(
-        plan.get(1).unwrap() == &&(Box::new(D) as Box<dyn Migration<Sqlite>>),
-        "1 index is not D"
-    );
-    assert!(
-        plan.get(2).unwrap() == &&(Box::new(C) as Box<dyn Migration<Sqlite>>),
-        "2 index is not C"
-    );
-    assert!(
-        plan.get(3).unwrap() == &&(Box::new(B) as Box<dyn Migration<Sqlite>>),
-        "3 index is not B"
-    );
+    let d_position = plan
+        .iter()
+        .position(|p| p == &&(Box::new(D) as Box<dyn Migration<Sqlite>>))
+        .unwrap();
+    let c_position = plan
+        .iter()
+        .position(|p| p == &&(Box::new(C) as Box<dyn Migration<Sqlite>>))
+        .unwrap();
+    let b_position = plan
+        .iter()
+        .position(|p| p == &&(Box::new(B) as Box<dyn Migration<Sqlite>>))
+        .unwrap();
+    assert!(d_position < c_position);
+    assert!(c_position < b_position);
 }
 
 #[tokio::test]
