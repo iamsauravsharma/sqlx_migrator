@@ -422,15 +422,15 @@ where
     Ok(())
 }
 
-fn get_root<'ascendant, DB, State>(
-    hash_map: &'ascendant HashMap<BoxMigration<DB, State>, &'ascendant BoxMigration<DB, State>>,
-    val: &'ascendant BoxMigration<DB, State>,
-) -> &'ascendant BoxMigration<DB, State> {
+fn get_recursive<'get, DB, State>(
+    hash_map: &'get HashMap<BoxMigration<DB, State>, &'get BoxMigration<DB, State>>,
+    val: &'get BoxMigration<DB, State>,
+) -> Vec<&'get BoxMigration<DB, State>> {
+    let mut recursive_vec = vec![val];
     if let Some(&parent) = hash_map.get(val) {
-        get_root(hash_map, parent)
-    } else {
-        val
+        recursive_vec.extend(get_recursive(hash_map, parent));
     }
+    recursive_vec
 }
 
 /// Migrate trait which migrate a database according to requirements. This trait
@@ -503,11 +503,11 @@ where
 
         let mut migration_list = Vec::new();
 
-        // Create migration list until migration list length is equal to hash set
+        // Create migration list until migration list length is equal to original vec
         // length
-        let migrations_hash_set_len = self.migrations().len();
-        while migration_list.len() != migrations_hash_set_len {
-            let old_migration_list_length = migration_list.len();
+        let original_migration_length = self.migrations().len();
+        while migration_list.len() != original_migration_length {
+            let loop_initial_migration_list_length = migration_list.len();
             for migration in self.migrations() {
                 let all_required_added = !migration_list.contains(&migration)
                     && migration
@@ -549,7 +549,7 @@ where
             // was added. Next loop also will not add migration so return error. This case
             // can arise due to looping in migration plan i.e If there is two migration A
             // and B, than when B is ancestor of A as well as descendants of A
-            if old_migration_list_length == migration_list.len() {
+            if loop_initial_migration_list_length == migration_list.len() {
                 return Err(Error::FailedToCreateMigrationPlan);
             }
         }
@@ -573,9 +573,9 @@ where
                 }
             }
 
-            // Check if any of parents are applied or not. If any parents are not applied
-            // for applied migration than raises error also takes consideration of replace
-            // migration
+            // Check if any of parents of certain applied migrations are applied or not. If
+            // any parents are not applied for applied migration than raises
+            // error also takes consideration of replace migration
             for &migration in &applied_migrations {
                 let mut parents = vec![];
                 if let Some(run_before_list) = parents_due_to_run_before.get(migration) {
@@ -588,11 +588,12 @@ where
                     parents.push(parent);
                 }
                 for parent in parents {
-                    if !applied_migrations.contains(&parent) {
-                        let root = get_root(&parent_due_to_replaces, parent);
-                        if !applied_migrations.contains(&root) {
-                            return Err(Error::ParentIsNotApplied);
-                        }
+                    let recursive_vec = get_recursive(&parent_due_to_replaces, parent);
+                    if !applied_migrations
+                        .iter()
+                        .any(|applied| recursive_vec.contains(applied))
+                    {
+                        return Err(Error::ParentIsNotApplied);
                     }
                 }
             }
