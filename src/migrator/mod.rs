@@ -397,30 +397,45 @@ fn is_revert_related<DB, State>(
 
 fn only_related_migration<DB, State>(
     migration_list: &mut MigrationVec<DB, State>,
-    with: &BoxMigration<DB, State>,
+    with_list: Vec<&BoxMigration<DB, State>>,
     plan_type: &PlanType,
 ) {
     let mut related_migrations = vec![];
     match plan_type {
         PlanType::Apply => {
-            let with_parents = get_parent_recursive(with);
-            for &migration in migration_list.iter() {
-                if with_parents.contains(migration) || is_apply_related(with, migration) {
-                    related_migrations.push(migration);
+            for with in with_list {
+                if !related_migrations.contains(&with) {
+                    related_migrations.push(with);
+                    let with_parents = get_parent_recursive(with);
+                    for &migration in migration_list.iter() {
+                        if !related_migrations.contains(&migration)
+                            && (with_parents.contains(migration)
+                                || is_apply_related(with, migration))
+                        {
+                            related_migrations.push(migration);
+                        }
+                    }
                 }
             }
         }
         PlanType::Revert => {
-            let with_run_before = get_run_before_recursive(with);
-            for &migration in migration_list.iter() {
-                if with_run_before.contains(migration) || is_revert_related(with, migration) {
-                    related_migrations.push(migration);
+            for with in with_list {
+                if !related_migrations.contains(&with) {
+                    related_migrations.push(with);
+                    let with_run_before = get_run_before_recursive(with);
+                    for &migration in migration_list.iter() {
+                        if !related_migrations.contains(&migration)
+                            && (with_run_before.contains(migration)
+                                || is_revert_related(with, migration))
+                        {
+                            related_migrations.push(migration);
+                        }
+                    }
                 }
             }
         }
     }
-    migration_list
-        .retain(|&migration| related_migrations.contains(&migration) || migration == with);
+    migration_list.retain(|&migration| related_migrations.contains(&migration));
 }
 
 /// Process plan to provided migrations list
@@ -477,8 +492,21 @@ where
             pos
         };
         migration_list.truncate(position + 1);
-        let pos_elem = migration_list[position];
-        only_related_migration(migration_list, pos_elem, &plan.plan_type);
+        let with_list = if migration_name.is_some() {
+            vec![migration_list[position]]
+        } else {
+            migration_list
+                .iter()
+                .filter_map(|&pos_migration| {
+                    if pos_migration.app() == app {
+                        Some(pos_migration)
+                    } else {
+                        None
+                    }
+                })
+                .collect::<Vec<_>>()
+        };
+        only_related_migration(migration_list, with_list, &plan.plan_type);
     } else if let Some(count) = plan.count {
         let actual_len = migration_list.len();
         if count > actual_len {
