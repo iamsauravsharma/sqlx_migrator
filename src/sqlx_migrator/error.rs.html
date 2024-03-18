@@ -67,10 +67,6 @@
 <a href="#65" id="65">65</a>
 <a href="#66" id="66">66</a>
 <a href="#67" id="67">67</a>
-<a href="#68" id="68">68</a>
-<a href="#69" id="69">69</a>
-<a href="#70" id="70">70</a>
-<a href="#71" id="71">71</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Module for library error
 
 /// Error enum to store different types of error
@@ -87,10 +83,6 @@
     <span class="doccomment">/// Error for failed to create migrations plan
     </span><span class="attr">#[error(<span class="string">"failed to create migrations plan"</span>)]
     </span>FailedToCreateMigrationPlan,
-    <span class="doccomment">/// Error raised when order cannot be determine properly for replace and run
-    /// before
-    </span><span class="attr">#[error(<span class="string">"replace and run before migration order cannot be determined properly"</span>)]
-    </span>ReplaceRunBeforeMisMatch,
     <span class="doccomment">/// Parent is not applied
     </span><span class="attr">#[error(<span class="string">"children is applied before parent"</span>)]
     </span>ParentIsNotApplied,
