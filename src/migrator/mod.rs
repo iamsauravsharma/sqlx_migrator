@@ -339,6 +339,25 @@ where
     ) -> Result<(), Error>;
 }
 
+fn populate_recursive<'populate, DB, State>(
+    populate_hash_map: &mut HashMap<
+        &'populate BoxMigration<DB, State>,
+        Vec<&'populate BoxMigration<DB, State>>,
+    >,
+    key: &'populate BoxMigration<DB, State>,
+    value: &'populate BoxMigration<DB, State>,
+) {
+    let populate_hash_map_vec = populate_hash_map.entry(key).or_default();
+    if !populate_hash_map_vec.contains(&value) {
+        populate_hash_map_vec.push(value);
+        if let Some(grand_values) = populate_hash_map.clone().get(value) {
+            for grand_value in grand_values {
+                populate_recursive(populate_hash_map, key, grand_value);
+            }
+        }
+    }
+}
+
 /// Process plan to provided migrations list
 fn process_plan<DB, State>(
     migration_list: &mut MigrationVec<DB, State>,
@@ -401,25 +420,6 @@ where
         migration_list.truncate(count);
     }
     Ok(())
-}
-
-fn populate_descendants<'populate, DB, State>(
-    populate_children: &mut HashMap<
-        &'populate BoxMigration<DB, State>,
-        Vec<&'populate BoxMigration<DB, State>>,
-    >,
-    parent: &'populate BoxMigration<DB, State>,
-    child: &'populate BoxMigration<DB, State>,
-) {
-    let populate_children_vec = populate_children.entry(parent).or_default();
-    if !populate_children_vec.contains(&child) {
-        populate_children_vec.push(child);
-        if let Some(grand_children) = populate_children.clone().get(child) {
-            for grand_child in grand_children {
-                populate_descendants(populate_children, parent, grand_child);
-            }
-        }
-    }
 }
 
 fn get_root<'ascendant, DB, State>(
@@ -485,7 +485,7 @@ where
         }
         // in second loop through recursive add all descendants
         for (child, &parent) in &parent_due_to_replaces {
-            populate_descendants(&mut replace_children, parent, child);
+            populate_recursive(&mut replace_children, parent, child);
         }
 
         // Hashmap which contains key as migration name and value as list of migration
@@ -513,7 +513,7 @@ where
         // in second loop through recursive add all descendants
         for (child, parents) in &parents_due_to_run_before {
             for parent in parents {
-                populate_descendants(&mut run_before_children, parent, child);
+                populate_recursive(&mut run_before_children, parent, child);
             }
         }
 
@@ -539,46 +539,31 @@ where
         while migration_list.len() != migrations_hash_set_len {
             let old_migration_list_length = migration_list.len();
             for migration in self.migrations() {
-                if !migration_list.contains(&migration) {
-                    // Check if all parents are applied or not
-                    let all_parents_applied = migration
+                let all_required_added = !migration_list.contains(&migration)
+                    && migration
                         .parents()
                         .iter()
-                        .all(|parent_migration| migration_list.contains(&parent_migration));
-
-                    if all_parents_applied {
-                        // Check if all run before parents are added or not
-                        let all_run_before_parents_added = parents_due_to_run_before
-                            .get(migration)
-                            .unwrap_or(&vec![])
-                            .iter()
-                            .all(|run_before_migration| {
-                                migration_list.contains(run_before_migration)
-                            });
-
-                        if all_run_before_parents_added {
-                            // check if all replaces parents are added or not if migrations do not
-                            // have replace parent than it returns true
-                            let replace_added = parent_due_to_replaces
-                                .get(migration)
-                                .map_or(true, |replace_migration| {
-                                    migration_list.contains(replace_migration)
-                                });
-                            if replace_added {
-                                let all_replace_child_parent_added =
-                                    replace_children.get(migration).map_or(true, |children| {
-                                        children.iter().all(|child| {
-                                            child.parents().iter().all(|child_parent| {
-                                                migration_list.contains(&child_parent)
-                                            })
-                                        })
-                                    });
-                                if all_replace_child_parent_added {
-                                    migration_list.push(migration);
-                                }
-                            }
-                        }
-                    }
+                        .all(|parent_migration| migration_list.contains(&parent_migration))
+                    && parents_due_to_run_before
+                        .get(migration)
+                        .unwrap_or(&vec![])
+                        .iter()
+                        .all(|run_before_migration| migration_list.contains(run_before_migration))
+                    && parent_due_to_replaces
+                        .get(migration)
+                        .map_or(true, |replace_migration| {
+                            migration_list.contains(replace_migration)
+                        })
+                    && replace_children.get(migration).map_or(true, |children| {
+                        children.iter().all(|&child| {
+                            child
+                                .parents()
+                                .iter()
+                                .all(|child_parent| migration_list.contains(&child_parent))
+                        })
+                    });
+                if all_required_added {
+                    migration_list.push(migration);
                 }
             }
 
@@ -594,7 +579,7 @@ where
         // if there is only plan than further process. In further process replaces
         // migrations are also handled for removing conflicting migrations where certain
         // migrations replaces certain other migrations
-        if let Some(planned) = plan {
+        if let Some(some_plan) = plan {
             let applied_migration_sql_rows =
                 self.fetch_applied_migration_from_db(connection).await?;
 
@@ -662,7 +647,7 @@ where
                 }
             }
 
-            process_plan(&mut migration_list, &applied_migrations, planned)?;
+            process_plan(&mut migration_list, &applied_migrations, some_plan)?;
         }
 
         Ok(migration_list)

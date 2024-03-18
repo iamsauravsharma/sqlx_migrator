@@ -82,7 +82,7 @@ impl DatabaseOperation<Sqlite, ()> for CustomMigrator {
 impl Migrate<Sqlite, ()> for CustomMigrator {}
 
 macro_rules! migration {
-    ($op:ty, $name:expr, $parents:expr, $operations:expr, $replaces:expr, $run_before:expr) => {
+    ($op:ty, $name:expr, $parents:expr, $replaces:expr, $run_before:expr) => {
         #[async_trait::async_trait]
         impl crate::migration::Migration<sqlx::Sqlite, ()> for $op {
             fn app(&self) -> &str {
@@ -98,7 +98,7 @@ macro_rules! migration {
             }
 
             fn operations(&self) -> Vec<Box<dyn crate::operation::Operation<sqlx::Sqlite, ()>>> {
-                $operations
+                vec![]
             }
 
             fn replaces(&self) -> Vec<Box<dyn crate::migration::Migration<sqlx::Sqlite, ()>>> {
@@ -127,11 +127,11 @@ async fn generate_plan(
 #[tokio::test]
 async fn simple_test() {
     struct A;
-    migration!(A, "a", vec_box!(), vec_box!(), vec_box!(), vec_box!());
+    migration!(A, "a", vec_box!(), vec_box!(), vec_box!());
     struct B;
-    migration!(B, "b", vec_box!(A), vec_box!(), vec_box!(), vec_box!());
+    migration!(B, "b", vec_box!(A), vec_box!(), vec_box!());
     struct C;
-    migration!(C, "c", vec_box!(B), vec_box!(), vec_box!(), vec_box!());
+    migration!(C, "c", vec_box!(B), vec_box!(), vec_box!());
     let mut migrator = CustomMigrator::default();
     let plan = generate_plan(&mut migrator, vec_box!(A, B, C))
         .await
@@ -144,13 +144,13 @@ async fn simple_test() {
 #[tokio::test]
 async fn replace_test() {
     struct A;
-    migration!(A, "a", vec_box!(), vec_box!(), vec_box!(), vec_box!());
+    migration!(A, "a", vec_box!(), vec_box!(), vec_box!());
     struct B;
-    migration!(B, "b", vec_box!(A), vec_box!(), vec_box!(), vec_box!());
+    migration!(B, "b", vec_box!(A), vec_box!(), vec_box!());
     struct C;
-    migration!(C, "c", vec_box!(), vec_box!(), vec_box!(B), vec_box!());
+    migration!(C, "c", vec_box!(), vec_box!(B), vec_box!());
     struct D;
-    migration!(D, "d", vec_box!(), vec_box!(), vec_box!(C), vec_box!());
+    migration!(D, "d", vec_box!(), vec_box!(C), vec_box!());
     let mut migrator = CustomMigrator::default();
     let plan = generate_plan(&mut migrator, vec_box!(A, B, C, D))
         .await
@@ -172,13 +172,13 @@ async fn replace_test() {
 #[tokio::test]
 async fn run_before_test() {
     struct A;
-    migration!(A, "a", vec_box!(), vec_box!(), vec_box!(), vec_box!());
+    migration!(A, "a", vec_box!(), vec_box!(), vec_box!());
     struct B;
-    migration!(B, "b", vec_box!(A), vec_box!(), vec_box!(), vec_box!());
+    migration!(B, "b", vec_box!(A), vec_box!(), vec_box!());
     struct C;
-    migration!(C, "c", vec_box!(), vec_box!(), vec_box!(), vec_box!(B));
+    migration!(C, "c", vec_box!(), vec_box!(), vec_box!(B));
     struct D;
-    migration!(D, "d", vec_box!(), vec_box!(), vec_box!(), vec_box!(C));
+    migration!(D, "d", vec_box!(), vec_box!(), vec_box!(C));
     let mut migrator = CustomMigrator::default();
     let plan = generate_plan(&mut migrator, vec_box!(A, B, C, D))
         .await
@@ -202,13 +202,13 @@ async fn run_before_test() {
 #[tokio::test]
 async fn replaces_multiple_times() {
     struct A;
-    migration!(A, "a", vec_box!(), vec_box!(), vec_box!(), vec_box!());
+    migration!(A, "a", vec_box!(), vec_box!(), vec_box!());
     struct B;
-    migration!(B, "b", vec_box!(A), vec_box!(), vec_box!(), vec_box!());
+    migration!(B, "b", vec_box!(A), vec_box!(), vec_box!());
     struct C;
-    migration!(C, "c", vec_box!(), vec_box!(), vec_box!(B), vec_box!());
+    migration!(C, "c", vec_box!(), vec_box!(B), vec_box!());
     struct D;
-    migration!(D, "d", vec_box!(), vec_box!(), vec_box!(B), vec_box!());
+    migration!(D, "d", vec_box!(), vec_box!(B), vec_box!());
     let mut migrator = CustomMigrator::default();
     let plan = generate_plan(&mut migrator, vec_box!(A, B, C, D)).await;
     assert!(plan.is_err());
@@ -217,13 +217,13 @@ async fn replaces_multiple_times() {
 #[tokio::test]
 async fn replaces_run_before_mismatch_1() {
     struct A;
-    migration!(A, "a", vec_box!(), vec_box!(), vec_box!(), vec_box!());
+    migration!(A, "a", vec_box!(), vec_box!(), vec_box!());
     struct B;
-    migration!(B, "b", vec_box!(A), vec_box!(), vec_box!(), vec_box!());
+    migration!(B, "b", vec_box!(A), vec_box!(), vec_box!());
     struct C;
-    migration!(C, "c", vec_box!(), vec_box!(), vec_box!(B), vec_box!());
+    migration!(C, "c", vec_box!(), vec_box!(B), vec_box!());
     struct D;
-    migration!(D, "d", vec_box!(), vec_box!(), vec_box!(), vec_box!(B));
+    migration!(D, "d", vec_box!(), vec_box!(), vec_box!(B));
     let mut migrator = CustomMigrator::default();
     let plan = generate_plan(&mut migrator, vec_box!(A, B, C, D)).await;
     assert!(plan.is_err());
@@ -232,15 +232,15 @@ async fn replaces_run_before_mismatch_1() {
 #[tokio::test]
 async fn replaces_run_before_mismatch_2() {
     struct A;
-    migration!(A, "a", vec_box!(), vec_box!(), vec_box!(), vec_box!());
+    migration!(A, "a", vec_box!(), vec_box!(), vec_box!());
     struct B;
-    migration!(B, "b", vec_box!(A), vec_box!(), vec_box!(), vec_box!());
+    migration!(B, "b", vec_box!(A), vec_box!(), vec_box!());
     struct C;
-    migration!(C, "c", vec_box!(), vec_box!(), vec_box!(B), vec_box!());
+    migration!(C, "c", vec_box!(), vec_box!(B), vec_box!());
     struct D;
-    migration!(D, "d", vec_box!(), vec_box!(), vec_box!(C), vec_box!());
+    migration!(D, "d", vec_box!(), vec_box!(C), vec_box!());
     struct E;
-    migration!(E, "e", vec_box!(), vec_box!(), vec_box!(), vec_box!(C));
+    migration!(E, "e", vec_box!(), vec_box!(), vec_box!(C));
     let mut migrator = CustomMigrator::default();
     let plan = generate_plan(&mut migrator, vec_box!(A, B, C, D, E)).await;
     assert!(plan.is_err());
@@ -249,15 +249,15 @@ async fn replaces_run_before_mismatch_2() {
 #[tokio::test]
 async fn replaces_run_before_ok_1() {
     struct A;
-    migration!(A, "a", vec_box!(), vec_box!(), vec_box!(), vec_box!());
+    migration!(A, "a", vec_box!(), vec_box!(), vec_box!());
     struct B;
-    migration!(B, "b", vec_box!(A), vec_box!(), vec_box!(), vec_box!());
+    migration!(B, "b", vec_box!(A), vec_box!(), vec_box!());
     struct C;
-    migration!(C, "c", vec_box!(), vec_box!(), vec_box!(B), vec_box!());
+    migration!(C, "c", vec_box!(), vec_box!(B), vec_box!());
     struct D;
-    migration!(D, "d", vec_box!(), vec_box!(), vec_box!(C), vec_box!());
+    migration!(D, "d", vec_box!(), vec_box!(C), vec_box!());
     struct E;
-    migration!(E, "e", vec_box!(), vec_box!(), vec_box!(), vec_box!(D));
+    migration!(E, "e", vec_box!(), vec_box!(), vec_box!(D));
     let mut migrator = CustomMigrator::default();
     let plan = generate_plan(&mut migrator, vec_box!(A, B, C, D, E)).await;
     assert!(plan.is_ok(), "{:?}", plan.err());
@@ -266,15 +266,15 @@ async fn replaces_run_before_ok_1() {
 #[tokio::test]
 async fn replaces_run_before_ok_2() {
     struct A;
-    migration!(A, "a", vec_box!(), vec_box!(), vec_box!(), vec_box!());
+    migration!(A, "a", vec_box!(), vec_box!(), vec_box!());
     struct B;
-    migration!(B, "b", vec_box!(A), vec_box!(), vec_box!(), vec_box!());
+    migration!(B, "b", vec_box!(A), vec_box!(), vec_box!());
     struct C;
-    migration!(C, "c", vec_box!(), vec_box!(), vec_box!(B), vec_box!());
+    migration!(C, "c", vec_box!(), vec_box!(B), vec_box!());
     struct D;
-    migration!(D, "d", vec_box!(), vec_box!(), vec_box!(C, E), vec_box!());
+    migration!(D, "d", vec_box!(), vec_box!(C, E), vec_box!());
     struct E;
-    migration!(E, "e", vec_box!(), vec_box!(), vec_box!(), vec_box!(C));
+    migration!(E, "e", vec_box!(), vec_box!(), vec_box!(C));
     let mut migrator = CustomMigrator::default();
     let plan = generate_plan(&mut migrator, vec_box!(A, B, C, D, E)).await;
     assert!(plan.is_ok(), "{:?}", plan.err());
@@ -283,9 +283,9 @@ async fn replaces_run_before_ok_2() {
 #[tokio::test]
 async fn loop_error() {
     struct A;
-    migration!(A, "a", vec_box!(), vec_box!(), vec_box!(), vec_box!());
+    migration!(A, "a", vec_box!(), vec_box!(), vec_box!());
     struct B;
-    migration!(B, "b", vec_box!(A), vec_box!(), vec_box!(), vec_box!(A));
+    migration!(B, "b", vec_box!(A), vec_box!(), vec_box!(A));
     let mut migrator = CustomMigrator::default();
     let plan = generate_plan(&mut migrator, vec_box!(A, B)).await;
     assert!(plan.is_err());
