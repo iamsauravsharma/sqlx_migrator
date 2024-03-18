@@ -1669,7 +1669,7 @@ impl Migrate&lt;Postgres, ()&gt; for CustomMigrator {}
 
 <span class="kw">impl</span>&lt;DB, State&gt; Migrator&lt;DB, State&gt; {
     <span class="doccomment">/// Create new migrator with provided state
-    </span><span class="kw">fn </span>new(state: State) -&gt; <span class="self">Self </span>{
+    </span><span class="kw">pub fn </span>new(state: State) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             migrations: Vec::default(),
             table_name: DEFAULT_TABLE_NAME.to_string(),
