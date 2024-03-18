@@ -115,6 +115,18 @@ pub struct AppliedMigrationSqlRow {
 }
 
 impl AppliedMigrationSqlRow {
+    #[cfg(test)]
+    pub(crate) fn new(id: i32, app: &str, name: &str) -> Self {
+        Self {
+            id,
+            app: app.to_string(),
+            name: name.to_string(),
+            applied_time: String::new(),
+        }
+    }
+}
+
+impl AppliedMigrationSqlRow {
     /// Return id value present on database
     #[must_use]
     pub fn id(&self) -> i32 {

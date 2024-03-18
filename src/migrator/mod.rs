@@ -358,6 +358,71 @@ fn populate_recursive<'populate, DB, State>(
     }
 }
 
+fn get_parent_recursive<DB, State>(with: &BoxMigration<DB, State>) -> Vec<BoxMigration<DB, State>> {
+    let mut parents = with.parents();
+    for parent in with.parents() {
+        parents.extend(get_parent_recursive(&parent));
+    }
+    parents
+}
+
+fn get_run_before_recursive<DB, State>(
+    with: &BoxMigration<DB, State>,
+) -> Vec<BoxMigration<DB, State>> {
+    let mut run_before_list = with.run_before();
+    for run_before in with.run_before() {
+        run_before_list.extend(get_run_before_recursive(&run_before));
+    }
+    run_before_list
+}
+
+fn is_apply_related<DB, State>(
+    with: &BoxMigration<DB, State>,
+    migration: &BoxMigration<DB, State>,
+) -> bool {
+    migration.replaces().iter().any(|migration_replace| {
+        migration_replace == with || is_apply_related(with, migration_replace)
+    }) || migration.run_before().iter().any(|migration_run_before| {
+        migration_run_before == with || is_apply_related(with, migration_run_before)
+    })
+}
+
+fn is_revert_related<DB, State>(
+    with: &BoxMigration<DB, State>,
+    migration: &BoxMigration<DB, State>,
+) -> bool {
+    let parents = get_parent_recursive(migration);
+    parents.contains(with)
+}
+
+fn only_related_migration<DB, State>(
+    migration_list: &mut MigrationVec<DB, State>,
+    with: &BoxMigration<DB, State>,
+    plan_type: &PlanType,
+) {
+    let mut related_migrations = vec![];
+    match plan_type {
+        PlanType::Apply => {
+            let with_parents = get_parent_recursive(with);
+            for &migration in migration_list.iter() {
+                if with_parents.contains(migration) || is_apply_related(with, migration) {
+                    related_migrations.push(migration);
+                }
+            }
+        }
+        PlanType::Revert => {
+            let with_run_before = get_run_before_recursive(with);
+            for &migration in migration_list.iter() {
+                if with_run_before.contains(migration) || is_revert_related(with, migration) {
+                    related_migrations.push(migration);
+                }
+            }
+        }
+    }
+    migration_list
+        .retain(|&migration| related_migrations.contains(&migration) || migration == with);
+}
+
 /// Process plan to provided migrations list
 fn process_plan<DB, State>(
     migration_list: &mut MigrationVec<DB, State>,
@@ -376,7 +441,7 @@ where
             migration_list.retain(|migration| applied_migrations.contains(migration));
             migration_list.reverse();
         }
-    };
+    }
 
     if let Some((app, migration_name)) = &plan.app_migration {
         // Find position of last migration which matches condition of provided app and
@@ -412,6 +477,8 @@ where
             pos
         };
         migration_list.truncate(position + 1);
+        let pos_elem = migration_list[position];
+        only_related_migration(migration_list, pos_elem, &plan.plan_type);
     } else if let Some(count) = plan.count {
         let actual_len = migration_list.len();
         if count > actual_len {
