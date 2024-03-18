@@ -135,6 +135,18 @@
 <a href="#133" id="133">133</a>
 <a href="#134" id="134">134</a>
 <a href="#135" id="135">135</a>
+<a href="#136" id="136">136</a>
+<a href="#137" id="137">137</a>
+<a href="#138" id="138">138</a>
+<a href="#139" id="139">139</a>
+<a href="#140" id="140">140</a>
+<a href="#141" id="141">141</a>
+<a href="#142" id="142">142</a>
+<a href="#143" id="143">143</a>
+<a href="#144" id="144">144</a>
+<a href="#145" id="145">145</a>
+<a href="#146" id="146">146</a>
+<a href="#147" id="147">147</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Module defining migration trait
 </span><span class="attr">#![cfg_attr(
     feature = <span class="string">"sqlite"</span>,
@@ -249,6 +261,18 @@ impl Migration&lt;Sqlite&gt; for ExampleMigration {
     app: String,
     name: String,
     applied_time: String,
+}
+
+<span class="kw">impl </span>AppliedMigrationSqlRow {
+    <span class="attr">#[cfg(test)]
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(id: i32, app: <span class="kw-2">&amp;</span>str, name: <span class="kw-2">&amp;</span>str) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            id,
+            app: app.to_string(),
+            name: name.to_string(),
+            applied_time: String::new(),
+        }
+    }
 }
 
 <span class="kw">impl </span>AppliedMigrationSqlRow {
