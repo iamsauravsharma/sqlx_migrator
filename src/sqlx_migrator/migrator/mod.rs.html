@@ -771,6 +771,7 @@
 <a href="#769" id="769">769</a>
 <a href="#770" id="770">770</a>
 <a href="#771" id="771">771</a>
+<a href="#772" id="772">772</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Migrator module
 //!
 //! It contains common enum and trait for implementing migrator for sqlx
@@ -1195,15 +1196,15 @@ impl Migrate&lt;Postgres, ()&gt; for CustomMigrator {}
     <span class="prelude-val">Ok</span>(())
 }
 
-<span class="kw">fn </span>get_root&lt;<span class="lifetime">'ascendant</span>, DB, State&gt;(
-    hash_map: <span class="kw-2">&amp;</span><span class="lifetime">'ascendant </span>HashMap&lt;BoxMigration&lt;DB, State&gt;, <span class="kw-2">&amp;</span><span class="lifetime">'ascendant </span>BoxMigration&lt;DB, State&gt;&gt;,
-    val: <span class="kw-2">&amp;</span><span class="lifetime">'ascendant </span>BoxMigration&lt;DB, State&gt;,
-) -&gt; <span class="kw-2">&amp;</span><span class="lifetime">'ascendant </span>BoxMigration&lt;DB, State&gt; {
+<span class="kw">fn </span>get_recursive&lt;<span class="lifetime">'get</span>, DB, State&gt;(
+    hash_map: <span class="kw-2">&amp;</span><span class="lifetime">'get </span>HashMap&lt;BoxMigration&lt;DB, State&gt;, <span class="kw-2">&amp;</span><span class="lifetime">'get </span>BoxMigration&lt;DB, State&gt;&gt;,
+    val: <span class="kw-2">&amp;</span><span class="lifetime">'get </span>BoxMigration&lt;DB, State&gt;,
+) -&gt; Vec&lt;<span class="kw-2">&amp;</span><span class="lifetime">'get </span>BoxMigration&lt;DB, State&gt;&gt; {
+    <span class="kw">let </span><span class="kw-2">mut </span>recursive_vec = <span class="macro">vec!</span>[val];
     <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>parent) = hash_map.get(val) {
-        get_root(hash_map, parent)
-    } <span class="kw">else </span>{
-        val
+        recursive_vec.extend(get_recursive(hash_map, parent));
     }
+    recursive_vec
 }
 
 <span class="doccomment">/// Migrate trait which migrate a database according to requirements. This trait
@@ -1276,11 +1277,11 @@ impl Migrate&lt;Postgres, ()&gt; for CustomMigrator {}
 
         <span class="kw">let </span><span class="kw-2">mut </span>migration_list = Vec::new();
 
-        <span class="comment">// Create migration list until migration list length is equal to hash set
+        <span class="comment">// Create migration list until migration list length is equal to original vec
         // length
-        </span><span class="kw">let </span>migrations_hash_set_len = <span class="self">self</span>.migrations().len();
-        <span class="kw">while </span>migration_list.len() != migrations_hash_set_len {
-            <span class="kw">let </span>old_migration_list_length = migration_list.len();
+        </span><span class="kw">let </span>original_migration_length = <span class="self">self</span>.migrations().len();
+        <span class="kw">while </span>migration_list.len() != original_migration_length {
+            <span class="kw">let </span>loop_initial_migration_list_length = migration_list.len();
             <span class="kw">for </span>migration <span class="kw">in </span><span class="self">self</span>.migrations() {
                 <span class="kw">let </span>all_required_added = !migration_list.contains(<span class="kw-2">&amp;</span>migration)
                     &amp;&amp; migration
@@ -1322,7 +1323,7 @@ impl Migrate&lt;Postgres, ()&gt; for CustomMigrator {}
             // was added. Next loop also will not add migration so return error. This case
             // can arise due to looping in migration plan i.e If there is two migration A
             // and B, than when B is ancestor of A as well as descendants of A
-            </span><span class="kw">if </span>old_migration_list_length == migration_list.len() {
+            </span><span class="kw">if </span>loop_initial_migration_list_length == migration_list.len() {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(Error::FailedToCreateMigrationPlan);
             }
         }
@@ -1346,9 +1347,9 @@ impl Migrate&lt;Postgres, ()&gt; for CustomMigrator {}
                 }
             }
 
-            <span class="comment">// Check if any of parents are applied or not. If any parents are not applied
-            // for applied migration than raises error also takes consideration of replace
-            // migration
+            <span class="comment">// Check if any of parents of certain applied migrations are applied or not. If
+            // any parents are not applied for applied migration than raises
+            // error also takes consideration of replace migration
             </span><span class="kw">for </span><span class="kw-2">&amp;</span>migration <span class="kw">in </span><span class="kw-2">&amp;</span>applied_migrations {
                 <span class="kw">let </span><span class="kw-2">mut </span>parents = <span class="macro">vec!</span>[];
                 <span class="kw">if let </span><span class="prelude-val">Some</span>(run_before_list) = parents_due_to_run_before.get(migration) {
@@ -1361,11 +1362,12 @@ impl Migrate&lt;Postgres, ()&gt; for CustomMigrator {}
                     parents.push(parent);
                 }
                 <span class="kw">for </span>parent <span class="kw">in </span>parents {
-                    <span class="kw">if </span>!applied_migrations.contains(<span class="kw-2">&amp;</span>parent) {
-                        <span class="kw">let </span>root = get_root(<span class="kw-2">&amp;</span>parent_due_to_replaces, parent);
-                        <span class="kw">if </span>!applied_migrations.contains(<span class="kw-2">&amp;</span>root) {
-                            <span class="kw">return </span><span class="prelude-val">Err</span>(Error::ParentIsNotApplied);
-                        }
+                    <span class="kw">let </span>recursive_vec = get_recursive(<span class="kw-2">&amp;</span>parent_due_to_replaces, parent);
+                    <span class="kw">if </span>!applied_migrations
+                        .iter()
+                        .any(|applied| recursive_vec.contains(applied))
+                    {
+                        <span class="kw">return </span><span class="prelude-val">Err</span>(Error::ParentIsNotApplied);
                     }
                 }
             }
