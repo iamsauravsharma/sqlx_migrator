@@ -215,7 +215,7 @@ async fn replaces_multiple_times() {
 }
 
 #[tokio::test]
-async fn replaces_run_before_mismatch_1() {
+async fn replace_run_before_cond_1() {
     struct A;
     migration!(A, "a", vec_box!(), vec_box!(), vec_box!());
     struct B;
@@ -226,11 +226,11 @@ async fn replaces_run_before_mismatch_1() {
     migration!(D, "d", vec_box!(), vec_box!(), vec_box!(B));
     let mut migrator = CustomMigrator::default();
     let plan = generate_plan(&mut migrator, vec_box!(A, B, C, D)).await;
-    assert!(plan.is_err());
+    assert!(plan.is_ok(), "{:?}", plan.err());
 }
 
 #[tokio::test]
-async fn replaces_run_before_mismatch_2() {
+async fn replaces_run_before_cond_2() {
     struct A;
     migration!(A, "a", vec_box!(), vec_box!(), vec_box!());
     struct B;
@@ -243,11 +243,11 @@ async fn replaces_run_before_mismatch_2() {
     migration!(E, "e", vec_box!(), vec_box!(), vec_box!(C));
     let mut migrator = CustomMigrator::default();
     let plan = generate_plan(&mut migrator, vec_box!(A, B, C, D, E)).await;
-    assert!(plan.is_err());
+    assert!(plan.is_ok(), "{:?}", plan.err());
 }
 
 #[tokio::test]
-async fn replaces_run_before_ok_1() {
+async fn replaces_run_before_cond_3() {
     struct A;
     migration!(A, "a", vec_box!(), vec_box!(), vec_box!());
     struct B;
@@ -264,7 +264,7 @@ async fn replaces_run_before_ok_1() {
 }
 
 #[tokio::test]
-async fn replaces_run_before_ok_2() {
+async fn replaces_run_before_cond_4() {
     struct A;
     migration!(A, "a", vec_box!(), vec_box!(), vec_box!());
     struct B;
@@ -278,6 +278,53 @@ async fn replaces_run_before_ok_2() {
     let mut migrator = CustomMigrator::default();
     let plan = generate_plan(&mut migrator, vec_box!(A, B, C, D, E)).await;
     assert!(plan.is_ok(), "{:?}", plan.err());
+}
+
+#[tokio::test]
+async fn replaces_run_before_cond_5() {
+    struct A;
+    migration!(A, "a", vec_box!(), vec_box!(), vec_box!());
+    struct B;
+    migration!(B, "b", vec_box!(A), vec_box!(), vec_box!());
+    struct C;
+    migration!(C, "c", vec_box!(), vec_box!(B), vec_box!());
+    struct D;
+    migration!(D, "d", vec_box!(), vec_box!(C), vec_box!(C));
+    let mut migrator = CustomMigrator::default();
+    let plan = generate_plan(&mut migrator, vec_box!(A, B, C, D)).await;
+    assert!(plan.is_err());
+}
+
+#[tokio::test]
+async fn replaces_run_before_cond_6() {
+    struct A;
+    migration!(A, "a", vec_box!(), vec_box!(), vec_box!());
+    struct B;
+    migration!(B, "b", vec_box!(A), vec_box!(), vec_box!());
+    struct C;
+    migration!(C, "c", vec_box!(), vec_box!(B), vec_box!());
+    struct D;
+    migration!(D, "d", vec_box!(), vec_box!(C, E), vec_box!());
+    struct E;
+    migration!(E, "e", vec_box!(), vec_box!(D), vec_box!(C));
+    let mut migrator = CustomMigrator::default();
+    let plan = generate_plan(&mut migrator, vec_box!(A, B, C, D, E)).await;
+    assert!(plan.is_err());
+}
+
+#[tokio::test]
+async fn replaces_run_before_cond_7() {
+    struct A;
+    migration!(A, "a", vec_box!(), vec_box!(), vec_box!());
+    struct B;
+    migration!(B, "b", vec_box!(A), vec_box!(), vec_box!());
+    struct C;
+    migration!(C, "c", vec_box!(), vec_box!(B), vec_box!(D));
+    struct D;
+    migration!(D, "d", vec_box!(), vec_box!(C), vec_box!());
+    let mut migrator = CustomMigrator::default();
+    let plan = generate_plan(&mut migrator, vec_box!(A, B, C, D)).await;
+    assert!(plan.is_err());
 }
 
 #[tokio::test]

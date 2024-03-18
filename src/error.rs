@@ -14,10 +14,6 @@ pub enum Error {
     /// Error for failed to create migrations plan
     #[error("failed to create migrations plan")]
     FailedToCreateMigrationPlan,
-    /// Error raised when order cannot be determine properly for replace and run
-    /// before
-    #[error("replace and run before migration order cannot be determined properly")]
-    ReplaceRunBeforeMisMatch,
     /// Parent is not applied
     #[error("children is applied before parent")]
     ParentIsNotApplied,

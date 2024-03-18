@@ -501,36 +501,6 @@ where
             }
         }
 
-        // Hashmap which contains all children generated from run before list
-        let mut run_before_children = HashMap::<_, Vec<_>>::new();
-        // in first loop add initial parent and child from parent due to run before
-        for (child, parents) in &parents_due_to_run_before {
-            for &parent in parents {
-                // since run before children is hash map we can have only one child occurrence
-                run_before_children.entry(parent).or_default().push(child);
-            }
-        }
-        // in second loop through recursive add all descendants
-        for (child, parents) in &parents_due_to_run_before {
-            for parent in parents {
-                populate_recursive(&mut run_before_children, parent, child);
-            }
-        }
-
-        // check for inconsistent order of migration for replace and run before
-        for (parent_migration, children_vec) in &run_before_children {
-            for &child in children_vec {
-                let root = get_root(&parent_due_to_replaces, child);
-                if !children_vec.contains(&root) {
-                    if let Some(replace_children_vec) = replace_children.get(root) {
-                        if !replace_children_vec.contains(parent_migration) {
-                            return Err(Error::ReplaceRunBeforeMisMatch);
-                        }
-                    }
-                }
-            }
-        }
-
         let mut migration_list = Vec::new();
 
         // Create migration list until migration list length is equal to hash set
@@ -559,7 +529,15 @@ where
                             child
                                 .parents()
                                 .iter()
-                                .all(|child_parent| migration_list.contains(&child_parent))
+                                .all(|child_parent| migration_list.contains(&child_parent));
+                            parents_due_to_run_before
+                                .get(child)
+                                .unwrap_or(&vec![])
+                                .iter()
+                                .all(|run_before_migration| {
+                                    migration_list.contains(run_before_migration)
+                                        || children.contains(run_before_migration)
+                                })
                         })
                     });
                 if all_required_added {
