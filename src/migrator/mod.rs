@@ -800,7 +800,7 @@ pub struct Migrator<DB, State> {
 
 impl<DB, State> Migrator<DB, State> {
     /// Create new migrator with provided state
-    fn new(state: State) -> Self {
+    pub fn new(state: State) -> Self {
         Self {
             migrations: Vec::default(),
             table_name: DEFAULT_TABLE_NAME.to_string(),
