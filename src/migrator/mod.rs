@@ -497,13 +497,8 @@ where
         } else {
             migration_list
                 .iter()
-                .filter_map(|&pos_migration| {
-                    if pos_migration.app() == app {
-                        Some(pos_migration)
-                    } else {
-                        None
-                    }
-                })
+                .filter(|pos_migration| pos_migration.app() == app)
+                .copied()
                 .collect::<Vec<_>>()
         };
         only_related_migration(migration_list, with_list, &plan.plan_type);
