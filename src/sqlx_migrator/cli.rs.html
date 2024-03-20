@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/cli.rs`."><title>cli.rs - source</title><script> if (window.location.protocol !== "file:") document.write(`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2">`)</script><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-e935ef01ae1c1829.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="sqlx_migrator" data-themes="" data-resource-suffix="" data-rustdoc-version="1.79.0-nightly (3c85e5624 2024-03-18)" data-channel="nightly" data-search-js="search-42d8da7a6b9792c2.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-4c98445ec4002617.js"></script><script defer src="../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-12cf3b4f4f9dc36d.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-04d5337699b92874.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title">
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/cli.rs`."><title>cli.rs - source</title><script> if (window.location.protocol !== "file:") document.write(`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2">`)</script><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-e935ef01ae1c1829.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="sqlx_migrator" data-themes="" data-resource-suffix="" data-rustdoc-version="1.79.0-nightly (a7e4de13c 2024-03-19)" data-channel="nightly" data-search-js="search-42d8da7a6b9792c2.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-4c98445ec4002617.js"></script><script defer src="../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-12cf3b4f4f9dc36d.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-04d5337699b92874.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title">
             <h2>Files</h2></div></nav><div class="sidebar-resizer"></div>
     <main><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../sqlx_migrator/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
@@ -391,6 +391,17 @@
 <a href="#389" id="389">389</a>
 <a href="#390" id="390">390</a>
 <a href="#391" id="391">391</a>
+<a href="#392" id="392">392</a>
+<a href="#393" id="393">393</a>
+<a href="#394" id="394">394</a>
+<a href="#395" id="395">395</a>
+<a href="#396" id="396">396</a>
+<a href="#397" id="397">397</a>
+<a href="#398" id="398">398</a>
+<a href="#399" id="399">399</a>
+<a href="#400" id="400">400</a>
+<a href="#401" id="401">401</a>
+<a href="#402" id="402">402</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Module for creating and running cli with help of migrator
 //!
 //! CLI Command can directly used or extended
@@ -534,56 +545,59 @@
     State: Send + Sync,
 {
     <span class="kw">let </span>migration_plan = migrator.generate_migration_plan(<span class="prelude-val">None</span>, connection).<span class="kw">await</span><span class="question-mark">?</span>;
-    <span class="kw">let </span>applied_migrations = migrator.fetch_applied_migration_from_db(connection).<span class="kw">await</span><span class="question-mark">?</span>;
-    <span class="kw">let </span>apply_plan = migrator
-        .generate_migration_plan(<span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>Plan::apply_all()), connection)
-        .<span class="kw">await</span><span class="question-mark">?</span>;
 
-    <span class="kw">let </span>widths = [<span class="number">5</span>, <span class="number">10</span>, <span class="number">50</span>, <span class="number">10</span>, <span class="number">40</span>];
-    <span class="kw">let </span>full_width = widths.iter().sum::&lt;usize&gt;() + widths.len() * <span class="number">3</span>;
+    <span class="kw">if </span>!migration_plan.is_empty() {
+        <span class="kw">let </span>applied_migrations = migrator.fetch_applied_migration_from_db(connection).<span class="kw">await</span><span class="question-mark">?</span>;
+        <span class="kw">let </span>apply_plan = migrator
+            .generate_migration_plan(<span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>Plan::apply_all()), connection)
+            .<span class="kw">await</span><span class="question-mark">?</span>;
 
-    <span class="kw">let </span>first_width = widths[<span class="number">0</span>];
-    <span class="kw">let </span>second_width = widths[<span class="number">1</span>];
-    <span class="kw">let </span>third_width = widths[<span class="number">2</span>];
-    <span class="kw">let </span>fourth_width = widths[<span class="number">3</span>];
-    <span class="kw">let </span>fifth_width = widths[<span class="number">4</span>];
+        <span class="kw">let </span>widths = [<span class="number">5</span>, <span class="number">10</span>, <span class="number">50</span>, <span class="number">10</span>, <span class="number">40</span>];
+        <span class="kw">let </span>full_width = widths.iter().sum::&lt;usize&gt;() + widths.len() * <span class="number">3</span>;
 
-    <span class="macro">println!</span>(
-        <span class="string">"{:^first_width$} | {:^second_width$} | {:^third_width$} | {:^fourth_width$} | \
-         {:^fifth_width$}"</span>,
-        <span class="string">"ID"</span>, <span class="string">"App"</span>, <span class="string">"Name"</span>, <span class="string">"Status"</span>, <span class="string">"Applied time"
-    </span>);
-
-    <span class="macro">println!</span>(<span class="string">"{:^full_width$}"</span>, <span class="string">"-"</span>.repeat(full_width));
-    <span class="kw">for </span>migration <span class="kw">in </span>migration_plan {
-        <span class="kw">let </span><span class="kw-2">mut </span>id = String::from(<span class="string">"N/A"</span>);
-        <span class="kw">let </span><span class="kw-2">mut </span>status = <span class="string">"\u{2717}"</span>;
-        <span class="kw">let </span><span class="kw-2">mut </span>applied_time = String::from(<span class="string">"N/A"</span>);
-
-        <span class="kw">let </span>find_applied_migrations = applied_migrations
-            .iter()
-            .find(|<span class="kw-2">&amp;</span>applied_migration| applied_migration == migration);
-
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(sqlx_migration) = find_applied_migrations {
-            id = sqlx_migration.id().to_string();
-            status = <span class="string">"\u{2713}"</span>;
-            applied_time = sqlx_migration.applied_time().to_string();
-        } <span class="kw">else if </span>!apply_plan
-            .iter()
-            .any(|<span class="kw-2">&amp;</span>plan_migration| plan_migration == migration)
-        {
-            status = <span class="string">"\u{2194}"</span>;
-        }
+        <span class="kw">let </span>first_width = widths[<span class="number">0</span>];
+        <span class="kw">let </span>second_width = widths[<span class="number">1</span>];
+        <span class="kw">let </span>third_width = widths[<span class="number">2</span>];
+        <span class="kw">let </span>fourth_width = widths[<span class="number">3</span>];
+        <span class="kw">let </span>fifth_width = widths[<span class="number">4</span>];
 
         <span class="macro">println!</span>(
             <span class="string">"{:^first_width$} | {:^second_width$} | {:^third_width$} | {:^fourth_width$} | \
              {:^fifth_width$}"</span>,
-            id,
-            migration.app(),
-            migration.name(),
-            status,
-            applied_time
-        );
+            <span class="string">"ID"</span>, <span class="string">"App"</span>, <span class="string">"Name"</span>, <span class="string">"Status"</span>, <span class="string">"Applied time"
+        </span>);
+
+        <span class="macro">println!</span>(<span class="string">"{:^full_width$}"</span>, <span class="string">"-"</span>.repeat(full_width));
+        <span class="kw">for </span>migration <span class="kw">in </span>migration_plan {
+            <span class="kw">let </span><span class="kw-2">mut </span>id = String::from(<span class="string">"N/A"</span>);
+            <span class="kw">let </span><span class="kw-2">mut </span>status = <span class="string">"\u{2717}"</span>;
+            <span class="kw">let </span><span class="kw-2">mut </span>applied_time = String::from(<span class="string">"N/A"</span>);
+
+            <span class="kw">let </span>find_applied_migrations = applied_migrations
+                .iter()
+                .find(|<span class="kw-2">&amp;</span>applied_migration| applied_migration == migration);
+
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(sqlx_migration) = find_applied_migrations {
+                id = sqlx_migration.id().to_string();
+                status = <span class="string">"\u{2713}"</span>;
+                applied_time = sqlx_migration.applied_time().to_string();
+            } <span class="kw">else if </span>!apply_plan
+                .iter()
+                .any(|<span class="kw-2">&amp;</span>plan_migration| plan_migration == migration)
+            {
+                status = <span class="string">"\u{2194}"</span>;
+            }
+
+            <span class="macro">println!</span>(
+                <span class="string">"{:^first_width$} | {:^second_width$} | {:^third_width$} | {:^fourth_width$} | \
+                 {:^fifth_width$}"</span>,
+                id,
+                migration.app(),
+                migration.name(),
+                status,
+                applied_time
+            );
+        }
     }
     <span class="prelude-val">Ok</span>(())
 }
@@ -641,17 +655,21 @@
             <span class="kw">return </span><span class="prelude-val">Err</span>(Error::PendingMigrationPresent);
         }
         <span class="kw">if </span><span class="self">self</span>.plan {
-            <span class="kw">let </span>first_width = <span class="number">10</span>;
-            <span class="kw">let </span>second_width = <span class="number">50</span>;
-            <span class="kw">let </span>full_width = first_width + second_width + <span class="number">3</span>;
-            <span class="macro">println!</span>(<span class="string">"{:^first_width$} | {:^second_width$}"</span>, <span class="string">"App"</span>, <span class="string">"Name"</span>);
-            <span class="macro">println!</span>(<span class="string">"{:^full_width$}"</span>, <span class="string">"-"</span>.repeat(full_width));
-            <span class="kw">for </span>migration <span class="kw">in </span>migrations {
-                <span class="macro">println!</span>(
-                    <span class="string">"{:^first_width$} | {:^second_width$}"</span>,
-                    migration.app(),
-                    migration.name(),
-                );
+            <span class="kw">if </span>!migrations.is_empty() {
+                <span class="kw">let </span>first_width = <span class="number">10</span>;
+                <span class="kw">let </span>second_width = <span class="number">50</span>;
+                <span class="kw">let </span>full_width = first_width + second_width + <span class="number">3</span>;
+                <span class="macro">println!</span>(<span class="string">"{:^first_width$} | {:^second_width$}"</span>, <span class="string">"App"</span>, <span class="string">"Name"</span>);
+                <span class="macro">println!</span>(<span class="string">"{:^full_width$}"</span>, <span class="string">"-"</span>.repeat(full_width));
+                <span class="kw">for </span>migration <span class="kw">in </span>migrations {
+                    <span class="macro">println!</span>(
+                        <span class="string">"{:^first_width$} | {:^second_width$}"</span>,
+                        migration.app(),
+                        migration.name(),
+                    );
+                }
+            } <span class="kw">else </span>{
+                <span class="macro">println!</span>(<span class="string">"No migration exists for applying"</span>);
             }
         } <span class="kw">else if </span><span class="self">self</span>.fake {
             <span class="kw">for </span>migration <span class="kw">in </span>migrations {
@@ -740,17 +758,21 @@
             .<span class="kw">await</span><span class="question-mark">?</span>;
 
         <span class="kw">if </span><span class="self">self</span>.plan {
-            <span class="kw">let </span>first_width = <span class="number">10</span>;
-            <span class="kw">let </span>second_width = <span class="number">50</span>;
-            <span class="kw">let </span>full_width = first_width + second_width + <span class="number">3</span>;
-            <span class="macro">println!</span>(<span class="string">"{:^first_width$} | {:^second_width$}"</span>, <span class="string">"App"</span>, <span class="string">"Name"</span>);
-            <span class="macro">println!</span>(<span class="string">"{:^full_width$}"</span>, <span class="string">"-"</span>.repeat(full_width));
-            <span class="kw">for </span>migration <span class="kw">in </span>revert_migrations {
-                <span class="macro">println!</span>(
-                    <span class="string">"{:^first_width$} | {:^second_width$}"</span>,
-                    migration.app(),
-                    migration.name(),
-                );
+            <span class="kw">if </span>!revert_migrations.is_empty() {
+                <span class="kw">let </span>first_width = <span class="number">10</span>;
+                <span class="kw">let </span>second_width = <span class="number">50</span>;
+                <span class="kw">let </span>full_width = first_width + second_width + <span class="number">3</span>;
+                <span class="macro">println!</span>(<span class="string">"{:^first_width$} | {:^second_width$}"</span>, <span class="string">"App"</span>, <span class="string">"Name"</span>);
+                <span class="macro">println!</span>(<span class="string">"{:^full_width$}"</span>, <span class="string">"-"</span>.repeat(full_width));
+                <span class="kw">for </span>migration <span class="kw">in </span>revert_migrations {
+                    <span class="macro">println!</span>(
+                        <span class="string">"{:^first_width$} | {:^second_width$}"</span>,
+                        migration.app(),
+                        migration.name(),
+                    );
+                }
+            } <span class="kw">else </span>{
+                <span class="macro">println!</span>(<span class="string">"No migration exists for reverting"</span>);
             }
         } <span class="kw">else if </span><span class="self">self</span>.fake {
             <span class="kw">for </span>migration <span class="kw">in </span>revert_migrations {
