@@ -655,7 +655,9 @@
             <span class="kw">return </span><span class="prelude-val">Err</span>(Error::PendingMigrationPresent);
         }
         <span class="kw">if </span><span class="self">self</span>.plan {
-            <span class="kw">if </span>!migrations.is_empty() {
+            <span class="kw">if </span>migrations.is_empty() {
+                <span class="macro">println!</span>(<span class="string">"No migration exists for applying"</span>);
+            } <span class="kw">else </span>{
                 <span class="kw">let </span>first_width = <span class="number">10</span>;
                 <span class="kw">let </span>second_width = <span class="number">50</span>;
                 <span class="kw">let </span>full_width = first_width + second_width + <span class="number">3</span>;
@@ -668,8 +670,6 @@
                         migration.name(),
                     );
                 }
-            } <span class="kw">else </span>{
-                <span class="macro">println!</span>(<span class="string">"No migration exists for applying"</span>);
             }
         } <span class="kw">else if </span><span class="self">self</span>.fake {
             <span class="kw">for </span>migration <span class="kw">in </span>migrations {
@@ -758,7 +758,9 @@
             .<span class="kw">await</span><span class="question-mark">?</span>;
 
         <span class="kw">if </span><span class="self">self</span>.plan {
-            <span class="kw">if </span>!revert_migrations.is_empty() {
+            <span class="kw">if </span>revert_migrations.is_empty() {
+                <span class="macro">println!</span>(<span class="string">"No migration exists for reverting"</span>);
+            } <span class="kw">else </span>{
                 <span class="kw">let </span>first_width = <span class="number">10</span>;
                 <span class="kw">let </span>second_width = <span class="number">50</span>;
                 <span class="kw">let </span>full_width = first_width + second_width + <span class="number">3</span>;
@@ -771,8 +773,6 @@
                         migration.name(),
                     );
                 }
-            } <span class="kw">else </span>{
-                <span class="macro">println!</span>(<span class="string">"No migration exists for reverting"</span>);
             }
         } <span class="kw">else if </span><span class="self">self</span>.fake {
             <span class="kw">for </span>migration <span class="kw">in </span>revert_migrations {
