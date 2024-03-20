@@ -251,7 +251,9 @@ impl Apply {
             return Err(Error::PendingMigrationPresent);
         }
         if self.plan {
-            if !migrations.is_empty() {
+            if migrations.is_empty() {
+                println!("No migration exists for applying");
+            } else {
                 let first_width = 10;
                 let second_width = 50;
                 let full_width = first_width + second_width + 3;
@@ -264,8 +266,6 @@ impl Apply {
                         migration.name(),
                     );
                 }
-            } else {
-                println!("No migration exists for applying");
             }
         } else if self.fake {
             for migration in migrations {
@@ -354,7 +354,9 @@ impl Revert {
             .await?;
 
         if self.plan {
-            if !revert_migrations.is_empty() {
+            if revert_migrations.is_empty() {
+                println!("No migration exists for reverting");
+            } else {
                 let first_width = 10;
                 let second_width = 50;
                 let full_width = first_width + second_width + 3;
@@ -367,8 +369,6 @@ impl Revert {
                         migration.name(),
                     );
                 }
-            } else {
-                println!("No migration exists for reverting");
             }
         } else if self.fake {
             for migration in revert_migrations {
