@@ -350,10 +350,10 @@ fn populate_recursive<'populate, DB, State>(
     let populate_hash_map_vec = populate_hash_map.entry(key).or_default();
     if !populate_hash_map_vec.contains(&value) {
         populate_hash_map_vec.push(value);
-        if let Some(grand_values) = populate_hash_map.clone().get(value) {
-            for grand_value in grand_values {
-                populate_recursive(populate_hash_map, key, grand_value);
-            }
+    }
+    if let Some(grand_values) = populate_hash_map.clone().get(value) {
+        for grand_value in grand_values {
+            populate_recursive(populate_hash_map, key, grand_value);
         }
     }
 }
@@ -569,8 +569,6 @@ where
         let mut replace_children = HashMap::<_, Vec<_>>::new();
         // in first loop add initial parent and child from parent due to replace
         for (child, &parent) in &parent_due_to_replaces {
-            // since parent due to replaces is hash map we can have only one child
-            // occurrence
             replace_children.entry(parent).or_default().push(child);
         }
         // in second loop through recursive add all descendants
