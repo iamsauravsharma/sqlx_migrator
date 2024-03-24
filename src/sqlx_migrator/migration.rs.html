@@ -180,6 +180,8 @@
 <a href="#178" id="178">178</a>
 <a href="#179" id="179">179</a>
 <a href="#180" id="180">180</a>
+<a href="#181" id="181">181</a>
+<a href="#182" id="182">182</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Module defining migration trait
 </span><span class="attr">#![cfg_attr(
     feature = <span class="string">"sqlite"</span>,
@@ -271,7 +273,9 @@ impl Migration&lt;Sqlite&gt; for ExampleMigration {
 
     <span class="doccomment">/// Whether migration is virtual or not. By default migration are not
     /// virtual. If migration is virtual than it expects another migration with
-    /// same name present inside migration list which is not virtual.
+    /// same app and name present inside migration list which is not virtual.
+    /// For virtual migration all other methods gets ignored since it is
+    /// reference for actual migration
     </span><span class="kw">fn </span>is_virtual(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
         <span class="bool-val">false
     </span>}

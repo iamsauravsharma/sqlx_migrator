@@ -884,6 +884,11 @@
 <a href="#882" id="882">882</a>
 <a href="#883" id="883">883</a>
 <a href="#884" id="884">884</a>
+<a href="#885" id="885">885</a>
+<a href="#886" id="886">886</a>
+<a href="#887" id="887">887</a>
+<a href="#888" id="888">888</a>
+<a href="#889" id="889">889</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Migrator module
 //!
 //! It contains common enum and trait for implementing migrator for sqlx
@@ -1155,7 +1160,7 @@ impl Migrate&lt;Postgres, ()&gt; for CustomMigrator {}
             .iter()
             .position(|elem| elem == <span class="kw-2">&amp;</span>migration &amp;&amp; elem.is_virtual() &amp;&amp; !migration.is_virtual())
         {
-            <span class="self">self</span>.migrations_mut().swap_remove(migration_index);
+            <span class="self">self</span>.migrations_mut().remove(migration_index);
         }
 
         <span class="comment">// check if migration is already added or not we want to use vec here even if
@@ -1163,20 +1168,25 @@ impl Migrate&lt;Postgres, ()&gt; for CustomMigrator {}
         // bring issue such as plan may be different between between dry run and
         // actually running migration
         </span><span class="kw">if </span>!<span class="self">self</span>.migrations().contains(<span class="kw-2">&amp;</span>migration) {
-            <span class="kw">let </span>migration_parents = migration.parents();
-            <span class="kw">let </span>migration_replaces = migration.replaces();
-            <span class="kw">let </span>migration_run_before = migration.run_before();
+            <span class="comment">// ignore parents, replaces and run before for virtual migration
+            </span><span class="kw">if </span>migration.is_virtual() {
+                <span class="self">self</span>.migrations_mut().push(migration);
+            } <span class="kw">else </span>{
+                <span class="kw">let </span>migration_parents = migration.parents();
+                <span class="kw">let </span>migration_replaces = migration.replaces();
+                <span class="kw">let </span>migration_run_before = migration.run_before();
 
-            <span class="self">self</span>.migrations_mut().push(migration);
+                <span class="self">self</span>.migrations_mut().push(migration);
 
-            <span class="kw">for </span>parent <span class="kw">in </span>migration_parents {
-                <span class="self">self</span>.add_migration(parent);
-            }
-            <span class="kw">for </span>replace <span class="kw">in </span>migration_replaces {
-                <span class="self">self</span>.add_migration(replace);
-            }
-            <span class="kw">for </span>run_before <span class="kw">in </span>migration_run_before {
-                <span class="self">self</span>.add_migration(run_before);
+                <span class="kw">for </span>parent <span class="kw">in </span>migration_parents {
+                    <span class="self">self</span>.add_migration(parent);
+                }
+                <span class="kw">for </span>replace <span class="kw">in </span>migration_replaces {
+                    <span class="self">self</span>.add_migration(replace);
+                }
+                <span class="kw">for </span>run_before <span class="kw">in </span>migration_run_before {
+                    <span class="self">self</span>.add_migration(run_before);
+                }
             }
         }
     }
