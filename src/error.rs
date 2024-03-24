@@ -11,9 +11,6 @@ pub enum Error {
     #[cfg(feature = "cli")]
     #[error(transparent)]
     StdIo(#[from] std::io::Error),
-    /// Error generated when migration is missing
-    #[error("referenced migration missing on migration")]
-    MigrationMissing,
     /// Error generated when no migration are added
     #[error("no migration are added to migration list")]
     NoMigrationAdded,
