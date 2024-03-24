@@ -161,6 +161,72 @@ async fn simple_test() {
 }
 
 #[tokio::test]
+async fn interrelated_test() {
+    struct A;
+    migration!(A, "a", vec_box!(B), vec_box!(), vec_box!());
+    struct B;
+    migration!(B, "b", vec_box!(A), vec_box!(), vec_box!());
+    let mut migrator = CustomMigrator::default();
+    let plan = generate_apply_all_plan(&mut migrator, vec_box!(A, B)).await;
+    assert!(plan.is_err());
+}
+
+#[tokio::test]
+async fn run_before_interrelated_test() {
+    struct A;
+    migration!(A, "a", vec_box!(), vec_box!(B), vec_box!());
+    struct B;
+    migration!(B, "b", vec_box!(), vec_box!(A), vec_box!());
+    let mut migrator = CustomMigrator::default();
+    let plan = generate_apply_all_plan(&mut migrator, vec_box!(A, B)).await;
+    assert!(plan.is_err());
+}
+
+#[tokio::test]
+async fn replace_interrelated_test() {
+    struct A;
+    migration!(A, "a", vec_box!(), vec_box!(), vec_box!(B));
+    struct B;
+    migration!(B, "b", vec_box!(), vec_box!(), vec_box!(A));
+    let mut migrator = CustomMigrator::default();
+    let plan = generate_apply_all_plan(&mut migrator, vec_box!(A, B)).await;
+    assert!(plan.is_err());
+}
+
+#[tokio::test]
+async fn depend_on_itself() {
+    struct A;
+    migration!(A, "a", vec_box!(A), vec_box!(), vec_box!());
+    struct B;
+    migration!(B, "b", vec_box!(B), vec_box!(), vec_box!());
+    let mut migrator = CustomMigrator::default();
+    let plan = generate_apply_all_plan(&mut migrator, vec_box!(A, B)).await;
+    assert!(plan.is_err());
+}
+
+#[tokio::test]
+async fn run_before_depend_on_itself() {
+    struct A;
+    migration!(A, "a", vec_box!(), vec_box!(A), vec_box!());
+    struct B;
+    migration!(B, "b", vec_box!(), vec_box!(B), vec_box!());
+    let mut migrator = CustomMigrator::default();
+    let plan = generate_apply_all_plan(&mut migrator, vec_box!(A, B)).await;
+    assert!(plan.is_err());
+}
+
+#[tokio::test]
+async fn replace_depend_on_itself() {
+    struct A;
+    migration!(A, "a", vec_box!(), vec_box!(), vec_box!(A));
+    struct B;
+    migration!(B, "b", vec_box!(), vec_box!(), vec_box!(B));
+    let mut migrator = CustomMigrator::default();
+    let plan = generate_apply_all_plan(&mut migrator, vec_box!(A, B)).await;
+    assert!(plan.is_err());
+}
+
+#[tokio::test]
 async fn replace_test() {
     struct A;
     migration!(A, "a", vec_box!(), vec_box!(), vec_box!());

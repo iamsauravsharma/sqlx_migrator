@@ -346,16 +346,21 @@ fn populate_recursive<'populate, DB, State>(
     >,
     key: &'populate BoxMigration<DB, State>,
     value: &'populate BoxMigration<DB, State>,
-) {
+) -> Result<(), Error> {
+    // protect against a case where two migration depends upon each other
+    if key == value {
+        return Err(Error::FailedToCreateMigrationPlan);
+    }
     let populate_hash_map_vec = populate_hash_map.entry(key).or_default();
     if !populate_hash_map_vec.contains(&value) {
         populate_hash_map_vec.push(value);
     }
     if let Some(grand_values) = populate_hash_map.clone().get(value) {
         for grand_value in grand_values {
-            populate_recursive(populate_hash_map, key, grand_value);
+            populate_recursive(populate_hash_map, key, grand_value)?;
         }
     }
+    Ok(())
 }
 
 fn get_parent_recursive<DB, State>(with: &BoxMigration<DB, State>) -> Vec<BoxMigration<DB, State>> {
@@ -573,7 +578,7 @@ where
         }
         // in second loop through recursive add all descendants
         for (child, &parent) in &parent_due_to_replaces {
-            populate_recursive(&mut replace_children, parent, child);
+            populate_recursive(&mut replace_children, parent, child)?;
         }
 
         // Hashmap which contains key as migration name and value as list of migration
