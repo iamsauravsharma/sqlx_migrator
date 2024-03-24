@@ -89,7 +89,9 @@ pub trait Migration<DB, State = ()>: Send + Sync {
 
     /// Whether migration is virtual or not. By default migration are not
     /// virtual. If migration is virtual than it expects another migration with
-    /// same name present inside migration list which is not virtual.
+    /// same app and name present inside migration list which is not virtual.
+    /// For virtual migration all other methods gets ignored since it is
+    /// reference for actual migration
     fn is_virtual(&self) -> bool {
         false
     }

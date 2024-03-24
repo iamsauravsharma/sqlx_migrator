@@ -269,7 +269,7 @@ pub trait Info<DB, State> {
             .iter()
             .position(|elem| elem == &migration && elem.is_virtual() && !migration.is_virtual())
         {
-            self.migrations_mut().swap_remove(migration_index);
+            self.migrations_mut().remove(migration_index);
         }
 
         // check if migration is already added or not we want to use vec here even if
@@ -277,20 +277,25 @@ pub trait Info<DB, State> {
         // bring issue such as plan may be different between between dry run and
         // actually running migration
         if !self.migrations().contains(&migration) {
-            let migration_parents = migration.parents();
-            let migration_replaces = migration.replaces();
-            let migration_run_before = migration.run_before();
+            // ignore parents, replaces and run before for virtual migration
+            if migration.is_virtual() {
+                self.migrations_mut().push(migration);
+            } else {
+                let migration_parents = migration.parents();
+                let migration_replaces = migration.replaces();
+                let migration_run_before = migration.run_before();
 
-            self.migrations_mut().push(migration);
+                self.migrations_mut().push(migration);
 
-            for parent in migration_parents {
-                self.add_migration(parent);
-            }
-            for replace in migration_replaces {
-                self.add_migration(replace);
-            }
-            for run_before in migration_run_before {
-                self.add_migration(run_before);
+                for parent in migration_parents {
+                    self.add_migration(parent);
+                }
+                for replace in migration_replaces {
+                    self.add_migration(replace);
+                }
+                for run_before in migration_run_before {
+                    self.add_migration(run_before);
+                }
             }
         }
     }
