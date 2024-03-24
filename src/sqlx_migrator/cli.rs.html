@@ -400,8 +400,6 @@
 <a href="#398" id="398">398</a>
 <a href="#399" id="399">399</a>
 <a href="#400" id="400">400</a>
-<a href="#401" id="401">401</a>
-<a href="#402" id="402">402</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Module for creating and running cli with help of migrator
 //!
 //! CLI Command can directly used or extended
@@ -546,58 +544,56 @@
 {
     <span class="kw">let </span>migration_plan = migrator.generate_migration_plan(<span class="prelude-val">None</span>, connection).<span class="kw">await</span><span class="question-mark">?</span>;
 
-    <span class="kw">if </span>!migration_plan.is_empty() {
-        <span class="kw">let </span>applied_migrations = migrator.fetch_applied_migration_from_db(connection).<span class="kw">await</span><span class="question-mark">?</span>;
-        <span class="kw">let </span>apply_plan = migrator
-            .generate_migration_plan(<span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>Plan::apply_all()), connection)
-            .<span class="kw">await</span><span class="question-mark">?</span>;
+    <span class="kw">let </span>apply_plan = migrator
+        .generate_migration_plan(<span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>Plan::apply_all()), connection)
+        .<span class="kw">await</span><span class="question-mark">?</span>;
+    <span class="kw">let </span>applied_migrations = migrator.fetch_applied_migration_from_db(connection).<span class="kw">await</span><span class="question-mark">?</span>;
 
-        <span class="kw">let </span>widths = [<span class="number">5</span>, <span class="number">10</span>, <span class="number">50</span>, <span class="number">10</span>, <span class="number">40</span>];
-        <span class="kw">let </span>full_width = widths.iter().sum::&lt;usize&gt;() + widths.len() * <span class="number">3</span>;
+    <span class="kw">let </span>widths = [<span class="number">5</span>, <span class="number">10</span>, <span class="number">50</span>, <span class="number">10</span>, <span class="number">40</span>];
+    <span class="kw">let </span>full_width = widths.iter().sum::&lt;usize&gt;() + widths.len() * <span class="number">3</span>;
 
-        <span class="kw">let </span>first_width = widths[<span class="number">0</span>];
-        <span class="kw">let </span>second_width = widths[<span class="number">1</span>];
-        <span class="kw">let </span>third_width = widths[<span class="number">2</span>];
-        <span class="kw">let </span>fourth_width = widths[<span class="number">3</span>];
-        <span class="kw">let </span>fifth_width = widths[<span class="number">4</span>];
+    <span class="kw">let </span>first_width = widths[<span class="number">0</span>];
+    <span class="kw">let </span>second_width = widths[<span class="number">1</span>];
+    <span class="kw">let </span>third_width = widths[<span class="number">2</span>];
+    <span class="kw">let </span>fourth_width = widths[<span class="number">3</span>];
+    <span class="kw">let </span>fifth_width = widths[<span class="number">4</span>];
+
+    <span class="macro">println!</span>(
+        <span class="string">"{:^first_width$} | {:^second_width$} | {:^third_width$} | {:^fourth_width$} | \
+         {:^fifth_width$}"</span>,
+        <span class="string">"ID"</span>, <span class="string">"App"</span>, <span class="string">"Name"</span>, <span class="string">"Status"</span>, <span class="string">"Applied time"
+    </span>);
+
+    <span class="macro">println!</span>(<span class="string">"{:^full_width$}"</span>, <span class="string">"-"</span>.repeat(full_width));
+    <span class="kw">for </span>migration <span class="kw">in </span>migration_plan {
+        <span class="kw">let </span><span class="kw-2">mut </span>id = String::from(<span class="string">"N/A"</span>);
+        <span class="kw">let </span><span class="kw-2">mut </span>status = <span class="string">"\u{2717}"</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>applied_time = String::from(<span class="string">"N/A"</span>);
+
+        <span class="kw">let </span>find_applied_migrations = applied_migrations
+            .iter()
+            .find(|<span class="kw-2">&amp;</span>applied_migration| applied_migration == migration);
+
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(sqlx_migration) = find_applied_migrations {
+            id = sqlx_migration.id().to_string();
+            status = <span class="string">"\u{2713}"</span>;
+            applied_time = sqlx_migration.applied_time().to_string();
+        } <span class="kw">else if </span>!apply_plan
+            .iter()
+            .any(|<span class="kw-2">&amp;</span>plan_migration| plan_migration == migration)
+        {
+            status = <span class="string">"\u{2194}"</span>;
+        }
 
         <span class="macro">println!</span>(
             <span class="string">"{:^first_width$} | {:^second_width$} | {:^third_width$} | {:^fourth_width$} | \
              {:^fifth_width$}"</span>,
-            <span class="string">"ID"</span>, <span class="string">"App"</span>, <span class="string">"Name"</span>, <span class="string">"Status"</span>, <span class="string">"Applied time"
-        </span>);
-
-        <span class="macro">println!</span>(<span class="string">"{:^full_width$}"</span>, <span class="string">"-"</span>.repeat(full_width));
-        <span class="kw">for </span>migration <span class="kw">in </span>migration_plan {
-            <span class="kw">let </span><span class="kw-2">mut </span>id = String::from(<span class="string">"N/A"</span>);
-            <span class="kw">let </span><span class="kw-2">mut </span>status = <span class="string">"\u{2717}"</span>;
-            <span class="kw">let </span><span class="kw-2">mut </span>applied_time = String::from(<span class="string">"N/A"</span>);
-
-            <span class="kw">let </span>find_applied_migrations = applied_migrations
-                .iter()
-                .find(|<span class="kw-2">&amp;</span>applied_migration| applied_migration == migration);
-
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(sqlx_migration) = find_applied_migrations {
-                id = sqlx_migration.id().to_string();
-                status = <span class="string">"\u{2713}"</span>;
-                applied_time = sqlx_migration.applied_time().to_string();
-            } <span class="kw">else if </span>!apply_plan
-                .iter()
-                .any(|<span class="kw-2">&amp;</span>plan_migration| plan_migration == migration)
-            {
-                status = <span class="string">"\u{2194}"</span>;
-            }
-
-            <span class="macro">println!</span>(
-                <span class="string">"{:^first_width$} | {:^second_width$} | {:^third_width$} | {:^fourth_width$} | \
-                 {:^fifth_width$}"</span>,
-                id,
-                migration.app(),
-                migration.name(),
-                status,
-                applied_time
-            );
-        }
+            id,
+            migration.app(),
+            migration.name(),
+            status,
+            applied_time
+        );
     }
     <span class="prelude-val">Ok</span>(())
 }

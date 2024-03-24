@@ -67,6 +67,16 @@
 <a href="#65" id="65">65</a>
 <a href="#66" id="66">66</a>
 <a href="#67" id="67">67</a>
+<a href="#68" id="68">68</a>
+<a href="#69" id="69">69</a>
+<a href="#70" id="70">70</a>
+<a href="#71" id="71">71</a>
+<a href="#72" id="72">72</a>
+<a href="#73" id="73">73</a>
+<a href="#74" id="74">74</a>
+<a href="#75" id="75">75</a>
+<a href="#76" id="76">76</a>
+<a href="#77" id="77">77</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Module for library error
 
 /// Error enum to store different types of error
@@ -76,10 +86,20 @@
     <span class="doccomment">/// Error type created from error raised by sqlx
     </span><span class="attr">#[error(transparent)]
     </span>Sqlx(<span class="attr">#[from] </span>sqlx::Error),
-    <span class="attr">#[cfg(feature = <span class="string">"cli"</span>)]
-    </span><span class="doccomment">/// Error type created from error raised by std input output
-    </span><span class="attr">#[error(transparent)]
+    <span class="doccomment">/// Error type created from error raised by std input output
+    </span><span class="attr">#[cfg(feature = <span class="string">"cli"</span>)]
+    #[error(transparent)]
     </span>StdIo(<span class="attr">#[from] </span>std::io::Error),
+    <span class="doccomment">/// Error generated when migration is missing
+    </span><span class="attr">#[error(<span class="string">"referenced migration missing on migration"</span>)]
+    </span>MigrationMissing,
+    <span class="doccomment">/// Error generated when no migration are added
+    </span><span class="attr">#[error(<span class="string">"no migration are added to migration list"</span>)]
+    </span>NoMigrationAdded,
+    <span class="doccomment">/// Error generated if virtual migration is present while running generate
+    /// migration plan
+    </span><span class="attr">#[error(<span class="string">"virtual migrations which is not replaced is present in migration plan"</span>)]
+    </span>VirtualMigrationPresent,
     <span class="doccomment">/// Error for failed to create migrations plan
     </span><span class="attr">#[error(<span class="string">"failed to create migrations plan"</span>)]
     </span>FailedToCreateMigrationPlan,
@@ -97,9 +117,9 @@
     <span class="doccomment">/// Error for irreversible operation
     </span><span class="attr">#[error(<span class="string">"operation is irreversible"</span>)]
     </span>IrreversibleOperation,
-    <span class="attr">#[cfg(feature = <span class="string">"cli"</span>)]
-    </span><span class="doccomment">/// Error for pending migration present
-    </span><span class="attr">#[error(<span class="string">"pending migration present"</span>)]
+    <span class="doccomment">/// Error for pending migration present
+    </span><span class="attr">#[cfg(feature = <span class="string">"cli"</span>)]
+    #[error(<span class="string">"pending migration present"</span>)]
     </span>PendingMigrationPresent,
     <span class="doccomment">/// Error when provided app name doesn't exists
     </span><span class="attr">#[error(<span class="string">"provided app {app} doesn't exists"</span>)]
@@ -115,9 +135,9 @@
         <span class="doccomment">/// Name of migration
         </span>migration: String,
     },
-    <span class="attr">#[cfg(feature = <span class="string">"cli"</span>)]
-    </span><span class="doccomment">/// Error when applied migrations exists
-    </span><span class="attr">#[error(<span class="string">"applied migrations exists. Revert all using revert subcommand"</span>)]
+    <span class="doccomment">/// Error when applied migrations exists
+    </span><span class="attr">#[cfg(feature = <span class="string">"cli"</span>)]
+    #[error(<span class="string">"applied migrations exists. Revert all using revert subcommand"</span>)]
     </span>AppliedMigrationExists,
     <span class="doccomment">/// Error when count of migrations is big than total number of migration
     </span><span class="attr">#[error(<span class="string">"count of migrations is big only {actual_len} present passed {count}"</span>)]
