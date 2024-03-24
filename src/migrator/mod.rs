@@ -262,26 +262,19 @@ pub trait Info<DB, State> {
 
     /// Add single migration to migrator object
     fn add_migration(&mut self, migration: BoxMigration<DB, State>) {
-        let migration_parents = migration.parents();
-        let migration_replaces = migration.replaces();
-        let migration_run_before = migration.run_before();
-
         // check if migration is already added or not we want to use vec here even if
         // hash set can be used but hash set do not have consistent order which may
         // bring issue such as plan may be different between between dry run and
         // actually running migration
+        if let Some(migration_index) = self
+            .migrations()
+            .iter()
+            .position(|elem| elem == &migration && elem.is_virtual() && !migration.is_virtual())
+        {
+            self.migrations_mut().swap_remove(migration_index);
+        }
         if !self.migrations().contains(&migration) {
             self.migrations_mut().push(migration);
-
-            for parent in migration_parents {
-                self.add_migration(parent);
-            }
-            for replace in migration_replaces {
-                self.add_migration(replace);
-            }
-            for run_before in migration_run_before {
-                self.add_migration(run_before);
-            }
         }
     }
 }
@@ -547,9 +540,34 @@ where
         plan: Option<&Plan>,
         connection: &mut <DB as sqlx::Database>::Connection,
     ) -> MigrationVecResult<DB, State> {
-        tracing::debug!("fetching applied migrations");
+        if self.migrations().is_empty() {
+            return Err(Error::NoMigrationAdded);
+        }
+        if self
+            .migrations()
+            .iter()
+            .any(|migration| migration.is_virtual())
+        {
+            return Err(Error::VirtualMigrationPresent);
+        }
 
-        self.ensure_migration_table_exists(connection).await?;
+        for migration in self.migrations() {
+            for parent in migration.parents() {
+                if !self.migrations().contains(&parent) {
+                    return Err(Error::MigrationMissing);
+                }
+            }
+            for replace in migration.replaces() {
+                if !self.migrations().contains(&replace) {
+                    return Err(Error::MigrationMissing);
+                }
+            }
+            for run_before in migration.run_before() {
+                if !self.migrations().contains(&run_before) {
+                    return Err(Error::MigrationMissing);
+                }
+            }
+        }
 
         tracing::debug!("generating {:?} migration plan", plan);
 
@@ -651,6 +669,8 @@ where
         // migrations are also handled for removing conflicting migrations where certain
         // migrations replaces certain other migrations
         if let Some(some_plan) = plan {
+            self.ensure_migration_table_exists(connection).await?;
+
             let applied_migration_sql_rows =
                 self.fetch_applied_migration_from_db(connection).await?;
 
