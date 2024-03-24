@@ -94,14 +94,18 @@ impl Migration<sqlx::Postgres> for FirstMigration {
     }
 
     // name of migration
-    // Combination of migration app and name must be unique to work properly
+    // Combination of migration app and name must be unique to work properly expects for virtual migration
     fn name(&self) -> &str {
         "first_migration"
     }
 
-    // use parents function to add parents of a migrations.
+    // Use the parent function to add parents of a migration.
+    // If you cannot access the parent migration, you can also use
+    // `(A,N) where A: AsRef<str>, N: AsRef<str>` where A is the app name
+    // and N is the name of the migration.
     fn parents(&self) -> Vec<Box<dyn Migration<sqlx::Postgres>>> {
         vec![]
+        // vec![("main", "initial_migration"), AnotherInitialMigration]
     }
 
     // use operations function to add operation part of migration

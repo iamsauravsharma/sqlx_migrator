@@ -86,6 +86,14 @@ pub trait Migration<DB, State = ()>: Send + Sync {
     fn is_atomic(&self) -> bool {
         true
     }
+
+    /// Whether migration is virtual or not. By default migration are not
+    /// virtual. If migration is virtual than it expects another migration with
+    /// same name present inside migration list. Virtual migration parents,
+    /// replaces and run before are ignored and not added altogether
+    fn is_virtual(&self) -> bool {
+        false
+    }
 }
 
 impl<DB, State> PartialEq for dyn Migration<DB, State> {
@@ -100,6 +108,32 @@ impl<DB, State> Hash for dyn Migration<DB, State> {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.app().hash(state);
         self.name().hash(state);
+    }
+}
+
+impl<DB, A, N> Migration<DB> for (A, N)
+where
+    A: AsRef<str> + Send + Sync,
+    N: AsRef<str> + Send + Sync,
+{
+    fn app(&self) -> &str {
+        self.0.as_ref()
+    }
+
+    fn name(&self) -> &str {
+        self.1.as_ref()
+    }
+
+    fn parents(&self) -> Vec<Box<dyn Migration<DB, ()>>> {
+        vec![]
+    }
+
+    fn operations(&self) -> Vec<Box<dyn Operation<DB, ()>>> {
+        vec![]
+    }
+
+    fn is_virtual(&self) -> bool {
+        true
     }
 }
 

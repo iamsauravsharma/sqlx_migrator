@@ -142,58 +142,56 @@ where
 {
     let migration_plan = migrator.generate_migration_plan(None, connection).await?;
 
-    if !migration_plan.is_empty() {
-        let applied_migrations = migrator.fetch_applied_migration_from_db(connection).await?;
-        let apply_plan = migrator
-            .generate_migration_plan(Some(&Plan::apply_all()), connection)
-            .await?;
+    let apply_plan = migrator
+        .generate_migration_plan(Some(&Plan::apply_all()), connection)
+        .await?;
+    let applied_migrations = migrator.fetch_applied_migration_from_db(connection).await?;
 
-        let widths = [5, 10, 50, 10, 40];
-        let full_width = widths.iter().sum::<usize>() + widths.len() * 3;
+    let widths = [5, 10, 50, 10, 40];
+    let full_width = widths.iter().sum::<usize>() + widths.len() * 3;
 
-        let first_width = widths[0];
-        let second_width = widths[1];
-        let third_width = widths[2];
-        let fourth_width = widths[3];
-        let fifth_width = widths[4];
+    let first_width = widths[0];
+    let second_width = widths[1];
+    let third_width = widths[2];
+    let fourth_width = widths[3];
+    let fifth_width = widths[4];
+
+    println!(
+        "{:^first_width$} | {:^second_width$} | {:^third_width$} | {:^fourth_width$} | \
+         {:^fifth_width$}",
+        "ID", "App", "Name", "Status", "Applied time"
+    );
+
+    println!("{:^full_width$}", "-".repeat(full_width));
+    for migration in migration_plan {
+        let mut id = String::from("N/A");
+        let mut status = "\u{2717}";
+        let mut applied_time = String::from("N/A");
+
+        let find_applied_migrations = applied_migrations
+            .iter()
+            .find(|&applied_migration| applied_migration == migration);
+
+        if let Some(sqlx_migration) = find_applied_migrations {
+            id = sqlx_migration.id().to_string();
+            status = "\u{2713}";
+            applied_time = sqlx_migration.applied_time().to_string();
+        } else if !apply_plan
+            .iter()
+            .any(|&plan_migration| plan_migration == migration)
+        {
+            status = "\u{2194}";
+        }
 
         println!(
             "{:^first_width$} | {:^second_width$} | {:^third_width$} | {:^fourth_width$} | \
              {:^fifth_width$}",
-            "ID", "App", "Name", "Status", "Applied time"
+            id,
+            migration.app(),
+            migration.name(),
+            status,
+            applied_time
         );
-
-        println!("{:^full_width$}", "-".repeat(full_width));
-        for migration in migration_plan {
-            let mut id = String::from("N/A");
-            let mut status = "\u{2717}";
-            let mut applied_time = String::from("N/A");
-
-            let find_applied_migrations = applied_migrations
-                .iter()
-                .find(|&applied_migration| applied_migration == migration);
-
-            if let Some(sqlx_migration) = find_applied_migrations {
-                id = sqlx_migration.id().to_string();
-                status = "\u{2713}";
-                applied_time = sqlx_migration.applied_time().to_string();
-            } else if !apply_plan
-                .iter()
-                .any(|&plan_migration| plan_migration == migration)
-            {
-                status = "\u{2194}";
-            }
-
-            println!(
-                "{:^first_width$} | {:^second_width$} | {:^third_width$} | {:^fourth_width$} | \
-                 {:^fifth_width$}",
-                id,
-                migration.app(),
-                migration.name(),
-                status,
-                applied_time
-            );
-        }
     }
     Ok(())
 }
