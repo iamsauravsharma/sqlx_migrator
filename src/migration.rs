@@ -64,7 +64,8 @@ pub trait Migration<DB, State = ()>: Send + Sync {
     /// migration)
     fn parents(&self) -> Vec<Box<dyn Migration<DB, State>>>;
 
-    /// Operation performed for migration (create, drop, etc.)
+    /// Operation performed for migration (create, drop, etc.). Migration can
+    /// contains multiple operation within each other which are interrelated
     fn operations(&self) -> Vec<Box<dyn Operation<DB, State>>>;
 
     /// Replace certain migrations. If any one of listed migration is applied
@@ -82,7 +83,10 @@ pub trait Migration<DB, State = ()>: Send + Sync {
     }
 
     /// Whether migration is atomic or not. By default it is atomic so this
-    /// function returns `true`
+    /// function returns `true`. If you make migration non atomic all its
+    /// operation will be non atomic if any operation needs to be atomic it is
+    /// recommended to split migration so one migration will have atomic
+    /// operation where as another have non atomic operation
     fn is_atomic(&self) -> bool {
         true
     }
@@ -91,7 +95,7 @@ pub trait Migration<DB, State = ()>: Send + Sync {
     /// virtual. If migration is virtual than it expects another migration with
     /// same app and name present inside migration list which is not virtual.
     /// For virtual migration all other methods gets ignored since it is
-    /// reference for actual migration
+    /// reference to actual migration instead of actual migration
     fn is_virtual(&self) -> bool {
         false
     }
