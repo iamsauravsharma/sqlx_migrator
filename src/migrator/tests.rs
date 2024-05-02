@@ -62,16 +62,16 @@ impl DatabaseOperation<Sqlite, ()> for CustomMigrator {
 
     async fn add_migration_to_db_table(
         &self,
-        _migration: &Box<dyn Migration<Sqlite>>,
         _connection: &mut <Sqlite as sqlx::Database>::Connection,
+        _migration: &Box<dyn Migration<Sqlite>>,
     ) -> Result<(), Error> {
         Ok(())
     }
 
     async fn delete_migration_from_db_table(
         &self,
-        _migration: &Box<dyn Migration<Sqlite>>,
         _connection: &mut <Sqlite as sqlx::Database>::Connection,
+        _migration: &Box<dyn Migration<Sqlite>>,
     ) -> Result<(), Error> {
         Ok(())
     }
@@ -139,7 +139,7 @@ async fn generate_apply_all_plan(
     let sqlite = SqlitePool::connect("sqlite::memory:").await.unwrap();
     let mut conn = sqlite.acquire().await.unwrap();
     migrator
-        .generate_migration_plan(Some(&Plan::apply_all()), &mut conn)
+        .generate_migration_plan(&mut conn, Some(&Plan::apply_all()))
         .await
 }
 
@@ -508,22 +508,22 @@ async fn apply_plan_size_test() {
     let sqlite = SqlitePool::connect("sqlite::memory:").await.unwrap();
     let mut conn = sqlite.acquire().await.unwrap();
     let full_plan = migrator
-        .generate_migration_plan(Some(&Plan::apply_all()), &mut conn)
+        .generate_migration_plan(&mut conn, Some(&Plan::apply_all()))
         .await
         .unwrap();
     assert!(full_plan.len() == 7);
     let plan_till_f = migrator
         .generate_migration_plan(
-            Some(&Plan::apply_name("test", &Some("f".to_string()))),
             &mut conn,
+            Some(&Plan::apply_name("test", &Some("f".to_string()))),
         )
         .await
         .unwrap();
     assert!(plan_till_f.len() == 4);
     let plan_till_g = migrator
         .generate_migration_plan(
-            Some(&Plan::apply_name("test", &Some("g".to_string()))),
             &mut conn,
+            Some(&Plan::apply_name("test", &Some("g".to_string()))),
         )
         .await
         .unwrap();
@@ -552,30 +552,30 @@ async fn revert_plan_size_test() {
     let sqlite = SqlitePool::connect("sqlite::memory:").await.unwrap();
     let mut conn = sqlite.acquire().await.unwrap();
     let apply_plan = migrator
-        .generate_migration_plan(Some(&Plan::apply_all()), &mut conn)
+        .generate_migration_plan(&mut conn, Some(&Plan::apply_all()))
         .await
         .unwrap();
     assert!(apply_plan.is_empty());
     let plan_till_f = migrator
         .generate_migration_plan(
-            Some(&Plan::revert_name("test", &Some("f".to_string()))),
             &mut conn,
+            Some(&Plan::revert_name("test", &Some("f".to_string()))),
         )
         .await
         .unwrap();
     assert!(plan_till_f.len() == 1);
     let plan_till_c = migrator
         .generate_migration_plan(
-            Some(&Plan::revert_name("test", &Some("c".to_string()))),
             &mut conn,
+            Some(&Plan::revert_name("test", &Some("c".to_string()))),
         )
         .await
         .unwrap();
     assert!(plan_till_c.len() == 3);
     let plan_till_b = migrator
         .generate_migration_plan(
-            Some(&Plan::revert_name("test", &Some("b".to_string()))),
             &mut conn,
+            Some(&Plan::revert_name("test", &Some("b".to_string()))),
         )
         .await
         .unwrap();

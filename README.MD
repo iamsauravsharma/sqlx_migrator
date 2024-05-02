@@ -174,9 +174,9 @@ For direct run
 use sqlx_migrator::migrator::Plan;
 let mut conn = pool.acquire().await?;
 // use apply all to apply all pending migration
-migrator.run(&mut conn, Plan::apply_all()).await.unwrap();
+migrator.run(&mut *conn, Plan::apply_all()).await.unwrap();
 // or use revert all to revert all applied migrations
-migrator.run(&mut conn, Plan::revert_all()).await.unwrap();
+migrator.run(&mut *conn, Plan::revert_all()).await.unwrap();
 ```
 
 Or you can create cli using
@@ -184,7 +184,7 @@ Or you can create cli using
 ```rust
 use sqlx_migrator::cli::MigrationCommand;
 
-MigrationCommand::parse_and_run(Box::new(migrator), &mut conn).await.unwrap();
+MigrationCommand::parse_and_run(&mut *conn, Box::new(migrator)).await.unwrap();
 ```
 
 If you want to extend your own clap based cli then you can add migrator to sub command enum and then run migrator
@@ -204,9 +204,10 @@ enum CliSubcommand {
 impl Cli {
     async fn run() {
         let cli = Self::parse();
+        // create connection
         match cli.sub_command {
             Migrator(m) => {
-                m.run(Box::new(migrator), &mut conn).await.unwrap()
+                m.run(&mut conn, Box::new(migrator)).await.unwrap()
             }
         }
     }
@@ -227,7 +228,7 @@ Then you can create cli for migrator
 
 ```rust
 use sqlx_migrator::cli::MigrationCommand;
-MigrationCommand::parse_and_run(Box::new(migrator), &mut conn).await.unwrap();
+MigrationCommand::parse_and_run(&mut conn, Box::new(migrator)).await.unwrap();
 ```
 
 and run fake apply cli command

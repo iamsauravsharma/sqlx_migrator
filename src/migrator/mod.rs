@@ -69,8 +69,8 @@ impl DatabaseOperation<Postgres, ()> for CustomMigrator {
 
     async fn add_migration_to_db_table(
         &self,
-        migration: &Box<dyn Migration<Postgres>>,
         connection: &mut <Postgres as sqlx::Database>::Connection,
+        migration: &Box<dyn Migration<Postgres>>,
     ) -> Result<(), Error> {
         sqlx::query("INSERT INTO _custom_table_name(app, name) VALUES ($1, $2)")
             .bind(migration.app())
@@ -82,8 +82,8 @@ impl DatabaseOperation<Postgres, ()> for CustomMigrator {
 
     async fn delete_migration_from_db_table(
         &self,
-        migration: &Box<dyn Migration<Postgres>>,
         connection: &mut <Postgres as sqlx::Database>::Connection,
+        migration: &Box<dyn Migration<Postgres>>,
     ) -> Result<(), Error> {
         sqlx::query("DELETE FROM _custom_table_name WHERE app = $1 AND name = $2")
             .bind(migration.app())
@@ -326,16 +326,16 @@ where
     #[allow(clippy::borrowed_box)]
     async fn add_migration_to_db_table(
         &self,
-        migration: &BoxMigration<DB, State>,
         connection: &mut <DB as sqlx::Database>::Connection,
+        migration: &BoxMigration<DB, State>,
     ) -> Result<(), Error>;
 
     /// Delete migration from migration db table
     #[allow(clippy::borrowed_box)]
     async fn delete_migration_from_db_table(
         &self,
-        migration: &BoxMigration<DB, State>,
         connection: &mut <DB as sqlx::Database>::Connection,
+        migration: &BoxMigration<DB, State>,
     ) -> Result<(), Error>;
 
     /// List all applied migrations from database as struct
@@ -559,8 +559,8 @@ where
     #[allow(clippy::too_many_lines)]
     async fn generate_migration_plan(
         &self,
-        plan: Option<&Plan>,
         connection: &mut <DB as sqlx::Database>::Connection,
+        plan: Option<&Plan>,
     ) -> MigrationVecResult<DB, State> {
         if self.migrations().is_empty() {
             return Err(Error::NoMigrationAdded);
@@ -760,7 +760,7 @@ where
     ) -> Result<(), Error> {
         tracing::debug!("running plan {:?}", plan);
         self.lock(connection).await?;
-        for migration in self.generate_migration_plan(Some(plan), connection).await? {
+        for migration in self.generate_migration_plan(connection, Some(plan)).await? {
             match plan.plan_type {
                 PlanType::Apply => {
                     tracing::debug!("applying {} : {}", migration.app(), migration.name());
@@ -769,14 +769,14 @@ where
                         for operation in migration.operations() {
                             operation.up(&mut transaction, self.state()).await?;
                         }
-                        self.add_migration_to_db_table(migration, &mut transaction)
+                        self.add_migration_to_db_table(&mut transaction, migration)
                             .await?;
                         transaction.commit().await?;
                     } else {
                         for operation in migration.operations() {
                             operation.up(connection, self.state()).await?;
                         }
-                        self.add_migration_to_db_table(migration, connection)
+                        self.add_migration_to_db_table(connection, migration)
                             .await?;
                     }
                 }
@@ -792,14 +792,14 @@ where
                         for operation in operations {
                             operation.down(&mut transaction, self.state()).await?;
                         }
-                        self.delete_migration_from_db_table(migration, &mut transaction)
+                        self.delete_migration_from_db_table(&mut transaction, migration)
                             .await?;
                         transaction.commit().await?;
                     } else {
                         for operation in operations {
                             operation.down(connection, self.state()).await?;
                         }
-                        self.delete_migration_from_db_table(migration, connection)
+                        self.delete_migration_from_db_table(connection, migration)
                             .await?;
                     }
                 }

@@ -12,13 +12,13 @@ async fn main() {
     migrator.add_migrations(migrations::migrations());
     // There are two way to run migration. Either you can create cli as shown below
     let mut conn = pool.acquire().await.unwrap();
-    MigrationCommand::parse_and_run(Box::new(migrator), &mut conn)
+    MigrationCommand::parse_and_run(&mut *conn, Box::new(migrator))
         .await
         .unwrap();
     // Or you can directly use migrator run function instead of creating
     // cli
     // migrator
-    //     .run(&mut conn, sqlx_migrator::migrator::Plan::apply_all())
+    //     .run(&mut *conn, sqlx_migrator::migrator::Plan::apply_all())
     //     .await
     //     .unwrap();
     conn.close().await.unwrap();
