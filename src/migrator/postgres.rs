@@ -89,8 +89,8 @@ where
 
     async fn add_migration_to_db_table(
         &self,
-        migration: &Box<dyn Migration<Postgres, State>>,
         connection: &mut <Postgres as sqlx::Database>::Connection,
+        migration: &Box<dyn Migration<Postgres, State>>,
     ) -> Result<(), Error> {
         sqlx::query(&add_migration_query(self.table_name()))
             .bind(migration.app())
@@ -102,8 +102,8 @@ where
 
     async fn delete_migration_from_db_table(
         &self,
-        migration: &Box<dyn Migration<Postgres, State>>,
         connection: &mut <Postgres as sqlx::Database>::Connection,
+        migration: &Box<dyn Migration<Postgres, State>>,
     ) -> Result<(), Error> {
         sqlx::query(&delete_migration_query(self.table_name()))
             .bind(migration.app())

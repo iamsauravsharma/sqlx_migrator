@@ -87,8 +87,8 @@ where
 
     async fn add_migration_to_db_table(
         &self,
-        migration: &Box<dyn Migration<Any, State>>,
         connection: &mut <Any as sqlx::Database>::Connection,
+        migration: &Box<dyn Migration<Any, State>>,
     ) -> Result<(), Error> {
         let sql_query = match connection.backend_name() {
             #[cfg(feature = "postgres")]
@@ -109,8 +109,8 @@ where
 
     async fn delete_migration_from_db_table(
         &self,
-        migration: &Box<dyn Migration<Any, State>>,
         connection: &mut <Any as sqlx::Database>::Connection,
+        migration: &Box<dyn Migration<Any, State>>,
     ) -> Result<(), Error> {
         let sql_query = match connection.backend_name() {
             #[cfg(feature = "postgres")]

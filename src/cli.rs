@@ -42,15 +42,15 @@ impl MigrationCommand {
     /// # Errors
     /// If migration command fails to complete and raise some issue
     pub async fn parse_and_run<DB, State>(
-        migrator: Box<dyn Migrate<DB, State>>,
         connection: &mut <DB as sqlx::Database>::Connection,
+        migrator: Box<dyn Migrate<DB, State>>,
     ) -> Result<(), Error>
     where
         DB: sqlx::Database,
         State: Send + Sync,
     {
         let migration_command = Self::parse();
-        migration_command.run(migrator, connection).await
+        migration_command.run(connection, migrator).await
     }
 
     /// Run migration command line interface
@@ -59,8 +59,8 @@ impl MigrationCommand {
     /// If migration command fails to complete and raise some issue
     pub async fn run<DB, State>(
         &self,
-        migrator: Box<dyn Migrate<DB, State>>,
         connection: &mut <DB as sqlx::Database>::Connection,
+        migrator: Box<dyn Migrate<DB, State>>,
     ) -> Result<(), Error>
     where
         DB: sqlx::Database,
@@ -102,18 +102,18 @@ impl SubCommand {
         State: Send + Sync,
     {
         match self {
-            SubCommand::Apply(apply) => apply.run(migrator, connection).await?,
-            SubCommand::Drop => drop_migrations(migrator, connection).await?,
-            SubCommand::List => list_migrations(migrator, connection).await?,
-            SubCommand::Revert(revert) => revert.run(migrator, connection).await?,
+            SubCommand::Apply(apply) => apply.run(connection, migrator).await?,
+            SubCommand::Drop => drop_migrations(connection, migrator).await?,
+            SubCommand::List => list_migrations(connection, migrator).await?,
+            SubCommand::Revert(revert) => revert.run(connection, migrator).await?,
         }
         Ok(())
     }
 }
 
 async fn drop_migrations<DB, State>(
-    migrator: Box<dyn Migrate<DB, State>>,
     connection: &mut <DB as sqlx::Database>::Connection,
+    migrator: Box<dyn Migrate<DB, State>>,
 ) -> Result<(), Error>
 where
     DB: sqlx::Database,
@@ -133,17 +133,17 @@ where
 }
 
 async fn list_migrations<DB, State>(
-    migrator: Box<dyn Migrate<DB, State>>,
     connection: &mut <DB as sqlx::Database>::Connection,
+    migrator: Box<dyn Migrate<DB, State>>,
 ) -> Result<(), Error>
 where
     DB: sqlx::Database,
     State: Send + Sync,
 {
-    let migration_plan = migrator.generate_migration_plan(None, connection).await?;
+    let migration_plan = migrator.generate_migration_plan(connection, None).await?;
 
     let apply_plan = migrator
-        .generate_migration_plan(Some(&Plan::apply_all()), connection)
+        .generate_migration_plan(connection, Some(&Plan::apply_all()))
         .await?;
     let applied_migrations = migrator.fetch_applied_migration_from_db(connection).await?;
 
@@ -227,8 +227,8 @@ struct Apply {
 impl Apply {
     async fn run<DB, State>(
         &self,
-        migrator: Box<dyn Migrate<DB, State>>,
         connection: &mut <DB as sqlx::Database>::Connection,
+        migrator: Box<dyn Migrate<DB, State>>,
     ) -> Result<(), Error>
     where
         DB: sqlx::Database,
@@ -243,7 +243,7 @@ impl Apply {
             plan = Plan::apply_all();
         };
         let migrations = migrator
-            .generate_migration_plan(Some(&plan), connection)
+            .generate_migration_plan(connection, Some(&plan))
             .await?;
         if self.check && !migrations.is_empty() {
             return Err(Error::PendingMigrationPresent);
@@ -268,7 +268,7 @@ impl Apply {
         } else if self.fake {
             for migration in migrations {
                 migrator
-                    .add_migration_to_db_table(migration, connection)
+                    .add_migration_to_db_table(connection, migration)
                     .await?;
             }
         } else {
@@ -330,8 +330,8 @@ struct Revert {
 impl Revert {
     async fn run<DB, State>(
         &self,
-        migrator: Box<dyn Migrate<DB, State>>,
         connection: &mut <DB as sqlx::Database>::Connection,
+        migrator: Box<dyn Migrate<DB, State>>,
     ) -> Result<(), Error>
     where
         DB: sqlx::Database,
@@ -348,7 +348,7 @@ impl Revert {
             plan = Plan::revert_count(1);
         };
         let revert_migrations = migrator
-            .generate_migration_plan(Some(&plan), connection)
+            .generate_migration_plan(connection, Some(&plan))
             .await?;
 
         if self.plan {
@@ -371,7 +371,7 @@ impl Revert {
         } else if self.fake {
             for migration in revert_migrations {
                 migrator
-                    .delete_migration_from_db_table(migration, connection)
+                    .delete_migration_from_db_table(connection, migration)
                     .await?;
             }
         } else {

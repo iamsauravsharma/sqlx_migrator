@@ -68,8 +68,8 @@ where
 
     async fn add_migration_to_db_table(
         &self,
-        migration: &Box<dyn Migration<Sqlite, State>>,
         connection: &mut <Sqlite as sqlx::Database>::Connection,
+        migration: &Box<dyn Migration<Sqlite, State>>,
     ) -> Result<(), Error> {
         sqlx::query(&add_migration_query(self.table_name()))
             .bind(migration.app())
@@ -81,8 +81,8 @@ where
 
     async fn delete_migration_from_db_table(
         &self,
-        migration: &Box<dyn Migration<Sqlite, State>>,
         connection: &mut <Sqlite as sqlx::Database>::Connection,
+        migration: &Box<dyn Migration<Sqlite, State>>,
     ) -> Result<(), Error> {
         sqlx::query(&delete_migration_query(self.table_name()))
             .bind(migration.app())
