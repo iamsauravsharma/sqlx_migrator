@@ -1,8 +1,7 @@
-use sqlx::PgConnection;
+use sqlx::{PgConnection, Postgres};
 use sqlx_migrator::error::Error;
 use sqlx_migrator::migration::Migration;
 use sqlx_migrator::operation::Operation;
-use sqlx_migrator::sqlx::Postgres;
 
 pub(crate) struct M0002Operation;
 

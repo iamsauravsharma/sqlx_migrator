@@ -8,7 +8,7 @@ To create own operation implement trait for type
 ```rust,no_run
 use sqlx_migrator::error::Error;
 use sqlx_migrator::operation::Operation;
-use sqlx_migrator::sqlx::Sqlite;
+use sqlx::Sqlite;
 
 struct ExampleOperation;
 

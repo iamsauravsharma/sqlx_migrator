@@ -60,14 +60,7 @@ macro_rules! migration {
 ))]
 macro_rules! any_migration {
     ($state:ty, $op:ty, $app_name:expr, $parents:expr, $operations:expr) => {
-        sqlx_migrator::migration!(
-            sqlx_migrator::sqlx::Any,
-            $state,
-            $op,
-            $app_name,
-            $parents,
-            $operations
-        );
+        sqlx_migrator::migration!(sqlx::Any, $state, $op, $app_name, $parents, $operations);
     };
     ($op:ty, $app_name:expr, $parents:expr, $operations:expr) => {
         sqlx_migrator::any_migration!((), $op, $app_name, $parents, $operations);
@@ -82,14 +75,7 @@ macro_rules! any_migration {
 #[cfg(feature = "mysql")]
 macro_rules! mysql_migration {
     ($state:ty, $op:ty, $app_name:expr, $parents:expr, $operations:expr) => {
-        sqlx_migrator::migration!(
-            sqlx_migrator::sqlx::MySql,
-            $state,
-            $op,
-            $app_name,
-            $parents,
-            $operations
-        );
+        sqlx_migrator::migration!(sqlx::MySql, $state, $op, $app_name, $parents, $operations);
     };
     ($op:ty, $app_name:expr, $parents:expr, $operations:expr) => {
         sqlx_migrator::mysql_migration!((), $op, $app_name, $parents, $operations);
@@ -105,7 +91,7 @@ macro_rules! mysql_migration {
 macro_rules! postgres_migration {
     ($state:ty, $op:ty, $app_name:expr, $parents:expr, $operations:expr) => {
         sqlx_migrator::migration!(
-            sqlx_migrator::sqlx::Postgres,
+            sqlx::Postgres,
             $state,
             $op,
             $app_name,
@@ -126,14 +112,7 @@ macro_rules! postgres_migration {
 #[cfg(feature = "sqlite")]
 macro_rules! sqlite_migration {
     ($state:ty, $op:ty, $app_name:expr, $parents:expr, $operations:expr) => {
-        sqlx_migrator::migration!(
-            sqlx_migrator::sqlx::Sqlite,
-            $state,
-            $op,
-            $app_name,
-            $parents,
-            $operations
-        );
+        sqlx_migrator::migration!(sqlx::Sqlite, $state, $op, $app_name, $parents, $operations);
     };
     ($op:ty, $app_name:expr, $parents:expr, $operations:expr) => {
         sqlx_migrator::sqlite_migration!((), $op, $app_name, $parents, $operations);

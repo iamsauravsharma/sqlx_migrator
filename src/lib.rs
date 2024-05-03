@@ -12,5 +12,3 @@ mod macros;
 pub mod migration;
 pub mod migrator;
 pub mod operation;
-
-pub use sqlx;

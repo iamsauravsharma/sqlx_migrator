@@ -49,8 +49,6 @@ To use sqlx_migrator first you need to implement Operation trait to write your s
 ```rust
 use sqlx_migrator::error::Error;
 use sqlx_migrator::operation::Operation;
-// Its better to use sqlx imported from sqlx_migrator
-use sqlx_migrator::sqlx;
 
 pub(crate) struct FirstOperation;
 
@@ -83,7 +81,6 @@ After creation of operation you can implement Migration struct to create single 
 use sqlx_migrator::error::Error;
 use sqlx_migrator::migration::Migration;
 use sqlx_migrator::operation::Operation;
-use sqlx_migrator::sqlx;
 
 pub(crate) struct FirstMigration;
 
@@ -156,7 +153,7 @@ Now at last you need to create migrator for your database to run migrations
 
 ```rust
 use sqlx_migrator::migrator::{Info, Migrate, Migrator};
-use sqlx_migrator::sqlx::Postgres;
+use sqlx::Postgres;
 
 #[tokio::main]
 async fn main() {
@@ -242,7 +239,6 @@ To run all sqlx sql based migration as single command create new operation
 ```rust
 use sqlx_migrator::error::Error;
 use sqlx_migrator::operation::Operation;
-use sqlx_migrator::sqlx;
 
 pub(crate) struct SqlxOperation;
 

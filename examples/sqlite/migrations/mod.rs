@@ -1,5 +1,5 @@
+use sqlx::Sqlite;
 use sqlx_migrator::migration::Migration;
-use sqlx_migrator::sqlx::Sqlite;
 use sqlx_migrator::vec_box;
 
 pub(crate) mod m0001_simple;

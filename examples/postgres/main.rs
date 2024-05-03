@@ -1,7 +1,7 @@
 //! Example crate for postgres
+use sqlx::Postgres;
 use sqlx_migrator::cli::MigrationCommand;
 use sqlx_migrator::migrator::{Info, Migrator};
-use sqlx_migrator::sqlx::Postgres;
 
 mod migrations;
 #[tokio::main]

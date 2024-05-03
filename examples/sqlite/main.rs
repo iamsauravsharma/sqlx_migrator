@@ -1,7 +1,7 @@
 //! Example crate for sqlite
+use sqlx::Sqlite;
 use sqlx_migrator::cli::MigrationCommand;
 use sqlx_migrator::migrator::{Info, Migrator};
-use sqlx_migrator::sqlx::Sqlite;
 
 mod migrations;
 #[tokio::main]

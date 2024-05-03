@@ -1,8 +1,7 @@
-use sqlx::SqliteConnection;
+use sqlx::{Sqlite, SqliteConnection};
 use sqlx_migrator::error::Error;
 use sqlx_migrator::migration::Migration;
 use sqlx_migrator::operation::Operation;
-use sqlx_migrator::sqlx::Sqlite;
 
 pub(crate) struct M0002Operation;
 
