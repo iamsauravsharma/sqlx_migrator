@@ -19,7 +19,7 @@ jobs:
       - name: Setup rust toolchain
         uses: dtolnay/rust-toolchain@nightly
       - name: Install cargo make
-        uses: davidB/rust-cargo-make@v1.10.0
+        uses: davidB/rust-cargo-make@v1
       - name: Create env file
         uses: iamsauravsharma/create-dotenv@v2.0.1
         with:
