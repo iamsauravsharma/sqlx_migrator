@@ -378,75 +378,59 @@ fn populate_recursive<'populate, DB, State>(
     Ok(())
 }
 
-fn get_parent_recursive<DB, State>(with: &BoxMigration<DB, State>) -> Vec<BoxMigration<DB, State>> {
-    let mut parents = with.parents();
-    for parent in with.parents() {
+fn get_parent_recursive<DB, State>(
+    migration: &BoxMigration<DB, State>,
+) -> Vec<BoxMigration<DB, State>> {
+    let mut parents = migration.parents();
+    for parent in migration.parents() {
         parents.extend(get_parent_recursive(&parent));
     }
     parents
 }
 
 fn get_run_before_recursive<DB, State>(
-    with: &BoxMigration<DB, State>,
+    migration: &BoxMigration<DB, State>,
 ) -> Vec<BoxMigration<DB, State>> {
-    let mut run_before_list = with.run_before();
-    for run_before in with.run_before() {
+    let mut run_before_list = migration.run_before();
+    for run_before in migration.run_before() {
         run_before_list.extend(get_run_before_recursive(&run_before));
     }
     run_before_list
 }
 
-fn is_apply_related<DB, State>(
-    with: &BoxMigration<DB, State>,
-    migration: &BoxMigration<DB, State>,
-) -> bool {
-    migration.replaces().iter().any(|migration_replace| {
-        migration_replace == with || is_apply_related(with, migration_replace)
-    }) || migration.run_before().iter().any(|migration_run_before| {
-        migration_run_before == with || is_apply_related(with, migration_run_before)
-    })
-}
-
-fn is_revert_related<DB, State>(
-    with: &BoxMigration<DB, State>,
-    migration: &BoxMigration<DB, State>,
-) -> bool {
-    let parents = get_parent_recursive(migration);
-    parents.contains(with)
-}
-
+// filter migration list to only contains migrations which is related to with
+// list migration, removes all migrations which is not related to them according
+// to provided plan
 fn only_related_migration<DB, State>(
     migration_list: &mut MigrationVec<DB, State>,
     with_list: Vec<&BoxMigration<DB, State>>,
     plan_type: &PlanType,
 ) {
     let mut related_migrations = vec![];
-    match plan_type {
-        PlanType::Apply => {
-            for with in with_list {
-                if !related_migrations.contains(&with) {
-                    related_migrations.push(with);
+    for with in with_list {
+        // check if with migrations is already added or not sometimes with list contains
+        // migrations which are interrelated so we do not need to add already added
+        // migration again
+        if !related_migrations.contains(&with) {
+            related_migrations.push(with);
+            match plan_type {
+                PlanType::Apply => {
                     let with_parents = get_parent_recursive(with);
                     for &migration in migration_list.iter() {
                         if !related_migrations.contains(&migration)
                             && (with_parents.contains(migration)
-                                || is_apply_related(with, migration))
+                                || get_run_before_recursive(migration).contains(with))
                         {
                             related_migrations.push(migration);
                         }
                     }
                 }
-            }
-        }
-        PlanType::Revert => {
-            for with in with_list {
-                if !related_migrations.contains(&with) {
-                    related_migrations.push(with);
+                PlanType::Revert => {
                     let with_run_before = get_run_before_recursive(with);
                     for &migration in migration_list.iter() {
                         if !related_migrations.contains(&migration)
                             && (with_run_before.contains(migration)
-                                || is_revert_related(with, migration))
+                                || get_parent_recursive(migration).contains(with))
                         {
                             related_migrations.push(migration);
                         }
@@ -575,10 +559,8 @@ where
 
         tracing::debug!("generating {:?} migration plan", plan);
 
-        // Hashmap which contains key as migration name and value as one replaces
-        // migrations which replace it this should be parent of replaces migration since
-        // we cannot remove replaces migration down below until migration is
-        // parent without possible children side effect.
+        // Hashmap which contains key as migration and value is migration which replaces
+        // this migration. One migration can only have one parent
         let mut parent_due_to_replaces = HashMap::new();
 
         for parent_migration in self.migrations() {
@@ -592,7 +574,7 @@ where
             }
         }
 
-        // Hashmap which contains all children generated from replace list
+        // Hashmap which contains all children of migration generated from replace list
         let mut replace_children = HashMap::<_, Vec<_>>::new();
         // in first loop add initial parent and child from parent due to replace
         for (child, &parent) in &parent_due_to_replaces {
@@ -603,7 +585,7 @@ where
             populate_recursive(&mut replace_children, parent, child)?;
         }
 
-        // Hashmap which contains key as migration name and value as list of migration
+        // Hashmap which contains key as migration and value as list of migration
         // which becomes parent for key due to value having key as run before value
         let mut parents_due_to_run_before = HashMap::<_, Vec<_>>::new();
 
@@ -640,6 +622,9 @@ where
                             migration_list.contains(replace_migration)
                         })
                     && replace_children.get(migration).map_or(true, |children| {
+                        // check if children parents and run before are added or not already before
+                        // adding replace migration. Since replace migration may not depend on
+                        // children parent its need to be added first
                         children.iter().all(|&child| {
                             child
                                 .parents()
@@ -671,7 +656,8 @@ where
 
         // if there is only plan than further process. In further process replaces
         // migrations are also handled for removing conflicting migrations where certain
-        // migrations replaces certain other migrations
+        // migrations replaces certain other migrations. While initially creating
+        // migrations both new and replaced migration are present
         if let Some(some_plan) = plan {
             self.ensure_migration_table_exists(connection).await?;
 
@@ -734,7 +720,8 @@ where
                         migration_list.retain(|&plan_migration| migration != plan_migration);
                     } else {
                         // we can remove all children migrations here since migrations which
-                        // replaced them will be parent of them so there will be no side effect
+                        // replaced them will be above them in generation list so migration will
+                        // apply in provided order
                         for replaced_migration in children {
                             migration_list
                                 .retain(|plan_migration| replaced_migration != plan_migration);
