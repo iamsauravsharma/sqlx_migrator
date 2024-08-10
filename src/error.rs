@@ -7,6 +7,9 @@ pub enum Error {
     /// Error type created from error raised by sqlx
     #[error(transparent)]
     Sqlx(#[from] sqlx::Error),
+    /// Error type created from error raised by box error
+    #[error(transparent)]
+    Box(#[from] Box<dyn std::error::Error + Send + Sync>),
     /// Error type created from error raised by std input output
     #[cfg(feature = "cli")]
     #[error(transparent)]

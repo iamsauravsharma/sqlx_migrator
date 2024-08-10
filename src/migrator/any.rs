@@ -160,14 +160,14 @@ where
             let query = match connection.backend_name() {
                 #[cfg(feature = "postgres")]
                 <Postgres as sqlx::Database>::NAME => {
-                    arguments.add(postgres::get_lock_id(&name, self.table_name()));
+                    arguments.add(postgres::get_lock_id(&name, self.table_name()))?;
                     postgres::lock_database_query()
                 }
                 #[cfg(feature = "sqlite")]
                 <Sqlite as sqlx::Database>::NAME => return Ok(()),
                 #[cfg(feature = "mysql")]
                 <MySql as sqlx::Database>::NAME => {
-                    arguments.add(mysql::get_lock_id(&name, self.table_name()));
+                    arguments.add(mysql::get_lock_id(&name, self.table_name()))?;
                     mysql::lock_database_query()
                 }
                 _ => return Err(Error::UnsupportedDatabase),
@@ -189,14 +189,14 @@ where
             let query = match connection.backend_name() {
                 #[cfg(feature = "postgres")]
                 <Postgres as sqlx::Database>::NAME => {
-                    arguments.add(postgres::get_lock_id(&name, self.table_name()));
+                    arguments.add(postgres::get_lock_id(&name, self.table_name()))?;
                     postgres::unlock_database_query()
                 }
                 #[cfg(feature = "sqlite")]
                 <Sqlite as sqlx::Database>::NAME => return Ok(()),
                 #[cfg(feature = "mysql")]
                 <MySql as sqlx::Database>::NAME => {
-                    arguments.add(mysql::get_lock_id(&name, self.table_name()));
+                    arguments.add(mysql::get_lock_id(&name, self.table_name()))?;
                     mysql::unlock_database_query()
                 }
                 _ => return Err(Error::UnsupportedDatabase),
