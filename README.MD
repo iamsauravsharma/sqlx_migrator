@@ -1,6 +1,6 @@
 # SQLX migrator
 
-Migrator library for writing sqlx migration using Rust instead of SQL
+A Rust library for writing SQLX migrations using Rust instead of SQL.
 
 |                    License                     |              Crates Version               |                 Docs                 |
 | :--------------------------------------------: | :---------------------------------------: | :----------------------------------: |
@@ -15,7 +15,7 @@ Supported Databases:
 
 ## Installation
 
-To use sqlx migrator you can configure Cargo.toml as shown below according to your requirements
+Add `sqlx_migrator` to your `Cargo.toml` with the appropriate database feature:
 
 ```toml
 sqlx_migrator = { version = "0.14.0", features=["postgres"] }
@@ -44,7 +44,7 @@ sqlx_migrator = { version = "0.14.0", features=[
 
 # Usage
 
-To use sqlx_migrator first you need to implement Operation trait to write your sqlx operation below are examples for using postgres based migration
+To use `sqlx_migrator`, implement the `Operation` trait to define your migration logic. Here's an example using PostgreSQL:
 
 ```rust
 use sqlx_migrator::error::Error;
@@ -75,7 +75,7 @@ impl Operation<sqlx::Postgres> for FirstOperation {
     }
 }
 ```
-After creation of operation you can implement Migration struct to create single migration
+After defining your operations, you can create a migration:
 
 ```rust
 use sqlx_migrator::error::Error;
@@ -114,7 +114,7 @@ impl Migration<sqlx::Postgres> for FirstMigration {
 }
 ```
 
-Which can be represented in simple form as
+This migration can be represented in a simpler form using macros:
 ```rust
 use sqlx_migrator::vec_box;
 sqlx_migrator::migration!(
@@ -133,8 +133,7 @@ sqlx_migrator::postgres_migration!(
 );
 ```
 
-If your up and down query are simple string only than you can directly uses `(U,D) where U: AsRef<str>, D: AsRef<str>` to implement `Operation` trait
-So above example can be further simplified as
+If your up and down queries are simple strings, you can simplify the implementation:
 ```rust
 sqlx_migrator::postgres_migration!(
     FirstMigration,
@@ -149,7 +148,7 @@ sqlx_migrator::postgres_migration!(
 );
 ```
 
-Now at last you need to create migrator for your database to run migrations
+Finally, create a migrator to run your migrations:
 
 ```rust
 use sqlx_migrator::migrator::{Info, Migrate, Migrator};
@@ -164,9 +163,10 @@ async fn main() {
 }
 ```
 
-Now you can use two ways to run migrator either directly running migration or creating cli from migrator
-For direct run
+# Running Migrations
 
+You can run migrations directly or integrate them into a CLI:
+## Direct Execution
 ```rust
 use sqlx_migrator::migrator::Plan;
 let mut conn = pool.acquire().await?;
@@ -176,7 +176,7 @@ migrator.run(&mut *conn, Plan::apply_all()).await.unwrap();
 migrator.run(&mut *conn, Plan::revert_all()).await.unwrap();
 ```
 
-Or you can create cli using
+## CLI Integration
 
 ```rust
 use sqlx_migrator::cli::MigrationCommand;
@@ -184,7 +184,8 @@ use sqlx_migrator::cli::MigrationCommand;
 MigrationCommand::parse_and_run(&mut *conn, Box::new(migrator)).await.unwrap();
 ```
 
-If you want to extend your own clap based cli then you can add migrator to sub command enum and then run migrator
+Or extend your own CLI with migrator support:
+
 ```rust
 #[derive(clap::Parser)]
 struct Cli {
@@ -215,26 +216,9 @@ impl Cli {
 
 To migrate from sqlx sql based migration you have two alternative:
 
-1. Write all sql migration as rust operation
-2. Write single rust based operation which apply and revert all sqlx sql based migration
-
-#### Option: 1
-
-Can be easily applied by following above usage docs where you only need to write your sql based migration as sqlx query
-Then you can create cli for migrator
-
-```rust
-use sqlx_migrator::cli::MigrationCommand;
-MigrationCommand::parse_and_run(&mut conn, Box::new(migrator)).await.unwrap();
-```
-
-and run fake apply cli command
-`<COMMAND_NAME> apply --fake`
-which actually doesn't apply migration query but only update migration table
-
-#### Option: 2
-
-To run all sqlx sql based migration as single command create new operation
+1. Rewrite SQL migrations as Rust operations and run fake apply cli command
+`<COMMAND_NAME> apply --fake`: Follow the usage example above.
+2. Create a single Rust operation to apply/revert SQL migrations:
 
 ```rust
 use sqlx_migrator::error::Error;
@@ -254,6 +238,58 @@ impl Operation<sqlx::Postgres> for SqlxOperation {
         Ok(())
     }
 }
+```
+
+# Advance usage: Custom state management
+The `Operation` trait in `sqlx_migrator` allows for advanced customization by utilizing a `State` parameter.
+This `State` is designed to hold any additional information that your migrations might need to access during execution.
+
+## Default Behavior
+
+By default, the `State` is set to an empty tuple `()`, which means no additional state is passed:
+```rust
+async fn up(
+    &self,
+    connection: &mut <DB as sqlx::Database>::Connection,
+    state: &(),
+) -> Result<(), Error>;
+```
+## Custom State
+
+However, you can replace this with any type that implements `Send` and `Sync`.
+For example, you could pass a custom configuration struct or other context-specific data to your migrations:
+
+```rust
+struct MyCustomState {
+    logging_enabled: bool,
+}
+
+#[async_trait::async_trait]
+impl Operation<sqlx::Postgres, MyCustomState> for FirstOperation {
+    async fn up(
+        &self,
+        connection: &mut sqlx::PgConnection,
+        state: &MyCustomState,
+    ) -> Result<(), Error> {
+        if state.logging_enabled {
+            println!("Applying migration");
+        }
+        // Perform migration operations here
+        Ok(())
+    }
+}
+```
+## Using State with the Migrator
+
+To pass a custom state to your migrator, use the `Migrator::new` function:
+```rust
+let state = MyCustomState {
+    logging_enabled: true,
+};
+
+let mut migrator = Migrator::new(state);
+migrator.add_migration(Box::new(FirstMigration));
+
 ```
 
 [license_badge]: https://img.shields.io/github/license/iamsauravsharma/sqlx_migrator.svg?style=for-the-badge
