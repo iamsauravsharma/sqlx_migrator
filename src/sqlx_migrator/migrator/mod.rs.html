@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/migrator/mod.rs`."><title>mod.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-d10b2a06af903387.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="sqlx_migrator" data-themes="" data-resource-suffix="" data-rustdoc-version="1.82.0-nightly (730d5d409 2024-08-10)" data-channel="nightly" data-search-js="search-ef54e092fea9c776.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../static.files/storage-118b08c4c78b968e.js"></script><script defer src="../../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-04a29ac50d05d0b1.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-df360f571f6edeae.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/migrator/mod.rs`."><title>mod.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-b25d77b18a16a9a4.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="sqlx_migrator" data-themes="" data-resource-suffix="" data-rustdoc-version="1.82.0-nightly (91376f416 2024-08-12)" data-channel="nightly" data-search-js="search-ef54e092fea9c776.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../static.files/storage-118b08c4c78b968e.js"></script><script defer src="../../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-cb0df477c2d67d00.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-3b12f09e550e0385.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -874,6 +874,41 @@
 <a href="#874" id="874">874</a>
 <a href="#875" id="875">875</a>
 <a href="#876" id="876">876</a>
+<a href="#877" id="877">877</a>
+<a href="#878" id="878">878</a>
+<a href="#879" id="879">879</a>
+<a href="#880" id="880">880</a>
+<a href="#881" id="881">881</a>
+<a href="#882" id="882">882</a>
+<a href="#883" id="883">883</a>
+<a href="#884" id="884">884</a>
+<a href="#885" id="885">885</a>
+<a href="#886" id="886">886</a>
+<a href="#887" id="887">887</a>
+<a href="#888" id="888">888</a>
+<a href="#889" id="889">889</a>
+<a href="#890" id="890">890</a>
+<a href="#891" id="891">891</a>
+<a href="#892" id="892">892</a>
+<a href="#893" id="893">893</a>
+<a href="#894" id="894">894</a>
+<a href="#895" id="895">895</a>
+<a href="#896" id="896">896</a>
+<a href="#897" id="897">897</a>
+<a href="#898" id="898">898</a>
+<a href="#899" id="899">899</a>
+<a href="#900" id="900">900</a>
+<a href="#901" id="901">901</a>
+<a href="#902" id="902">902</a>
+<a href="#903" id="903">903</a>
+<a href="#904" id="904">904</a>
+<a href="#905" id="905">905</a>
+<a href="#906" id="906">906</a>
+<a href="#907" id="907">907</a>
+<a href="#908" id="908">908</a>
+<a href="#909" id="909">909</a>
+<a href="#910" id="910">910</a>
+<a href="#911" id="911">911</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Migrator module
 //!
 //! It contains common enum and trait for implementing migrator for sqlx
@@ -1240,7 +1275,15 @@ impl Migrate&lt;Postgres, ()&gt; for CustomMigrator {}
 ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
     <span class="comment">// protect against a case where two migration depends upon each other
     </span><span class="kw">if </span>key == value {
-        <span class="kw">return </span><span class="prelude-val">Err</span>(Error::FailedToCreateMigrationPlan);
+        <span class="kw">return </span><span class="prelude-val">Err</span>(Error::PlanError {
+            message: <span class="macro">format!</span>(
+                <span class="string">"migration {}:{} and migration {}:{} depends with each other"</span>,
+                key.app(),
+                key.name(),
+                value.app(),
+                value.name()
+            ),
+        });
     }
     <span class="kw">let </span>populate_hash_map_vec = populate_hash_map.entry(key).or_default();
     <span class="kw">if </span>!populate_hash_map_vec.contains(<span class="kw-2">&amp;</span>value) {
@@ -1350,13 +1393,12 @@ impl Migrate&lt;Postgres, ()&gt; for CustomMigrator {}
                     .iter()
                     .any(|migration| migration.app() == app)
                 {
-                    <span class="kw">return </span><span class="prelude-val">Err</span>(Error::MigrationNameNotExists {
-                        app: app.to_string(),
-                        migration: name.to_string(),
+                    <span class="kw">return </span><span class="prelude-val">Err</span>(Error::PlanError {
+                        message: <span class="macro">format!</span>(<span class="string">"migration {app}:{name} doesn't exists for app"</span>),
                     });
                 }
-                <span class="kw">return </span><span class="prelude-val">Err</span>(Error::AppNameNotExists {
-                    app: app.to_string(),
+                <span class="kw">return </span><span class="prelude-val">Err</span>(Error::PlanError {
+                    message: <span class="macro">format!</span>(<span class="string">"app {app} doesn't exists"</span>),
                 });
             };
             pos
@@ -1365,8 +1407,8 @@ impl Migrate&lt;Postgres, ()&gt; for CustomMigrator {}
                 .iter()
                 .rposition(|migration| migration.app() == app)
             <span class="kw">else </span>{
-                <span class="kw">return </span><span class="prelude-val">Err</span>(Error::AppNameNotExists {
-                    app: app.to_string(),
+                <span class="kw">return </span><span class="prelude-val">Err</span>(Error::PlanError {
+                    message: <span class="macro">format!</span>(<span class="string">"app {app} doesn't exists"</span>),
                 });
             };
             pos
@@ -1385,7 +1427,11 @@ impl Migrate&lt;Postgres, ()&gt; for CustomMigrator {}
     } <span class="kw">else if let </span><span class="prelude-val">Some</span>(count) = plan.count {
         <span class="kw">let </span>actual_len = migration_list.len();
         <span class="kw">if </span>count &gt; actual_len {
-            <span class="kw">return </span><span class="prelude-val">Err</span>(Error::CountGreater { actual_len, count });
+            <span class="kw">return </span><span class="prelude-val">Err</span>(Error::PlanError {
+                message: <span class="macro">format!</span>(
+                    <span class="string">"passed count value is larger than migration length: {actual_len}"
+                </span>),
+            });
         }
         migration_list.truncate(count);
     }
@@ -1423,14 +1469,18 @@ impl Migrate&lt;Postgres, ()&gt; for CustomMigrator {}
         plan: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>Plan&gt;,
     ) -&gt; MigrationVecResult&lt;DB, State&gt; {
         <span class="kw">if </span><span class="self">self</span>.migrations().is_empty() {
-            <span class="kw">return </span><span class="prelude-val">Err</span>(Error::NoMigrationAdded);
+            <span class="kw">return </span><span class="prelude-val">Err</span>(Error::PlanError {
+                message: <span class="string">"no migration are added to migration list"</span>.to_string(),
+            });
         }
         <span class="kw">if </span><span class="self">self
             </span>.migrations()
             .iter()
             .any(|migration| migration.is_virtual())
         {
-            <span class="kw">return </span><span class="prelude-val">Err</span>(Error::VirtualMigrationPresent);
+            <span class="kw">return </span><span class="prelude-val">Err</span>(Error::PlanError {
+                message: <span class="string">"virtual migrations which is not replaced is present"</span>.to_string(),
+            });
         }
 
         <span class="macro">tracing::debug!</span>(<span class="string">"generating {:?} migration plan"</span>, plan);
@@ -1441,11 +1491,14 @@ impl Migrate&lt;Postgres, ()&gt; for CustomMigrator {}
 
         <span class="kw">for </span>parent_migration <span class="kw">in </span><span class="self">self</span>.migrations() {
             <span class="kw">for </span>child_migration <span class="kw">in </span>parent_migration.replaces() {
+                <span class="kw">let </span>child_name = <span class="macro">format!</span>(<span class="string">"{}:{}"</span>, child_migration.app(), child_migration.name());
                 <span class="kw">if </span>parent_due_to_replaces
                     .insert(child_migration, parent_migration)
                     .is_some()
                 {
-                    <span class="kw">return </span><span class="prelude-val">Err</span>(Error::MigrationReplacedMultipleTimes);
+                    <span class="kw">return </span><span class="prelude-val">Err</span>(Error::PlanError {
+                        message: <span class="macro">format!</span>(<span class="string">"migration {child_name} replaced multiple times"</span>,),
+                    });
                 }
             }
         }
@@ -1526,7 +1579,9 @@ impl Migrate&lt;Postgres, ()&gt; for CustomMigrator {}
             // can arise due to looping in migration plan i.e If there is two migration A
             // and B, than when B is ancestor of A as well as descendants of A
             </span><span class="kw">if </span>loop_initial_migration_list_length == migration_list.len() {
-                <span class="kw">return </span><span class="prelude-val">Err</span>(Error::FailedToCreateMigrationPlan);
+                <span class="kw">return </span><span class="prelude-val">Err</span>(Error::PlanError {
+                    message: <span class="string">"reached deadlock stage during plan generation"</span>.to_string(),
+                });
             }
         }
 
@@ -1572,7 +1627,16 @@ impl Migrate&lt;Postgres, ()&gt; for CustomMigrator {}
                         .iter()
                         .any(|applied| recursive_vec.contains(applied))
                     {
-                        <span class="kw">return </span><span class="prelude-val">Err</span>(Error::ParentIsNotApplied);
+                        <span class="kw">return </span><span class="prelude-val">Err</span>(Error::PlanError {
+                            message: <span class="macro">format!</span>(
+                                <span class="string">"children migration {}:{} applied before its parent migration \
+                                 {}:{}"</span>,
+                                migration.app(),
+                                migration.name(),
+                                parent.app(),
+                                parent.name()
+                            ),
+                        });
                     }
                 }
             }
@@ -1591,7 +1655,13 @@ impl Migrate&lt;Postgres, ()&gt; for CustomMigrator {}
                     </span><span class="kw">if </span>replaces_applied {
                         <span class="comment">// Error if current migration as well as replace migration both are applied
                         </span><span class="kw">if </span>applied_migrations.contains(<span class="kw-2">&amp;</span>migration) {
-                            <span class="kw">return </span><span class="prelude-val">Err</span>(Error::BothMigrationTypeApplied);
+                            <span class="kw">return </span><span class="prelude-val">Err</span>(Error::PlanError {
+                                message: <span class="macro">format!</span>(
+                                    <span class="string">"migration {}:{} and its replaces are applied together"</span>,
+                                    migration.app(),
+                                    migration.name(),
+                                ),
+                            });
                         }
                         migration_list.retain(|<span class="kw-2">&amp;</span>plan_migration| migration != plan_migration);
                     } <span class="kw">else </span>{
