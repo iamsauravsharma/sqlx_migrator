@@ -364,7 +364,15 @@ fn populate_recursive<'populate, DB, State>(
 ) -> Result<(), Error> {
     // protect against a case where two migration depends upon each other
     if key == value {
-        return Err(Error::FailedToCreateMigrationPlan);
+        return Err(Error::PlanError {
+            message: format!(
+                "migration {}:{} and migration {}:{} depends with each other",
+                key.app(),
+                key.name(),
+                value.app(),
+                value.name()
+            ),
+        });
     }
     let populate_hash_map_vec = populate_hash_map.entry(key).or_default();
     if !populate_hash_map_vec.contains(&value) {
@@ -474,13 +482,12 @@ where
                     .iter()
                     .any(|migration| migration.app() == app)
                 {
-                    return Err(Error::MigrationNameNotExists {
-                        app: app.to_string(),
-                        migration: name.to_string(),
+                    return Err(Error::PlanError {
+                        message: format!("migration {app}:{name} doesn't exists for app"),
                     });
                 }
-                return Err(Error::AppNameNotExists {
-                    app: app.to_string(),
+                return Err(Error::PlanError {
+                    message: format!("app {app} doesn't exists"),
                 });
             };
             pos
@@ -489,8 +496,8 @@ where
                 .iter()
                 .rposition(|migration| migration.app() == app)
             else {
-                return Err(Error::AppNameNotExists {
-                    app: app.to_string(),
+                return Err(Error::PlanError {
+                    message: format!("app {app} doesn't exists"),
                 });
             };
             pos
@@ -509,7 +516,11 @@ where
     } else if let Some(count) = plan.count {
         let actual_len = migration_list.len();
         if count > actual_len {
-            return Err(Error::CountGreater { actual_len, count });
+            return Err(Error::PlanError {
+                message: format!(
+                    "passed count value is larger than migration length: {actual_len}"
+                ),
+            });
         }
         migration_list.truncate(count);
     }
@@ -547,14 +558,18 @@ where
         plan: Option<&Plan>,
     ) -> MigrationVecResult<DB, State> {
         if self.migrations().is_empty() {
-            return Err(Error::NoMigrationAdded);
+            return Err(Error::PlanError {
+                message: "no migration are added to migration list".to_string(),
+            });
         }
         if self
             .migrations()
             .iter()
             .any(|migration| migration.is_virtual())
         {
-            return Err(Error::VirtualMigrationPresent);
+            return Err(Error::PlanError {
+                message: "virtual migrations which is not replaced is present".to_string(),
+            });
         }
 
         tracing::debug!("generating {:?} migration plan", plan);
@@ -565,11 +580,14 @@ where
 
         for parent_migration in self.migrations() {
             for child_migration in parent_migration.replaces() {
+                let child_name = format!("{}:{}", child_migration.app(), child_migration.name());
                 if parent_due_to_replaces
                     .insert(child_migration, parent_migration)
                     .is_some()
                 {
-                    return Err(Error::MigrationReplacedMultipleTimes);
+                    return Err(Error::PlanError {
+                        message: format!("migration {child_name} replaced multiple times",),
+                    });
                 }
             }
         }
@@ -650,7 +668,9 @@ where
             // can arise due to looping in migration plan i.e If there is two migration A
             // and B, than when B is ancestor of A as well as descendants of A
             if loop_initial_migration_list_length == migration_list.len() {
-                return Err(Error::FailedToCreateMigrationPlan);
+                return Err(Error::PlanError {
+                    message: "reached deadlock stage during plan generation".to_string(),
+                });
             }
         }
 
@@ -696,7 +716,16 @@ where
                         .iter()
                         .any(|applied| recursive_vec.contains(applied))
                     {
-                        return Err(Error::ParentIsNotApplied);
+                        return Err(Error::PlanError {
+                            message: format!(
+                                "children migration {}:{} applied before its parent migration \
+                                 {}:{}",
+                                migration.app(),
+                                migration.name(),
+                                parent.app(),
+                                parent.name()
+                            ),
+                        });
                     }
                 }
             }
@@ -715,7 +744,13 @@ where
                     if replaces_applied {
                         // Error if current migration as well as replace migration both are applied
                         if applied_migrations.contains(&migration) {
-                            return Err(Error::BothMigrationTypeApplied);
+                            return Err(Error::PlanError {
+                                message: format!(
+                                    "migration {}:{} and its replaces are applied together",
+                                    migration.app(),
+                                    migration.name(),
+                                ),
+                            });
                         }
                         migration_list.retain(|&plan_migration| migration != plan_migration);
                     } else {
