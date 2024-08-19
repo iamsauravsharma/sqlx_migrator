@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/operation.rs`."><title>operation.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-b25d77b18a16a9a4.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="sqlx_migrator" data-themes="" data-resource-suffix="" data-rustdoc-version="1.82.0-nightly (91376f416 2024-08-12)" data-channel="nightly" data-search-js="search-ef54e092fea9c776.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-118b08c4c78b968e.js"></script><script defer src="../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-cb0df477c2d67d00.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-3b12f09e550e0385.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/operation.rs`."><title>operation.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-b25d77b18a16a9a4.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="sqlx_migrator" data-themes="" data-resource-suffix="" data-rustdoc-version="1.82.0-nightly (6de928dce 2024-08-18)" data-channel="nightly" data-search-js="search-ef54e092fea9c776.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-118b08c4c78b968e.js"></script><script defer src="../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-cb0df477c2d67d00.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-3b12f09e550e0385.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -154,7 +154,34 @@
 <a href="#154" id="154">154</a>
 <a href="#155" id="155">155</a>
 <a href="#156" id="156">156</a>
-</pre></div><pre class="rust"><code><span class="doccomment">//! Operation module
+<a href="#157" id="157">157</a>
+<a href="#158" id="158">158</a>
+<a href="#159" id="159">159</a>
+<a href="#160" id="160">160</a>
+<a href="#161" id="161">161</a>
+<a href="#162" id="162">162</a>
+<a href="#163" id="163">163</a>
+<a href="#164" id="164">164</a>
+<a href="#165" id="165">165</a>
+<a href="#166" id="166">166</a>
+<a href="#167" id="167">167</a>
+<a href="#168" id="168">168</a>
+<a href="#169" id="169">169</a>
+<a href="#170" id="170">170</a>
+<a href="#171" id="171">171</a>
+<a href="#172" id="172">172</a>
+<a href="#173" id="173">173</a>
+<a href="#174" id="174">174</a>
+<a href="#175" id="175">175</a>
+<a href="#176" id="176">176</a>
+<a href="#177" id="177">177</a>
+<a href="#178" id="178">178</a>
+<a href="#179" id="179">179</a>
+</pre></div><pre class="rust"><code><span class="doccomment">//! Module for defining the `Operation` trait
+//!
+//! This module provides the `Operation` trait, allowing users to define
+//! database operations that can be executed as part of a migration process.
+//! These operations can be applied (`up`) or optionally reverted (`down`).
 </span><span class="attr">#![cfg_attr(
     feature = <span class="string">"sqlite"</span>,
     doc = <span class="string">r##"
@@ -196,7 +223,15 @@ impl Operation&lt;Sqlite&gt; for ExampleOperation {
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::Error;
 
-<span class="doccomment">/// Trait for operation
+<span class="doccomment">/// Trait for defining a database operation.
+///
+/// An Operation represents action that can be applied to or reverted from a
+/// database during a migration. Each operation can have an up method for
+/// applying the change and an optional down method for rolling it back.
+///
+/// Operations can also specify whether they are "destructible," meaning that
+/// they require user confirmation before being applied, due to potential data
+/// loss or irreversible changes
 </span><span class="attr">#[allow(clippy::module_name_repetitions)]
 #[async_trait::async_trait]
 </span><span class="kw">pub trait </span>Operation&lt;DB, State = ()&gt;: Send + Sync
@@ -204,15 +239,23 @@ impl Operation&lt;Sqlite&gt; for ExampleOperation {
     </span>DB: sqlx::Database,
     State: Send + Sync,
 {
-    <span class="doccomment">/// Up command to be executed during migration apply
+    <span class="doccomment">/// The up method executes the operation when applying the migration.
+    ///
+    /// This method is called when the migration is being applied to the
+    /// database. Implement this method to define the changes you want to
+    /// apply.
     </span><span class="kw">async fn </span>up(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         connection: <span class="kw-2">&amp;mut </span>&lt;DB <span class="kw">as </span>sqlx::Database&gt;::Connection,
         state: <span class="kw-2">&amp;</span>State,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt;;
 
-    <span class="doccomment">/// Down command to be executed during migration rollback. If it is not
-    /// implemented than operation is irreversible operation.
+    <span class="doccomment">/// The `down` method reverses the operation when rolling back the
+    /// migration.
+    ///
+    /// This method is called when the migration is being rolled back. Implement
+    /// this method if you want to make the operation reversible. If not
+    /// implemented, the operation is considered irreversible.
     </span><span class="kw">async fn </span>down(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         connection: <span class="kw-2">&amp;mut </span>&lt;DB <span class="kw">as </span>sqlx::Database&gt;::Connection,
@@ -223,10 +266,13 @@ impl Operation&lt;Sqlite&gt; for ExampleOperation {
         <span class="kw">return </span><span class="prelude-val">Err</span>(Error::IrreversibleOperation);
     }
 
-    <span class="doccomment">/// Whether up operation is destructible or not. If operation is
-    /// destructible than user should answer before running migration through
-    /// cli. By default up operation are false. Down operation are always
-    /// destructible and cannot be changed
+    <span class="doccomment">/// Indicates whether the `up` operation is destructible.
+    ///
+    /// If the operation is destructible, the user will be prompted for
+    /// confirmation before running the migration via the CLI, due to the
+    /// potential for data loss or irreversible changes. By default, `up`
+    /// operations are considered non-destructible. Note that `down` operations
+    /// are always considered destructible and cannot be changed.
     </span><span class="kw">fn </span>is_destructible(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
         <span class="bool-val">false
     </span>}

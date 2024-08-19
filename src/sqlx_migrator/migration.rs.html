@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/migration.rs`."><title>migration.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-b25d77b18a16a9a4.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="sqlx_migrator" data-themes="" data-resource-suffix="" data-rustdoc-version="1.82.0-nightly (91376f416 2024-08-12)" data-channel="nightly" data-search-js="search-ef54e092fea9c776.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-118b08c4c78b968e.js"></script><script defer src="../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-cb0df477c2d67d00.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-3b12f09e550e0385.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/migration.rs`."><title>migration.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-b25d77b18a16a9a4.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="sqlx_migrator" data-themes="" data-resource-suffix="" data-rustdoc-version="1.82.0-nightly (6de928dce 2024-08-18)" data-channel="nightly" data-search-js="search-ef54e092fea9c776.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-118b08c4c78b968e.js"></script><script defer src="../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-cb0df477c2d67d00.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-3b12f09e550e0385.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -184,7 +184,44 @@
 <a href="#184" id="184">184</a>
 <a href="#185" id="185">185</a>
 <a href="#186" id="186">186</a>
-</pre></div><pre class="rust"><code><span class="doccomment">//! Module defining migration trait
+<a href="#187" id="187">187</a>
+<a href="#188" id="188">188</a>
+<a href="#189" id="189">189</a>
+<a href="#190" id="190">190</a>
+<a href="#191" id="191">191</a>
+<a href="#192" id="192">192</a>
+<a href="#193" id="193">193</a>
+<a href="#194" id="194">194</a>
+<a href="#195" id="195">195</a>
+<a href="#196" id="196">196</a>
+<a href="#197" id="197">197</a>
+<a href="#198" id="198">198</a>
+<a href="#199" id="199">199</a>
+<a href="#200" id="200">200</a>
+<a href="#201" id="201">201</a>
+<a href="#202" id="202">202</a>
+<a href="#203" id="203">203</a>
+<a href="#204" id="204">204</a>
+<a href="#205" id="205">205</a>
+<a href="#206" id="206">206</a>
+<a href="#207" id="207">207</a>
+<a href="#208" id="208">208</a>
+<a href="#209" id="209">209</a>
+<a href="#210" id="210">210</a>
+<a href="#211" id="211">211</a>
+<a href="#212" id="212">212</a>
+<a href="#213" id="213">213</a>
+<a href="#214" id="214">214</a>
+<a href="#215" id="215">215</a>
+<a href="#216" id="216">216</a>
+<a href="#217" id="217">217</a>
+<a href="#218" id="218">218</a>
+<a href="#219" id="219">219</a>
+<a href="#220" id="220">220</a>
+</pre></div><pre class="rust"><code><span class="doccomment">//! Module for defining the `Migration` trait, which represents a database
+//! migration.
+//!
+//! This module provides the necessary abstractions for defining migrations
 </span><span class="attr">#![cfg_attr(
     feature = <span class="string">"sqlite"</span>,
     doc = <span class="string">r##"
@@ -227,6 +264,10 @@ impl Migration&lt;Sqlite&gt; for ExampleMigration {
     fn is_atomic(&amp;self) -&gt; bool {
         true
     }
+
+    fn is_virtual(&amp;self) -&gt; bool {
+        false
+    }
 }
 ```
 "##
@@ -236,52 +277,78 @@ impl Migration&lt;Sqlite&gt; for ExampleMigration {
 
 <span class="kw">use </span><span class="kw">crate</span>::operation::Operation;
 
-<span class="doccomment">/// Trait for migration
+<span class="doccomment">/// Trait for defining database migration
+///
+/// A migration represents a set of operations that can be applied to or
+/// reverted from a database. Each migration has an associated application name,
+/// migration name, and may depend on other migrations.
+///
+/// Migrations can also replace existing migrations, enforce ordering with
+/// run before and parents, and control atomicity and virtualization.
 </span><span class="attr">#[allow(clippy::module_name_repetitions)]
 </span><span class="kw">pub trait </span>Migration&lt;DB, State = ()&gt;: Send + Sync {
-    <span class="doccomment">/// Migration app name. Can be name of folder or library where migration is
-    /// located
+    <span class="doccomment">/// Returns the application name associated with the migration.
+    /// This can be the name of the folder or library where the migration is
+    /// located.
     </span><span class="kw">fn </span>app(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>str;
 
-    <span class="doccomment">/// Migration name. Can be file name without extension
+    <span class="doccomment">/// Returns the migration name, typically the file name without the
+    /// extension.
     </span><span class="kw">fn </span>name(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>str;
 
-    <span class="doccomment">/// Parents of migration (migrations that should be applied before this
-    /// migration)
+    <span class="doccomment">/// Returns the list of parent migrations.
+    ///
+    ///  Parent migrations must be applied before this migration can be applied.
+    /// If no parent migrations are required, return an empty vector.
     </span><span class="kw">fn </span>parents(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;Box&lt;<span class="kw">dyn </span>Migration&lt;DB, State&gt;&gt;&gt;;
 
-    <span class="doccomment">/// Operation performed for migration (create, drop, etc.). Migration can
-    /// contains multiple operation within each other which are interrelated
+    <span class="doccomment">/// Returns the operations associated with this migration.
+    ///
+    /// A migration can include multiple operations (e.g., create, drop) that
+    /// are related.
     </span><span class="kw">fn </span>operations(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;Box&lt;<span class="kw">dyn </span>Operation&lt;DB, State&gt;&gt;&gt;;
 
-    <span class="doccomment">/// Replace certain migrations. If any one of listed migration is applied
-    /// than migration will not be applied else migration will apply/revert
-    /// instead of applying/reverting those migration.
+    <span class="doccomment">/// Returns the list of migrations that this migration replaces.
+    ///
+    /// If any of these migrations have been applied, this migration will not be
+    /// applied. Instead, it will either be applied or reverted in place of
+    /// those migrations.
+    ///
+    /// The default implementation returns an empty vector.
     </span><span class="kw">fn </span>replaces(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;Box&lt;<span class="kw">dyn </span>Migration&lt;DB, State&gt;&gt;&gt; {
         <span class="macro">vec!</span>[]
     }
 
-    <span class="doccomment">/// Run before(for applying)/after(for reverting) certain migration. This
-    /// can be helpful in condition where other library migration need to be
-    /// applied after this migration or reverted before this migration
+    <span class="doccomment">/// Returns the list of migrations that this migration must run before(when
+    /// applying) or after (when reverting).
+    ///
+    /// This can be useful when a migration from another library needs to be
+    /// applied after this migration or reverted before this migration.
+    ///
+    /// The default implementation returns an empty vector.
     </span><span class="kw">fn </span>run_before(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;Box&lt;<span class="kw">dyn </span>Migration&lt;DB, State&gt;&gt;&gt; {
         <span class="macro">vec!</span>[]
     }
 
-    <span class="doccomment">/// Whether migration is atomic or not. By default it is atomic so this
-    /// function returns `true`. If you make migration non atomic all its
-    /// operation will be non atomic if any operation needs to be atomic it is
-    /// recommended to split migration so one migration will have atomic
-    /// operation where as another have non atomic operation
+    <span class="doccomment">/// Indicates whether the migration is atomic.
+    /// By default, this function returns `true`, meaning the migration is
+    /// atomic.
+    ///
+    /// If the migration is non-atomic, all its operations will be non-atomic as
+    /// well. For migrations requiring mixed atomicity, it's recommended to
+    /// split them into separate migrations, each handling atomic and
+    /// non-atomic operations respectively.
     </span><span class="kw">fn </span>is_atomic(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
         <span class="bool-val">true
     </span>}
 
-    <span class="doccomment">/// Whether migration is virtual or not. By default migration are not
-    /// virtual. If migration is virtual than it expects another migration with
-    /// same app and name present inside migration list which is not virtual.
-    /// For virtual migration all other methods gets ignored since it is
-    /// reference to actual migration instead of actual migration
+    <span class="doccomment">/// Indicates whether the migration is virtual.
+    /// By default, this function returns `false`, meaning the migration is not
+    /// virtual.
+    ///
+    /// A virtual migration serves as a reference to another migration with the
+    /// same app and name. If the migration is virtual, all other methods
+    /// are ignored.
     </span><span class="kw">fn </span>is_virtual(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
         <span class="bool-val">false
     </span>}
@@ -328,9 +395,10 @@ impl Migration&lt;Sqlite&gt; for ExampleMigration {
     </span>}
 }
 
-<span class="doccomment">/// Migration struct created from sql table. Struct contains 4 fields which maps
-/// to `id`, `app`, `name`, `applied_time` sql fields. It is used to list
-/// applied migrations
+<span class="doccomment">/// Struct representing a migration row from the database.
+///
+/// This struct corresponds to the id, app, name, and applied time fields in the
+/// database. It is used to list the migrations that have been applied.
 </span><span class="attr">#[derive(sqlx::FromRow, Clone)]
 </span><span class="kw">pub struct </span>AppliedMigrationSqlRow {
     id: i32,
