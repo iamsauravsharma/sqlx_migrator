@@ -427,9 +427,9 @@ fn only_related_migration<DB, State>(
 ) {
     let mut related_migrations = vec![];
     for with in with_list {
-        // check if with migrations is already added or not sometimes with list contains
-        // migrations which are interrelated so we do not need to add already added
-        // migration again
+        // check if with migrations is already added or not. Sometimes with list
+        // contains migrations which are interrelated so we do not need to add
+        // already added migration again
         if !related_migrations.contains(&with) {
             related_migrations.push(with);
             match plan_type {
