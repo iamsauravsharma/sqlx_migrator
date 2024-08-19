@@ -1,4 +1,8 @@
-//! Operation module
+//! Module for defining the `Operation` trait
+//!
+//! This module provides the `Operation` trait, allowing users to define
+//! database operations that can be executed as part of a migration process.
+//! These operations can be applied (`up`) or optionally reverted (`down`).
 #![cfg_attr(
     feature = "sqlite",
     doc = r##"
@@ -40,7 +44,15 @@ impl Operation<Sqlite> for ExampleOperation {
 
 use crate::error::Error;
 
-/// Trait for operation
+/// Trait for defining a database operation.
+///
+/// An Operation represents action that can be applied to or reverted from a
+/// database during a migration. Each operation can have an up method for
+/// applying the change and an optional down method for rolling it back.
+///
+/// Operations can also specify whether they are "destructible," meaning that
+/// they require user confirmation before being applied, due to potential data
+/// loss or irreversible changes
 #[allow(clippy::module_name_repetitions)]
 #[async_trait::async_trait]
 pub trait Operation<DB, State = ()>: Send + Sync
@@ -48,15 +60,23 @@ where
     DB: sqlx::Database,
     State: Send + Sync,
 {
-    /// Up command to be executed during migration apply
+    /// The up method executes the operation when applying the migration.
+    ///
+    /// This method is called when the migration is being applied to the
+    /// database. Implement this method to define the changes you want to
+    /// apply.
     async fn up(
         &self,
         connection: &mut <DB as sqlx::Database>::Connection,
         state: &State,
     ) -> Result<(), Error>;
 
-    /// Down command to be executed during migration rollback. If it is not
-    /// implemented than operation is irreversible operation.
+    /// The `down` method reverses the operation when rolling back the
+    /// migration.
+    ///
+    /// This method is called when the migration is being rolled back. Implement
+    /// this method if you want to make the operation reversible. If not
+    /// implemented, the operation is considered irreversible.
     async fn down(
         &self,
         connection: &mut <DB as sqlx::Database>::Connection,
@@ -67,10 +87,13 @@ where
         return Err(Error::IrreversibleOperation);
     }
 
-    /// Whether up operation is destructible or not. If operation is
-    /// destructible than user should answer before running migration through
-    /// cli. By default up operation are false. Down operation are always
-    /// destructible and cannot be changed
+    /// Indicates whether the `up` operation is destructible.
+    ///
+    /// If the operation is destructible, the user will be prompted for
+    /// confirmation before running the migration via the CLI, due to the
+    /// potential for data loss or irreversible changes. By default, `up`
+    /// operations are considered non-destructible. Note that `down` operations
+    /// are always considered destructible and cannot be changed.
     fn is_destructible(&self) -> bool {
         false
     }

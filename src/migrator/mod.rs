@@ -178,8 +178,10 @@ enum PlanType {
     Apply,
     Revert,
 }
-
-/// Struct which determine type of plan to use
+/// Struct that determines the type of migration plan to execute.
+///
+/// A `Plan` can specify whether to apply or revert migrations, and may target
+/// all migrations, specific migrations, or a limited number of migrations.
 #[derive(Debug)]
 pub struct Plan {
     plan_type: PlanType,
@@ -200,25 +202,25 @@ impl Plan {
         }
     }
 
-    /// Create new plan for apply all
+    /// Creates a new plan to apply all migrations.
     #[must_use]
     pub fn apply_all() -> Self {
         Self::new(PlanType::Apply, None, None)
     }
 
-    /// Create new plan for apply for provided app and migration name
+    /// Creates a new plan to apply a specific migration by name.
     #[must_use]
     pub fn apply_name(app: &str, name: &Option<String>) -> Self {
         Self::new(PlanType::Apply, Some((app.to_string(), name.clone())), None)
     }
 
-    /// Create new plan for apply count
+    /// Creates a new plan to apply a limited number of migrations.
     #[must_use]
     pub fn apply_count(count: usize) -> Self {
         Self::new(PlanType::Apply, None, Some(count))
     }
 
-    /// Create new plan for revert all
+    /// Creates a new plan to revert all migrations.
     #[must_use]
     pub fn revert_all() -> Self {
         Self::new(PlanType::Revert, None, None)
@@ -234,33 +236,37 @@ impl Plan {
         )
     }
 
-    /// Create new plan for revert count
+    /// Creates a new plan to revert a limited number of migrations.
     #[must_use]
     pub fn revert_count(count: usize) -> Self {
         Self::new(PlanType::Revert, None, Some(count))
     }
 }
 
-/// Info trait which implements some of database agnostic methods to add
-/// migration or returns immutable or mutable migrations list
+/// The `Info` trait provides database-agnostic methods for managing migrations
+/// and interacting with migration states.
 pub trait Info<DB, State> {
-    /// Return state used in migrator
+    /// Returns the current state used by the migrator.
     fn state(&self) -> &State;
 
-    /// Return migrations
+    /// Returns a reference to the list of migrations.
     fn migrations(&self) -> &Vec<BoxMigration<DB, State>>;
 
-    /// Return mutable reference of migrations
+    /// Returns a mutable reference to the list of migrations.
     fn migrations_mut(&mut self) -> &mut Vec<BoxMigration<DB, State>>;
 
-    /// Add vector of migrations to Migrator object
+    /// Adds a list of migrations to the migrator.
+    ///
+    /// This method accepts a vector of migrations and adds each one
+    /// individually to ensure proper handling of migration relationships
+    /// and duplicates.
     fn add_migrations(&mut self, migrations: Vec<BoxMigration<DB, State>>) {
         for migration in migrations {
             self.add_migration(migration);
         }
     }
 
-    /// Add single migration to migrator object
+    /// Adds a single migration to the migrator.
     fn add_migration(&mut self, migration: BoxMigration<DB, State>) {
         // if virtual migration is present in list with same app and name than remove
         // virtual migration from list
@@ -301,9 +307,13 @@ pub trait Info<DB, State> {
     }
 }
 
-/// Trait which is implemented for database for performing different
-/// operations/action on database. Usually this trait is implemented for
-/// database to support database along with info trait
+/// The `DatabaseOperation` trait defines a set of methods for performing
+/// operations related to migration management on the database.
+///
+/// This trait is typically implemented for a database to support migration
+/// operations, such as ensuring the migration table exists, adding or
+/// removing migrations from the table, and locking the database during
+/// migration processes.
 #[async_trait::async_trait]
 pub trait DatabaseOperation<DB, State>
 where
@@ -322,7 +332,7 @@ where
         connection: &mut <DB as sqlx::Database>::Connection,
     ) -> Result<(), Error>;
 
-    /// Add migration to migration db table
+    /// Adds a migration record to the migration table in the database.
     #[allow(clippy::borrowed_box)]
     async fn add_migration_to_db_table(
         &self,
@@ -330,7 +340,7 @@ where
         migration: &BoxMigration<DB, State>,
     ) -> Result<(), Error>;
 
-    /// Delete migration from migration db table
+    /// Removes a migration record from the migration table in the database.
     #[allow(clippy::borrowed_box)]
     async fn delete_migration_from_db_table(
         &self,
@@ -338,7 +348,8 @@ where
         migration: &BoxMigration<DB, State>,
     ) -> Result<(), Error>;
 
-    /// List all applied migrations from database as struct
+    /// Fetches the list of applied migrations from the migration table in the
+    /// database.
     async fn fetch_applied_migration_from_db(
         &self,
         connection: &mut <DB as sqlx::Database>::Connection,
@@ -537,20 +548,23 @@ fn get_recursive<'get, DB, State>(
     }
     recursive_vec
 }
-
-/// Migrate trait which migrate a database according to requirements. This trait
-/// implements all methods which depends on `DatabaseOperation` trait and `Info`
-/// trait. This trait doesn't requires to implement any method since all
-/// function have default implementation and all methods are database agnostics
+/// The `Migrate` trait defines methods to manage and apply database migrations
+/// according to a given plan.
+///
+/// This trait combines the functionalities of the `Info` and
+/// `DatabaseOperation` traits, providing a full set of migration capabilities.
+/// All methods have default implementations, meaning no explicit implementation
+/// is required. Additionally, all methods are database-agnostic.
 #[async_trait::async_trait]
 pub trait Migrate<DB, State>: Info<DB, State> + DatabaseOperation<DB, State> + Send + Sync
 where
     DB: sqlx::Database,
     State: Send + Sync,
 {
-    /// Generate migration plan according to plan. Returns a vector of
-    /// migration. If plan is none than it will generate plan with all
-    /// migrations in chronological order of apply
+    /// Generate migration plan according to plan.
+    ///
+    /// Returns a vector of migration. If plan is none than it will generate
+    /// plan with all migrations in order of apply
     #[allow(clippy::too_many_lines)]
     async fn generate_migration_plan(
         &self,

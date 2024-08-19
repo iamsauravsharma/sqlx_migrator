@@ -1,4 +1,7 @@
-//! Module defining migration trait
+//! Module for defining the `Migration` trait, which represents a database
+//! migration.
+//!
+//! This module provides the necessary abstractions for defining migrations
 #![cfg_attr(
     feature = "sqlite",
     doc = r##"
@@ -41,6 +44,10 @@ impl Migration<Sqlite> for ExampleMigration {
     fn is_atomic(&self) -> bool {
         true
     }
+
+    fn is_virtual(&self) -> bool {
+        false
+    }
 }
 ```
 "##
@@ -50,52 +57,78 @@ use std::hash::Hash;
 
 use crate::operation::Operation;
 
-/// Trait for migration
+/// Trait for defining database migration
+///
+/// A migration represents a set of operations that can be applied to or
+/// reverted from a database. Each migration has an associated application name,
+/// migration name, and may depend on other migrations.
+///
+/// Migrations can also replace existing migrations, enforce ordering with
+/// run before and parents, and control atomicity and virtualization.
 #[allow(clippy::module_name_repetitions)]
 pub trait Migration<DB, State = ()>: Send + Sync {
-    /// Migration app name. Can be name of folder or library where migration is
-    /// located
+    /// Returns the application name associated with the migration.
+    /// This can be the name of the folder or library where the migration is
+    /// located.
     fn app(&self) -> &str;
 
-    /// Migration name. Can be file name without extension
+    /// Returns the migration name, typically the file name without the
+    /// extension.
     fn name(&self) -> &str;
 
-    /// Parents of migration (migrations that should be applied before this
-    /// migration)
+    /// Returns the list of parent migrations.
+    ///
+    ///  Parent migrations must be applied before this migration can be applied.
+    /// If no parent migrations are required, return an empty vector.
     fn parents(&self) -> Vec<Box<dyn Migration<DB, State>>>;
 
-    /// Operation performed for migration (create, drop, etc.). Migration can
-    /// contains multiple operation within each other which are interrelated
+    /// Returns the operations associated with this migration.
+    ///
+    /// A migration can include multiple operations (e.g., create, drop) that
+    /// are related.
     fn operations(&self) -> Vec<Box<dyn Operation<DB, State>>>;
 
-    /// Replace certain migrations. If any one of listed migration is applied
-    /// than migration will not be applied else migration will apply/revert
-    /// instead of applying/reverting those migration.
+    /// Returns the list of migrations that this migration replaces.
+    ///
+    /// If any of these migrations have been applied, this migration will not be
+    /// applied. Instead, it will either be applied or reverted in place of
+    /// those migrations.
+    ///
+    /// The default implementation returns an empty vector.
     fn replaces(&self) -> Vec<Box<dyn Migration<DB, State>>> {
         vec![]
     }
 
-    /// Run before(for applying)/after(for reverting) certain migration. This
-    /// can be helpful in condition where other library migration need to be
-    /// applied after this migration or reverted before this migration
+    /// Returns the list of migrations that this migration must run before(when
+    /// applying) or after (when reverting).
+    ///
+    /// This can be useful when a migration from another library needs to be
+    /// applied after this migration or reverted before this migration.
+    ///
+    /// The default implementation returns an empty vector.
     fn run_before(&self) -> Vec<Box<dyn Migration<DB, State>>> {
         vec![]
     }
 
-    /// Whether migration is atomic or not. By default it is atomic so this
-    /// function returns `true`. If you make migration non atomic all its
-    /// operation will be non atomic if any operation needs to be atomic it is
-    /// recommended to split migration so one migration will have atomic
-    /// operation where as another have non atomic operation
+    /// Indicates whether the migration is atomic.
+    /// By default, this function returns `true`, meaning the migration is
+    /// atomic.
+    ///
+    /// If the migration is non-atomic, all its operations will be non-atomic as
+    /// well. For migrations requiring mixed atomicity, it's recommended to
+    /// split them into separate migrations, each handling atomic and
+    /// non-atomic operations respectively.
     fn is_atomic(&self) -> bool {
         true
     }
 
-    /// Whether migration is virtual or not. By default migration are not
-    /// virtual. If migration is virtual than it expects another migration with
-    /// same app and name present inside migration list which is not virtual.
-    /// For virtual migration all other methods gets ignored since it is
-    /// reference to actual migration instead of actual migration
+    /// Indicates whether the migration is virtual.
+    /// By default, this function returns `false`, meaning the migration is not
+    /// virtual.
+    ///
+    /// A virtual migration serves as a reference to another migration with the
+    /// same app and name. If the migration is virtual, all other methods
+    /// are ignored.
     fn is_virtual(&self) -> bool {
         false
     }
@@ -142,9 +175,10 @@ where
     }
 }
 
-/// Migration struct created from sql table. Struct contains 4 fields which maps
-/// to `id`, `app`, `name`, `applied_time` sql fields. It is used to list
-/// applied migrations
+/// Struct representing a migration row from the database.
+///
+/// This struct corresponds to the id, app, name, and applied time fields in the
+/// database. It is used to list the migrations that have been applied.
 #[derive(sqlx::FromRow, Clone)]
 pub struct AppliedMigrationSqlRow {
     id: i32,
