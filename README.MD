@@ -55,10 +55,7 @@ pub(crate) struct FirstOperation;
 #[async_trait::async_trait]
 impl Operation<sqlx::Postgres> for FirstOperation {
     // Up function runs apply migration
-    async fn up(&self,
-        connection: &mut sqlx::PgConnection,
-        state: &(),
-    ) -> Result<(), Error> {
+    async fn up(&self, connection: &mut sqlx::PgConnection) -> Result<(), Error> {
         sqlx::query("CREATE TABLE sample (id INTEGER PRIMARY KEY, name TEXT)")
             .execute(connection)
             .await?;
@@ -66,10 +63,7 @@ impl Operation<sqlx::Postgres> for FirstOperation {
     }
 
     // down migration runs down migration
-    async fn down(
-        connection: &mut sqlx::PgConnection,
-        state: &(),
-    ) -> Result<(), Error> {
+    async fn down(connection: &mut sqlx::PgConnection) -> Result<(), Error> {
         sqlx::query("DROP TABLE sample").execute(connection).await?;
         Ok(())
     }
@@ -238,58 +232,6 @@ impl Operation<sqlx::Postgres> for SqlxOperation {
         Ok(())
     }
 }
-```
-
-# Advance usage: Custom state management
-The `Operation` trait in `sqlx_migrator` allows for advanced customization by utilizing a `State` parameter.
-This `State` is designed to hold any additional information that your migrations might need to access during execution.
-
-## Default Behavior
-
-By default, the `State` is set to an empty tuple `()`, which means no additional state is passed:
-```rust
-async fn up(
-    &self,
-    connection: &mut <DB as sqlx::Database>::Connection,
-    state: &(),
-) -> Result<(), Error>;
-```
-## Custom State
-
-However, you can replace this with any type that implements `Send` and `Sync`.
-For example, you could pass a custom configuration struct or other context-specific data to your migrations:
-
-```rust
-struct MyCustomState {
-    logging_enabled: bool,
-}
-
-#[async_trait::async_trait]
-impl Operation<sqlx::Postgres, MyCustomState> for FirstOperation {
-    async fn up(
-        &self,
-        connection: &mut sqlx::PgConnection,
-        state: &MyCustomState,
-    ) -> Result<(), Error> {
-        if state.logging_enabled {
-            println!("Applying migration");
-        }
-        // Perform migration operations here
-        Ok(())
-    }
-}
-```
-## Using State with the Migrator
-
-To pass a custom state to your migrator, use the `Migrator::new` function:
-```rust
-let state = MyCustomState {
-    logging_enabled: true,
-};
-
-let mut migrator = Migrator::new(state);
-migrator.add_migration(Box::new(FirstMigration));
-
 ```
 
 [license_badge]: https://img.shields.io/github/license/iamsauravsharma/sqlx_migrator.svg?style=for-the-badge

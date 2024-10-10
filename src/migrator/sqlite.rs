@@ -42,10 +42,7 @@ pub(crate) fn delete_migration_query(table_name: &str) -> String {
 }
 
 #[async_trait::async_trait]
-impl<State> DatabaseOperation<Sqlite, State> for Migrator<Sqlite, State>
-where
-    State: Send + Sync,
-{
+impl DatabaseOperation<Sqlite> for Migrator<Sqlite> {
     async fn ensure_migration_table_exists(
         &self,
         connection: &mut <Sqlite as sqlx::Database>::Connection,
@@ -69,7 +66,7 @@ where
     async fn add_migration_to_db_table(
         &self,
         connection: &mut <Sqlite as sqlx::Database>::Connection,
-        migration: &Box<dyn Migration<Sqlite, State>>,
+        migration: &Box<dyn Migration<Sqlite>>,
     ) -> Result<(), Error> {
         sqlx::query(&add_migration_query(self.table_name()))
             .bind(migration.app())
@@ -82,7 +79,7 @@ where
     async fn delete_migration_from_db_table(
         &self,
         connection: &mut <Sqlite as sqlx::Database>::Connection,
-        migration: &Box<dyn Migration<Sqlite, State>>,
+        migration: &Box<dyn Migration<Sqlite>>,
     ) -> Result<(), Error> {
         sqlx::query(&delete_migration_query(self.table_name()))
             .bind(migration.app())

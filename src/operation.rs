@@ -21,7 +21,6 @@ impl Operation<Sqlite> for ExampleOperation {
     async fn up(
         &self,
         connection: &mut sqlx::SqliteConnection,
-        state: &(),
     ) -> Result<(), Error> {
         // Do some operations
         Ok(())
@@ -32,7 +31,6 @@ impl Operation<Sqlite> for ExampleOperation {
     async fn down(
         &self,
         connection: &mut sqlx::SqliteConnection,
-        state: &(),
     ) -> Result<(), Error> {
         // Do some operations
         Ok(())
@@ -55,21 +53,16 @@ use crate::error::Error;
 /// loss or irreversible changes
 #[allow(clippy::module_name_repetitions)]
 #[async_trait::async_trait]
-pub trait Operation<DB, State = ()>: Send + Sync
+pub trait Operation<DB>: Send + Sync
 where
     DB: sqlx::Database,
-    State: Send + Sync,
 {
     /// The up method executes the operation when applying the migration.
     ///
     /// This method is called when the migration is being applied to the
     /// database. Implement this method to define the changes you want to
     /// apply.
-    async fn up(
-        &self,
-        connection: &mut <DB as sqlx::Database>::Connection,
-        state: &State,
-    ) -> Result<(), Error>;
+    async fn up(&self, connection: &mut <DB as sqlx::Database>::Connection) -> Result<(), Error>;
 
     /// The `down` method reverses the operation when rolling back the
     /// migration.
@@ -77,13 +70,8 @@ where
     /// This method is called when the migration is being rolled back. Implement
     /// this method if you want to make the operation reversible. If not
     /// implemented, the operation is considered irreversible.
-    async fn down(
-        &self,
-        connection: &mut <DB as sqlx::Database>::Connection,
-        state: &State,
-    ) -> Result<(), Error> {
+    async fn down(&self, connection: &mut <DB as sqlx::Database>::Connection) -> Result<(), Error> {
         let _connection = connection;
-        let _state = state;
         return Err(Error::IrreversibleOperation);
     }
 
@@ -99,81 +87,28 @@ where
     }
 }
 
-#[cfg(all(
-    any(feature = "postgres", feature = "mysql", feature = "sqlite"),
-    feature = "any"
-))]
 #[async_trait::async_trait]
-impl<U, D> Operation<sqlx::Any> for (U, D)
+impl<DB, U, D> Operation<DB> for (U, D)
 where
+    DB: sqlx::Database,
     U: AsRef<str> + Send + Sync,
     D: AsRef<str> + Send + Sync,
+    for<'c> &'c mut <DB as sqlx::Database>::Connection: sqlx::Executor<'c, Database = DB>,
+    for<'q> <DB as sqlx::Database>::Arguments<'q>: sqlx::IntoArguments<'q, DB>,
 {
-    async fn up(&self, connection: &mut sqlx::AnyConnection, _state: &()) -> Result<(), Error> {
-        sqlx::query(self.0.as_ref()).execute(connection).await?;
+    async fn up(&self, connection: &mut <DB as sqlx::Database>::Connection) -> Result<(), Error> {
+        sqlx::query(self.0.as_ref())
+            .execute(connection)
+            .await
+            .map_err(Error::from)?;
         Ok(())
     }
 
-    async fn down(&self, connection: &mut sqlx::AnyConnection, _state: &()) -> Result<(), Error> {
-        sqlx::query(self.1.as_ref()).execute(connection).await?;
-        Ok(())
-    }
-}
-
-#[cfg(feature = "mysql")]
-#[async_trait::async_trait]
-impl<U, D> Operation<sqlx::MySql> for (U, D)
-where
-    U: AsRef<str> + Send + Sync,
-    D: AsRef<str> + Send + Sync,
-{
-    async fn up(&self, connection: &mut sqlx::MySqlConnection, _state: &()) -> Result<(), Error> {
-        sqlx::query(self.0.as_ref()).execute(connection).await?;
-        Ok(())
-    }
-
-    async fn down(&self, connection: &mut sqlx::MySqlConnection, _state: &()) -> Result<(), Error> {
-        sqlx::query(self.1.as_ref()).execute(connection).await?;
-        Ok(())
-    }
-}
-
-#[cfg(feature = "postgres")]
-#[async_trait::async_trait]
-impl<U, D> Operation<sqlx::Postgres> for (U, D)
-where
-    U: AsRef<str> + Send + Sync,
-    D: AsRef<str> + Send + Sync,
-{
-    async fn up(&self, connection: &mut sqlx::PgConnection, _state: &()) -> Result<(), Error> {
-        sqlx::query(self.0.as_ref()).execute(connection).await?;
-        Ok(())
-    }
-
-    async fn down(&self, connection: &mut sqlx::PgConnection, _state: &()) -> Result<(), Error> {
-        sqlx::query(self.1.as_ref()).execute(connection).await?;
-        Ok(())
-    }
-}
-
-#[cfg(feature = "sqlite")]
-#[async_trait::async_trait]
-impl<U, D> Operation<sqlx::Sqlite> for (U, D)
-where
-    U: AsRef<str> + Send + Sync,
-    D: AsRef<str> + Send + Sync,
-{
-    async fn up(&self, connection: &mut sqlx::SqliteConnection, _state: &()) -> Result<(), Error> {
-        sqlx::query(self.0.as_ref()).execute(connection).await?;
-        Ok(())
-    }
-
-    async fn down(
-        &self,
-        connection: &mut sqlx::SqliteConnection,
-        _state: &(),
-    ) -> Result<(), Error> {
-        sqlx::query(self.1.as_ref()).execute(connection).await?;
+    async fn down(&self, connection: &mut <DB as sqlx::Database>::Connection) -> Result<(), Error> {
+        sqlx::query(self.1.as_ref())
+            .execute(connection)
+            .await
+            .map_err(Error::from)?;
         Ok(())
     }
 }
