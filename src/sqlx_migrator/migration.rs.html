@@ -348,7 +348,7 @@ impl Migration&lt;Sqlite&gt; for ExampleMigration {
     ///
     /// A virtual migration serves as a reference to another migration with the
     /// same app and name. If the migration is virtual, all other methods
-    /// are ignored.
+    /// are ignored expect its application name and its own name.
     </span><span class="kw">fn </span>is_virtual(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
         <span class="bool-val">false
     </span>}
