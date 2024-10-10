@@ -30,7 +30,7 @@ impl CustomMigrator {
     }
 }
 
-impl Info<Sqlite, ()> for CustomMigrator {
+impl Info<Sqlite> for CustomMigrator {
     fn migrations(&self) -> &Vec<Box<dyn Migration<Sqlite>>> {
         &self.migrations
     }
@@ -38,14 +38,10 @@ impl Info<Sqlite, ()> for CustomMigrator {
     fn migrations_mut(&mut self) -> &mut Vec<Box<dyn Migration<Sqlite>>> {
         &mut self.migrations
     }
-
-    fn state(&self) -> &() {
-        &()
-    }
 }
 
 #[async_trait::async_trait]
-impl DatabaseOperation<Sqlite, ()> for CustomMigrator {
+impl DatabaseOperation<Sqlite> for CustomMigrator {
     async fn ensure_migration_table_exists(
         &self,
         _connection: &mut <Sqlite as sqlx::Database>::Connection,
@@ -98,12 +94,12 @@ impl DatabaseOperation<Sqlite, ()> for CustomMigrator {
     }
 }
 
-impl Migrate<Sqlite, ()> for CustomMigrator {}
+impl Migrate<Sqlite> for CustomMigrator {}
 
 macro_rules! migration {
     ($op:ty, $name:expr, $parents:expr, $replaces:expr, $run_before:expr) => {
         #[async_trait::async_trait]
-        impl crate::migration::Migration<sqlx::Sqlite, ()> for $op {
+        impl crate::migration::Migration<sqlx::Sqlite> for $op {
             fn app(&self) -> &str {
                 "test"
             }
@@ -112,19 +108,19 @@ macro_rules! migration {
                 $name
             }
 
-            fn parents(&self) -> Vec<Box<dyn crate::migration::Migration<sqlx::Sqlite, ()>>> {
+            fn parents(&self) -> Vec<Box<dyn crate::migration::Migration<sqlx::Sqlite>>> {
                 $parents
             }
 
-            fn operations(&self) -> Vec<Box<dyn crate::operation::Operation<sqlx::Sqlite, ()>>> {
+            fn operations(&self) -> Vec<Box<dyn crate::operation::Operation<sqlx::Sqlite>>> {
                 vec![]
             }
 
-            fn replaces(&self) -> Vec<Box<dyn crate::migration::Migration<sqlx::Sqlite, ()>>> {
+            fn replaces(&self) -> Vec<Box<dyn crate::migration::Migration<sqlx::Sqlite>>> {
                 $replaces
             }
 
-            fn run_before(&self) -> Vec<Box<dyn crate::migration::Migration<sqlx::Sqlite, ()>>> {
+            fn run_before(&self) -> Vec<Box<dyn crate::migration::Migration<sqlx::Sqlite>>> {
                 $run_before
             }
         }

@@ -41,10 +41,7 @@ async fn get_database_name(
 }
 
 #[async_trait::async_trait]
-impl<State> DatabaseOperation<Any, State> for Migrator<Any, State>
-where
-    State: Send + Sync,
-{
+impl DatabaseOperation<Any> for Migrator<Any> {
     async fn ensure_migration_table_exists(
         &self,
         connection: &mut <Any as sqlx::Database>::Connection,
@@ -88,7 +85,7 @@ where
     async fn add_migration_to_db_table(
         &self,
         connection: &mut <Any as sqlx::Database>::Connection,
-        migration: &Box<dyn Migration<Any, State>>,
+        migration: &Box<dyn Migration<Any>>,
     ) -> Result<(), Error> {
         let sql_query = match connection.backend_name() {
             #[cfg(feature = "postgres")]
@@ -110,7 +107,7 @@ where
     async fn delete_migration_from_db_table(
         &self,
         connection: &mut <Any as sqlx::Database>::Connection,
-        migration: &Box<dyn Migration<Any, State>>,
+        migration: &Box<dyn Migration<Any>>,
     ) -> Result<(), Error> {
         let sql_query = match connection.backend_name() {
             #[cfg(feature = "postgres")]

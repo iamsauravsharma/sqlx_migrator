@@ -7,14 +7,14 @@ pub(crate) struct M0001Operation;
 
 #[async_trait::async_trait]
 impl Operation<MySql> for M0001Operation {
-    async fn up(&self, connection: &mut MySqlConnection, _state: &()) -> Result<(), Error> {
+    async fn up(&self, connection: &mut MySqlConnection) -> Result<(), Error> {
         sqlx::query("CREATE TABLE sample (id INTEGER PRIMARY KEY, name TEXT)")
             .execute(connection)
             .await?;
         Ok(())
     }
 
-    async fn down(&self, connection: &mut MySqlConnection, _state: &()) -> Result<(), Error> {
+    async fn down(&self, connection: &mut MySqlConnection) -> Result<(), Error> {
         sqlx::query("DROP TABLE sample").execute(connection).await?;
         Ok(())
     }

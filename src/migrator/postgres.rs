@@ -63,10 +63,7 @@ pub(crate) fn get_lock_id(database_name: &str, table_name: &str) -> i64 {
 }
 
 #[async_trait::async_trait]
-impl<State> DatabaseOperation<Postgres, State> for Migrator<Postgres, State>
-where
-    State: Send + Sync,
-{
+impl DatabaseOperation<Postgres> for Migrator<Postgres> {
     async fn ensure_migration_table_exists(
         &self,
         connection: &mut <Postgres as sqlx::Database>::Connection,
@@ -90,7 +87,7 @@ where
     async fn add_migration_to_db_table(
         &self,
         connection: &mut <Postgres as sqlx::Database>::Connection,
-        migration: &Box<dyn Migration<Postgres, State>>,
+        migration: &Box<dyn Migration<Postgres>>,
     ) -> Result<(), Error> {
         sqlx::query(&add_migration_query(self.table_name()))
             .bind(migration.app())
@@ -103,7 +100,7 @@ where
     async fn delete_migration_from_db_table(
         &self,
         connection: &mut <Postgres as sqlx::Database>::Connection,
-        migration: &Box<dyn Migration<Postgres, State>>,
+        migration: &Box<dyn Migration<Postgres>>,
     ) -> Result<(), Error> {
         sqlx::query(&delete_migration_query(self.table_name()))
             .bind(migration.app())

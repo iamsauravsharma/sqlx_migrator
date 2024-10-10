@@ -23,7 +23,7 @@ pub struct CustomMigrator {
     migrations: Vec<Box<dyn Migration<Postgres>>>,
 }
 
-impl Info<Postgres, ()> for CustomMigrator {
+impl Info<Postgres> for CustomMigrator {
     fn migrations(&self) -> &Vec<Box<dyn Migration<Postgres>>> {
         &self.migrations
     }
@@ -31,14 +31,10 @@ impl Info<Postgres, ()> for CustomMigrator {
     fn migrations_mut(&mut self) -> &mut Vec<Box<dyn Migration<Postgres>>> {
         &mut self.migrations
     }
-
-    fn state(&self) -> &() {
-        &()
-    }
 }
 
 #[async_trait::async_trait]
-impl DatabaseOperation<Postgres, ()> for CustomMigrator {
+impl DatabaseOperation<Postgres> for CustomMigrator {
     async fn ensure_migration_table_exists(
         &self,
         connection: &mut <Postgres as sqlx::Database>::Connection,
@@ -134,7 +130,7 @@ impl DatabaseOperation<Postgres, ()> for CustomMigrator {
         Ok(())
     }
 }
-impl Migrate<Postgres, ()> for CustomMigrator {}
+impl Migrate<Postgres> for CustomMigrator {}
 ```
 "##
 )]
@@ -169,15 +165,16 @@ mod postgres;
 #[cfg(all(test, feature = "sqlite"))]
 mod tests;
 
-type BoxMigration<DB, State> = Box<dyn Migration<DB, State>>;
-type MigrationVec<'migration, DB, State> = Vec<&'migration BoxMigration<DB, State>>;
-type MigrationVecResult<'migration, DB, State> = Result<MigrationVec<'migration, DB, State>, Error>;
+type BoxMigration<DB> = Box<dyn Migration<DB>>;
+type MigrationVec<'migration, DB> = Vec<&'migration BoxMigration<DB>>;
+type MigrationVecResult<'migration, DB> = Result<MigrationVec<'migration, DB>, Error>;
 
 #[derive(Debug)]
 enum PlanType {
     Apply,
     Revert,
 }
+
 /// Struct that determines the type of migration plan to execute.
 ///
 /// A `Plan` can specify whether to apply or revert migrations, and may target
@@ -208,7 +205,8 @@ impl Plan {
         Self::new(PlanType::Apply, None, None)
     }
 
-    /// Creates a new plan to apply a specific migration by name.
+    /// Creates a new plan to apply a specific migration by name. If migration
+    /// name is not provided it will apply app all migrations
     #[must_use]
     pub fn apply_name(app: &str, name: &Option<String>) -> Self {
         Self::new(PlanType::Apply, Some((app.to_string(), name.clone())), None)
@@ -226,7 +224,8 @@ impl Plan {
         Self::new(PlanType::Revert, None, None)
     }
 
-    /// Create new plan for revert for provided app and migration name
+    /// Creates a new plan to revert a specific migration by name. If migration
+    /// name is not provided it will revert app all migrations
     #[must_use]
     pub fn revert_name(app: &str, name: &Option<String>) -> Self {
         Self::new(
@@ -245,29 +244,26 @@ impl Plan {
 
 /// The `Info` trait provides database-agnostic methods for managing migrations
 /// and interacting with migration states.
-pub trait Info<DB, State> {
-    /// Returns the current state used by the migrator.
-    fn state(&self) -> &State;
-
+pub trait Info<DB> {
     /// Returns a reference to the list of migrations.
-    fn migrations(&self) -> &Vec<BoxMigration<DB, State>>;
+    fn migrations(&self) -> &Vec<BoxMigration<DB>>;
 
     /// Returns a mutable reference to the list of migrations.
-    fn migrations_mut(&mut self) -> &mut Vec<BoxMigration<DB, State>>;
+    fn migrations_mut(&mut self) -> &mut Vec<BoxMigration<DB>>;
 
     /// Adds a list of migrations to the migrator.
     ///
     /// This method accepts a vector of migrations and adds each one
     /// individually to ensure proper handling of migration relationships
     /// and duplicates.
-    fn add_migrations(&mut self, migrations: Vec<BoxMigration<DB, State>>) {
+    fn add_migrations(&mut self, migrations: Vec<BoxMigration<DB>>) {
         for migration in migrations {
             self.add_migration(migration);
         }
     }
 
     /// Adds a single migration to the migrator.
-    fn add_migration(&mut self, migration: BoxMigration<DB, State>) {
+    fn add_migration(&mut self, migration: BoxMigration<DB>) {
         // if virtual migration is present in list with same app and name than remove
         // virtual migration from list
         if let Some(migration_index) = self
@@ -315,7 +311,7 @@ pub trait Info<DB, State> {
 /// removing migrations from the table, and locking the database during
 /// migration processes.
 #[async_trait::async_trait]
-pub trait DatabaseOperation<DB, State>
+pub trait DatabaseOperation<DB>
 where
     DB: sqlx::Database,
 {
@@ -337,7 +333,7 @@ where
     async fn add_migration_to_db_table(
         &self,
         connection: &mut <DB as sqlx::Database>::Connection,
-        migration: &BoxMigration<DB, State>,
+        migration: &BoxMigration<DB>,
     ) -> Result<(), Error>;
 
     /// Removes a migration record from the migration table in the database.
@@ -345,7 +341,7 @@ where
     async fn delete_migration_from_db_table(
         &self,
         connection: &mut <DB as sqlx::Database>::Connection,
-        migration: &BoxMigration<DB, State>,
+        migration: &BoxMigration<DB>,
     ) -> Result<(), Error>;
 
     /// Fetches the list of applied migrations from the migration table in the
@@ -365,13 +361,10 @@ where
     ) -> Result<(), Error>;
 }
 
-fn populate_recursive<'populate, DB, State>(
-    populate_hash_map: &mut HashMap<
-        &'populate BoxMigration<DB, State>,
-        Vec<&'populate BoxMigration<DB, State>>,
-    >,
-    key: &'populate BoxMigration<DB, State>,
-    value: &'populate BoxMigration<DB, State>,
+fn populate_recursive<'populate, DB>(
+    populate_hash_map: &mut HashMap<&'populate BoxMigration<DB>, Vec<&'populate BoxMigration<DB>>>,
+    key: &'populate BoxMigration<DB>,
+    value: &'populate BoxMigration<DB>,
 ) -> Result<(), Error> {
     // protect against a case where two migration depends upon each other
     if key == value {
@@ -397,9 +390,7 @@ fn populate_recursive<'populate, DB, State>(
     Ok(())
 }
 
-fn get_parent_recursive<DB, State>(
-    migration: &BoxMigration<DB, State>,
-) -> Vec<BoxMigration<DB, State>> {
+fn get_parent_recursive<DB>(migration: &BoxMigration<DB>) -> Vec<BoxMigration<DB>> {
     let mut parents = migration.parents();
     for parent in migration.parents() {
         parents.extend(get_parent_recursive(&parent));
@@ -407,9 +398,7 @@ fn get_parent_recursive<DB, State>(
     parents
 }
 
-fn get_run_before_recursive<DB, State>(
-    migration: &BoxMigration<DB, State>,
-) -> Vec<BoxMigration<DB, State>> {
+fn get_run_before_recursive<DB>(migration: &BoxMigration<DB>) -> Vec<BoxMigration<DB>> {
     let mut run_before_list = migration.run_before();
     for run_before in migration.run_before() {
         run_before_list.extend(get_run_before_recursive(&run_before));
@@ -420,9 +409,9 @@ fn get_run_before_recursive<DB, State>(
 // filter migration list to only contains migrations which is related to with
 // list migration, removes all migrations which is not related to them according
 // to provided plan
-fn only_related_migration<DB, State>(
-    migration_list: &mut MigrationVec<DB, State>,
-    with_list: Vec<&BoxMigration<DB, State>>,
+fn only_related_migration<DB>(
+    migration_list: &mut MigrationVec<DB>,
+    with_list: Vec<&BoxMigration<DB>>,
     plan_type: &PlanType,
 ) {
     let mut related_migrations = vec![];
@@ -462,9 +451,9 @@ fn only_related_migration<DB, State>(
 }
 
 /// Process plan to provided migrations list
-fn process_plan<DB, State>(
-    migration_list: &mut MigrationVec<DB, State>,
-    applied_migrations: &MigrationVec<DB, State>,
+fn process_plan<DB>(
+    migration_list: &mut MigrationVec<DB>,
+    applied_migrations: &MigrationVec<DB>,
     plan: &Plan,
 ) -> Result<(), Error>
 where
@@ -538,16 +527,17 @@ where
     Ok(())
 }
 
-fn get_recursive<'get, DB, State>(
-    hash_map: &'get HashMap<BoxMigration<DB, State>, &'get BoxMigration<DB, State>>,
-    val: &'get BoxMigration<DB, State>,
-) -> Vec<&'get BoxMigration<DB, State>> {
+fn get_recursive<'get, DB>(
+    hash_map: &'get HashMap<BoxMigration<DB>, &'get BoxMigration<DB>>,
+    val: &'get BoxMigration<DB>,
+) -> Vec<&'get BoxMigration<DB>> {
     let mut recursive_vec = vec![val];
     if let Some(&parent) = hash_map.get(val) {
         recursive_vec.extend(get_recursive(hash_map, parent));
     }
     recursive_vec
 }
+
 /// The `Migrate` trait defines methods to manage and apply database migrations
 /// according to a given plan.
 ///
@@ -556,10 +546,9 @@ fn get_recursive<'get, DB, State>(
 /// All methods have default implementations, meaning no explicit implementation
 /// is required. Additionally, all methods are database-agnostic.
 #[async_trait::async_trait]
-pub trait Migrate<DB, State>: Info<DB, State> + DatabaseOperation<DB, State> + Send + Sync
+pub trait Migrate<DB>: Info<DB> + DatabaseOperation<DB> + Send + Sync
 where
     DB: sqlx::Database,
-    State: Send + Sync,
 {
     /// Generate migration plan according to plan.
     ///
@@ -570,7 +559,7 @@ where
         &self,
         connection: &mut <DB as sqlx::Database>::Connection,
         plan: Option<&Plan>,
-    ) -> MigrationVecResult<DB, State> {
+    ) -> MigrationVecResult<DB> {
         if self.migrations().is_empty() {
             return Err(Error::PlanError {
                 message: "no migration are added to migration list".to_string(),
@@ -803,14 +792,14 @@ where
                     if migration.is_atomic() {
                         let mut transaction = connection.begin().await?;
                         for operation in migration.operations() {
-                            operation.up(&mut transaction, self.state()).await?;
+                            operation.up(&mut transaction).await?;
                         }
                         self.add_migration_to_db_table(&mut transaction, migration)
                             .await?;
                         transaction.commit().await?;
                     } else {
                         for operation in migration.operations() {
-                            operation.up(connection, self.state()).await?;
+                            operation.up(connection).await?;
                         }
                         self.add_migration_to_db_table(connection, migration)
                             .await?;
@@ -826,14 +815,14 @@ where
                     if migration.is_atomic() {
                         let mut transaction = connection.begin().await?;
                         for operation in operations {
-                            operation.down(&mut transaction, self.state()).await?;
+                            operation.down(&mut transaction).await?;
                         }
                         self.delete_migration_from_db_table(&mut transaction, migration)
                             .await?;
                         transaction.commit().await?;
                     } else {
                         for operation in operations {
-                            operation.down(connection, self.state()).await?;
+                            operation.down(connection).await?;
                         }
                         self.delete_migration_from_db_table(connection, migration)
                             .await?;
@@ -850,19 +839,18 @@ const DEFAULT_TABLE_NAME: &str = "_sqlx_migrator_migrations";
 
 /// Migrator struct which store migrations graph and information related to
 /// different library supported migrations
-pub struct Migrator<DB, State> {
-    migrations: Vec<BoxMigration<DB, State>>,
+pub struct Migrator<DB> {
+    migrations: Vec<BoxMigration<DB>>,
     table_name: String,
-    state: State,
 }
 
-impl<DB, State> Migrator<DB, State> {
-    /// Create new migrator with provided state
-    pub fn new(state: State) -> Self {
+impl<DB> Migrator<DB> {
+    /// Create new migrator
+    #[must_use]
+    pub fn new() -> Self {
         Self {
             migrations: Vec::default(),
             table_name: DEFAULT_TABLE_NAME.to_string(),
-            state,
         }
     }
 
@@ -893,33 +881,25 @@ impl<DB, State> Migrator<DB, State> {
     }
 }
 
-impl<DB, State> Default for Migrator<DB, State>
-where
-    State: Default,
-{
+impl<DB> Default for Migrator<DB> {
     fn default() -> Self {
-        Self::new(State::default())
+        Self::new()
     }
 }
 
-impl<DB, State> Info<DB, State> for Migrator<DB, State> {
-    fn state(&self) -> &State {
-        &self.state
-    }
-
-    fn migrations(&self) -> &Vec<BoxMigration<DB, State>> {
+impl<DB> Info<DB> for Migrator<DB> {
+    fn migrations(&self) -> &Vec<BoxMigration<DB>> {
         &self.migrations
     }
 
-    fn migrations_mut(&mut self) -> &mut Vec<BoxMigration<DB, State>> {
+    fn migrations_mut(&mut self) -> &mut Vec<BoxMigration<DB>> {
         &mut self.migrations
     }
 }
 
-impl<DB, State> Migrate<DB, State> for Migrator<DB, State>
+impl<DB> Migrate<DB> for Migrator<DB>
 where
     DB: sqlx::Database,
-    Self: DatabaseOperation<DB, State>,
-    State: Send + Sync,
+    Self: DatabaseOperation<DB>,
 {
 }

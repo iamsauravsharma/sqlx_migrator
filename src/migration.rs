@@ -66,7 +66,7 @@ use crate::operation::Operation;
 /// Migrations can also replace existing migrations, enforce ordering with
 /// run before and parents, and control atomicity and virtualization.
 #[allow(clippy::module_name_repetitions)]
-pub trait Migration<DB, State = ()>: Send + Sync {
+pub trait Migration<DB>: Send + Sync {
     /// Returns the application name associated with the migration.
     /// This can be the name of the folder or library where the migration is
     /// located.
@@ -78,24 +78,24 @@ pub trait Migration<DB, State = ()>: Send + Sync {
 
     /// Returns the list of parent migrations.
     ///
-    ///  Parent migrations must be applied before this migration can be applied.
+    /// Parent migrations must be applied before this migration can be applied.
     /// If no parent migrations are required, return an empty vector.
-    fn parents(&self) -> Vec<Box<dyn Migration<DB, State>>>;
+    fn parents(&self) -> Vec<Box<dyn Migration<DB>>>;
 
     /// Returns the operations associated with this migration.
     ///
     /// A migration can include multiple operations (e.g., create, drop) that
     /// are related.
-    fn operations(&self) -> Vec<Box<dyn Operation<DB, State>>>;
+    fn operations(&self) -> Vec<Box<dyn Operation<DB>>>;
 
     /// Returns the list of migrations that this migration replaces.
     ///
     /// If any of these migrations have been applied, this migration will not be
-    /// applied. Instead, it will either be applied or reverted in place of
+    /// applied. If not, it will either be applied or reverted in place of
     /// those migrations.
     ///
     /// The default implementation returns an empty vector.
-    fn replaces(&self) -> Vec<Box<dyn Migration<DB, State>>> {
+    fn replaces(&self) -> Vec<Box<dyn Migration<DB>>> {
         vec![]
     }
 
@@ -106,7 +106,7 @@ pub trait Migration<DB, State = ()>: Send + Sync {
     /// applied after this migration or reverted before this migration.
     ///
     /// The default implementation returns an empty vector.
-    fn run_before(&self) -> Vec<Box<dyn Migration<DB, State>>> {
+    fn run_before(&self) -> Vec<Box<dyn Migration<DB>>> {
         vec![]
     }
 
@@ -134,15 +134,15 @@ pub trait Migration<DB, State = ()>: Send + Sync {
     }
 }
 
-impl<DB, State> PartialEq for dyn Migration<DB, State> {
+impl<DB> PartialEq for dyn Migration<DB> {
     fn eq(&self, other: &Self) -> bool {
         self.app() == other.app() && self.name() == other.name()
     }
 }
 
-impl<DB, State> Eq for dyn Migration<DB, State> {}
+impl<DB> Eq for dyn Migration<DB> {}
 
-impl<DB, State> Hash for dyn Migration<DB, State> {
+impl<DB> Hash for dyn Migration<DB> {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.app().hash(state);
         self.name().hash(state);
@@ -162,11 +162,11 @@ where
         self.1.as_ref()
     }
 
-    fn parents(&self) -> Vec<Box<dyn Migration<DB, ()>>> {
+    fn parents(&self) -> Vec<Box<dyn Migration<DB>>> {
         vec![]
     }
 
-    fn operations(&self) -> Vec<Box<dyn Operation<DB, ()>>> {
+    fn operations(&self) -> Vec<Box<dyn Operation<DB>>> {
         vec![]
     }
 
@@ -213,8 +213,8 @@ impl AppliedMigrationSqlRow {
     }
 }
 
-impl<DB, State> PartialEq<Box<dyn Migration<DB, State>>> for AppliedMigrationSqlRow {
-    fn eq(&self, other: &Box<dyn Migration<DB, State>>) -> bool {
+impl<DB> PartialEq<Box<dyn Migration<DB>>> for AppliedMigrationSqlRow {
+    fn eq(&self, other: &Box<dyn Migration<DB>>) -> bool {
         self.app == other.app() && self.name == other.name()
     }
 }
