@@ -1,4 +1,5 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/operation.rs`."><title>operation.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-b25d77b18a16a9a4.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="sqlx_migrator" data-themes="" data-resource-suffix="" data-rustdoc-version="1.82.0-nightly (6de928dce 2024-08-18)" data-channel="nightly" data-search-js="search-ef54e092fea9c776.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-118b08c4c78b968e.js"></script><script defer src="../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-cb0df477c2d67d00.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-3b12f09e550e0385.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/operation.rs`."><title>operation.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-6d8951b3ccd3cbca.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="sqlx_migrator" data-themes="" data-resource-suffix="" data-rustdoc-version="1.83.0-nightly (eb4e23467 2024-10-09)" data-channel="nightly" data-search-js="search-e056c65ede92db13.js" data-settings-js="settings-805db61a62df4bd2.js" ><script src="../../static.files/storage-1d39b6787ed640ff.js"></script><script defer src="../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-f070b9041d14864c.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-0111fcff984fae8f.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">sqlx_migrator/</div>operation.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers">
+<a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -111,73 +112,7 @@
 <a href="#111" id="111">111</a>
 <a href="#112" id="112">112</a>
 <a href="#113" id="113">113</a>
-<a href="#114" id="114">114</a>
-<a href="#115" id="115">115</a>
-<a href="#116" id="116">116</a>
-<a href="#117" id="117">117</a>
-<a href="#118" id="118">118</a>
-<a href="#119" id="119">119</a>
-<a href="#120" id="120">120</a>
-<a href="#121" id="121">121</a>
-<a href="#122" id="122">122</a>
-<a href="#123" id="123">123</a>
-<a href="#124" id="124">124</a>
-<a href="#125" id="125">125</a>
-<a href="#126" id="126">126</a>
-<a href="#127" id="127">127</a>
-<a href="#128" id="128">128</a>
-<a href="#129" id="129">129</a>
-<a href="#130" id="130">130</a>
-<a href="#131" id="131">131</a>
-<a href="#132" id="132">132</a>
-<a href="#133" id="133">133</a>
-<a href="#134" id="134">134</a>
-<a href="#135" id="135">135</a>
-<a href="#136" id="136">136</a>
-<a href="#137" id="137">137</a>
-<a href="#138" id="138">138</a>
-<a href="#139" id="139">139</a>
-<a href="#140" id="140">140</a>
-<a href="#141" id="141">141</a>
-<a href="#142" id="142">142</a>
-<a href="#143" id="143">143</a>
-<a href="#144" id="144">144</a>
-<a href="#145" id="145">145</a>
-<a href="#146" id="146">146</a>
-<a href="#147" id="147">147</a>
-<a href="#148" id="148">148</a>
-<a href="#149" id="149">149</a>
-<a href="#150" id="150">150</a>
-<a href="#151" id="151">151</a>
-<a href="#152" id="152">152</a>
-<a href="#153" id="153">153</a>
-<a href="#154" id="154">154</a>
-<a href="#155" id="155">155</a>
-<a href="#156" id="156">156</a>
-<a href="#157" id="157">157</a>
-<a href="#158" id="158">158</a>
-<a href="#159" id="159">159</a>
-<a href="#160" id="160">160</a>
-<a href="#161" id="161">161</a>
-<a href="#162" id="162">162</a>
-<a href="#163" id="163">163</a>
-<a href="#164" id="164">164</a>
-<a href="#165" id="165">165</a>
-<a href="#166" id="166">166</a>
-<a href="#167" id="167">167</a>
-<a href="#168" id="168">168</a>
-<a href="#169" id="169">169</a>
-<a href="#170" id="170">170</a>
-<a href="#171" id="171">171</a>
-<a href="#172" id="172">172</a>
-<a href="#173" id="173">173</a>
-<a href="#174" id="174">174</a>
-<a href="#175" id="175">175</a>
-<a href="#176" id="176">176</a>
-<a href="#177" id="177">177</a>
-<a href="#178" id="178">178</a>
-<a href="#179" id="179">179</a>
-</pre></div><pre class="rust"><code><span class="doccomment">//! Module for defining the `Operation` trait
+<a href="#114" id="114">114</a></pre></div><pre class="rust"><code><span class="doccomment">//! Module for defining the `Operation` trait
 //!
 //! This module provides the `Operation` trait, allowing users to define
 //! database operations that can be executed as part of a migration process.
@@ -200,7 +135,6 @@ impl Operation&lt;Sqlite&gt; for ExampleOperation {
     async fn up(
         &amp;self,
         connection: &amp;mut sqlx::SqliteConnection,
-        state: &amp;(),
     ) -&gt; Result&lt;(), Error&gt; {
         // Do some operations
         Ok(())
@@ -211,7 +145,6 @@ impl Operation&lt;Sqlite&gt; for ExampleOperation {
     async fn down(
         &amp;self,
         connection: &amp;mut sqlx::SqliteConnection,
-        state: &amp;(),
     ) -&gt; Result&lt;(), Error&gt; {
         // Do some operations
         Ok(())
@@ -234,21 +167,16 @@ impl Operation&lt;Sqlite&gt; for ExampleOperation {
 /// loss or irreversible changes
 </span><span class="attr">#[allow(clippy::module_name_repetitions)]
 #[async_trait::async_trait]
-</span><span class="kw">pub trait </span>Operation&lt;DB, State = ()&gt;: Send + Sync
+</span><span class="kw">pub trait </span>Operation&lt;DB&gt;: Send + Sync
 <span class="kw">where
     </span>DB: sqlx::Database,
-    State: Send + Sync,
 {
     <span class="doccomment">/// The up method executes the operation when applying the migration.
     ///
     /// This method is called when the migration is being applied to the
     /// database. Implement this method to define the changes you want to
     /// apply.
-    </span><span class="kw">async fn </span>up(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        connection: <span class="kw-2">&amp;mut </span>&lt;DB <span class="kw">as </span>sqlx::Database&gt;::Connection,
-        state: <span class="kw-2">&amp;</span>State,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt;;
+    </span><span class="kw">async fn </span>up(<span class="kw-2">&amp;</span><span class="self">self</span>, connection: <span class="kw-2">&amp;mut </span>&lt;DB <span class="kw">as </span>sqlx::Database&gt;::Connection) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt;;
 
     <span class="doccomment">/// The `down` method reverses the operation when rolling back the
     /// migration.
@@ -256,13 +184,8 @@ impl Operation&lt;Sqlite&gt; for ExampleOperation {
     /// This method is called when the migration is being rolled back. Implement
     /// this method if you want to make the operation reversible. If not
     /// implemented, the operation is considered irreversible.
-    </span><span class="kw">async fn </span>down(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        connection: <span class="kw-2">&amp;mut </span>&lt;DB <span class="kw">as </span>sqlx::Database&gt;::Connection,
-        state: <span class="kw-2">&amp;</span>State,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
+    </span><span class="kw">async fn </span>down(<span class="kw-2">&amp;</span><span class="self">self</span>, connection: <span class="kw-2">&amp;mut </span>&lt;DB <span class="kw">as </span>sqlx::Database&gt;::Connection) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
         <span class="kw">let </span>_connection = connection;
-        <span class="kw">let </span>_state = state;
         <span class="kw">return </span><span class="prelude-val">Err</span>(Error::IrreversibleOperation);
     }
 
@@ -278,81 +201,28 @@ impl Operation&lt;Sqlite&gt; for ExampleOperation {
     </span>}
 }
 
-<span class="attr">#[cfg(all(
-    any(feature = <span class="string">"postgres"</span>, feature = <span class="string">"mysql"</span>, feature = <span class="string">"sqlite"</span>),
-    feature = <span class="string">"any"
-</span>))]
-#[async_trait::async_trait]
-</span><span class="kw">impl</span>&lt;U, D&gt; Operation&lt;sqlx::Any&gt; <span class="kw">for </span>(U, D)
+<span class="attr">#[async_trait::async_trait]
+</span><span class="kw">impl</span>&lt;DB, U, D&gt; Operation&lt;DB&gt; <span class="kw">for </span>(U, D)
 <span class="kw">where
-    </span>U: AsRef&lt;str&gt; + Send + Sync,
+    </span>DB: sqlx::Database,
+    U: AsRef&lt;str&gt; + Send + Sync,
     D: AsRef&lt;str&gt; + Send + Sync,
+    <span class="kw">for</span>&lt;<span class="lifetime">'c</span>&gt; <span class="kw-2">&amp;</span><span class="lifetime">'c </span><span class="kw-2">mut </span>&lt;DB <span class="kw">as </span>sqlx::Database&gt;::Connection: sqlx::Executor&lt;<span class="lifetime">'c</span>, Database = DB&gt;,
+    <span class="kw">for</span>&lt;<span class="lifetime">'q</span>&gt; &lt;DB <span class="kw">as </span>sqlx::Database&gt;::Arguments&lt;<span class="lifetime">'q</span>&gt;: sqlx::IntoArguments&lt;<span class="lifetime">'q</span>, DB&gt;,
 {
-    <span class="kw">async fn </span>up(<span class="kw-2">&amp;</span><span class="self">self</span>, connection: <span class="kw-2">&amp;mut </span>sqlx::AnyConnection, _state: <span class="kw-2">&amp;</span>()) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
-        sqlx::query(<span class="self">self</span>.<span class="number">0</span>.as_ref()).execute(connection).<span class="kw">await</span><span class="question-mark">?</span>;
+    <span class="kw">async fn </span>up(<span class="kw-2">&amp;</span><span class="self">self</span>, connection: <span class="kw-2">&amp;mut </span>&lt;DB <span class="kw">as </span>sqlx::Database&gt;::Connection) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
+        sqlx::query(<span class="self">self</span>.<span class="number">0</span>.as_ref())
+            .execute(connection)
+            .<span class="kw">await
+            </span>.map_err(Error::from)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="kw">async fn </span>down(<span class="kw-2">&amp;</span><span class="self">self</span>, connection: <span class="kw-2">&amp;mut </span>sqlx::AnyConnection, _state: <span class="kw-2">&amp;</span>()) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
-        sqlx::query(<span class="self">self</span>.<span class="number">1</span>.as_ref()).execute(connection).<span class="kw">await</span><span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(())
-    }
-}
-
-<span class="attr">#[cfg(feature = <span class="string">"mysql"</span>)]
-#[async_trait::async_trait]
-</span><span class="kw">impl</span>&lt;U, D&gt; Operation&lt;sqlx::MySql&gt; <span class="kw">for </span>(U, D)
-<span class="kw">where
-    </span>U: AsRef&lt;str&gt; + Send + Sync,
-    D: AsRef&lt;str&gt; + Send + Sync,
-{
-    <span class="kw">async fn </span>up(<span class="kw-2">&amp;</span><span class="self">self</span>, connection: <span class="kw-2">&amp;mut </span>sqlx::MySqlConnection, _state: <span class="kw-2">&amp;</span>()) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
-        sqlx::query(<span class="self">self</span>.<span class="number">0</span>.as_ref()).execute(connection).<span class="kw">await</span><span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(())
-    }
-
-    <span class="kw">async fn </span>down(<span class="kw-2">&amp;</span><span class="self">self</span>, connection: <span class="kw-2">&amp;mut </span>sqlx::MySqlConnection, _state: <span class="kw-2">&amp;</span>()) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
-        sqlx::query(<span class="self">self</span>.<span class="number">1</span>.as_ref()).execute(connection).<span class="kw">await</span><span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(())
-    }
-}
-
-<span class="attr">#[cfg(feature = <span class="string">"postgres"</span>)]
-#[async_trait::async_trait]
-</span><span class="kw">impl</span>&lt;U, D&gt; Operation&lt;sqlx::Postgres&gt; <span class="kw">for </span>(U, D)
-<span class="kw">where
-    </span>U: AsRef&lt;str&gt; + Send + Sync,
-    D: AsRef&lt;str&gt; + Send + Sync,
-{
-    <span class="kw">async fn </span>up(<span class="kw-2">&amp;</span><span class="self">self</span>, connection: <span class="kw-2">&amp;mut </span>sqlx::PgConnection, _state: <span class="kw-2">&amp;</span>()) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
-        sqlx::query(<span class="self">self</span>.<span class="number">0</span>.as_ref()).execute(connection).<span class="kw">await</span><span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(())
-    }
-
-    <span class="kw">async fn </span>down(<span class="kw-2">&amp;</span><span class="self">self</span>, connection: <span class="kw-2">&amp;mut </span>sqlx::PgConnection, _state: <span class="kw-2">&amp;</span>()) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
-        sqlx::query(<span class="self">self</span>.<span class="number">1</span>.as_ref()).execute(connection).<span class="kw">await</span><span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(())
-    }
-}
-
-<span class="attr">#[cfg(feature = <span class="string">"sqlite"</span>)]
-#[async_trait::async_trait]
-</span><span class="kw">impl</span>&lt;U, D&gt; Operation&lt;sqlx::Sqlite&gt; <span class="kw">for </span>(U, D)
-<span class="kw">where
-    </span>U: AsRef&lt;str&gt; + Send + Sync,
-    D: AsRef&lt;str&gt; + Send + Sync,
-{
-    <span class="kw">async fn </span>up(<span class="kw-2">&amp;</span><span class="self">self</span>, connection: <span class="kw-2">&amp;mut </span>sqlx::SqliteConnection, _state: <span class="kw-2">&amp;</span>()) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
-        sqlx::query(<span class="self">self</span>.<span class="number">0</span>.as_ref()).execute(connection).<span class="kw">await</span><span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(())
-    }
-
-    <span class="kw">async fn </span>down(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        connection: <span class="kw-2">&amp;mut </span>sqlx::SqliteConnection,
-        _state: <span class="kw-2">&amp;</span>(),
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
-        sqlx::query(<span class="self">self</span>.<span class="number">1</span>.as_ref()).execute(connection).<span class="kw">await</span><span class="question-mark">?</span>;
+    <span class="kw">async fn </span>down(<span class="kw-2">&amp;</span><span class="self">self</span>, connection: <span class="kw-2">&amp;mut </span>&lt;DB <span class="kw">as </span>sqlx::Database&gt;::Connection) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
+        sqlx::query(<span class="self">self</span>.<span class="number">1</span>.as_ref())
+            .execute(connection)
+            .<span class="kw">await
+            </span>.map_err(Error::from)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
 }

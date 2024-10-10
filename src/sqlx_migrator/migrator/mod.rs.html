@@ -1,4 +1,5 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/migrator/mod.rs`."><title>mod.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-b25d77b18a16a9a4.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="sqlx_migrator" data-themes="" data-resource-suffix="" data-rustdoc-version="1.82.0-nightly (6de928dce 2024-08-18)" data-channel="nightly" data-search-js="search-ef54e092fea9c776.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../static.files/storage-118b08c4c78b968e.js"></script><script defer src="../../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-cb0df477c2d67d00.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-3b12f09e550e0385.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/migrator/mod.rs`."><title>mod.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-6d8951b3ccd3cbca.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="sqlx_migrator" data-themes="" data-resource-suffix="" data-rustdoc-version="1.83.0-nightly (eb4e23467 2024-10-09)" data-channel="nightly" data-search-js="search-e056c65ede92db13.js" data-settings-js="settings-805db61a62df4bd2.js" ><script src="../../../static.files/storage-1d39b6787ed640ff.js"></script><script defer src="../../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-f070b9041d14864c.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-0111fcff984fae8f.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">sqlx_migrator/migrator/</div>mod.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers">
+<a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -902,28 +903,7 @@
 <a href="#902" id="902">902</a>
 <a href="#903" id="903">903</a>
 <a href="#904" id="904">904</a>
-<a href="#905" id="905">905</a>
-<a href="#906" id="906">906</a>
-<a href="#907" id="907">907</a>
-<a href="#908" id="908">908</a>
-<a href="#909" id="909">909</a>
-<a href="#910" id="910">910</a>
-<a href="#911" id="911">911</a>
-<a href="#912" id="912">912</a>
-<a href="#913" id="913">913</a>
-<a href="#914" id="914">914</a>
-<a href="#915" id="915">915</a>
-<a href="#916" id="916">916</a>
-<a href="#917" id="917">917</a>
-<a href="#918" id="918">918</a>
-<a href="#919" id="919">919</a>
-<a href="#920" id="920">920</a>
-<a href="#921" id="921">921</a>
-<a href="#922" id="922">922</a>
-<a href="#923" id="923">923</a>
-<a href="#924" id="924">924</a>
-<a href="#925" id="925">925</a>
-</pre></div><pre class="rust"><code><span class="doccomment">//! Migrator module
+<a href="#905" id="905">905</a></pre></div><pre class="rust"><code><span class="doccomment">//! Migrator module
 //!
 //! It contains common enum and trait for implementing migrator for sqlx
 //! supported database
@@ -948,7 +928,7 @@ pub struct CustomMigrator {
     migrations: Vec&lt;Box&lt;dyn Migration&lt;Postgres&gt;&gt;&gt;,
 }
 
-impl Info&lt;Postgres, ()&gt; for CustomMigrator {
+impl Info&lt;Postgres&gt; for CustomMigrator {
     fn migrations(&amp;self) -&gt; &amp;Vec&lt;Box&lt;dyn Migration&lt;Postgres&gt;&gt;&gt; {
         &amp;self.migrations
     }
@@ -956,14 +936,10 @@ impl Info&lt;Postgres, ()&gt; for CustomMigrator {
     fn migrations_mut(&amp;mut self) -&gt; &amp;mut Vec&lt;Box&lt;dyn Migration&lt;Postgres&gt;&gt;&gt; {
         &amp;mut self.migrations
     }
-
-    fn state(&amp;self) -&gt; &amp;() {
-        &amp;()
-    }
 }
 
 #[async_trait::async_trait]
-impl DatabaseOperation&lt;Postgres, ()&gt; for CustomMigrator {
+impl DatabaseOperation&lt;Postgres&gt; for CustomMigrator {
     async fn ensure_migration_table_exists(
         &amp;self,
         connection: &amp;mut &lt;Postgres as sqlx::Database&gt;::Connection,
@@ -1059,7 +1035,7 @@ impl DatabaseOperation&lt;Postgres, ()&gt; for CustomMigrator {
         Ok(())
     }
 }
-impl Migrate&lt;Postgres, ()&gt; for CustomMigrator {}
+impl Migrate&lt;Postgres&gt; for CustomMigrator {}
 ```
 "##
 </span>)]
@@ -1094,15 +1070,16 @@ impl Migrate&lt;Postgres, ()&gt; for CustomMigrator {}
 </span><span class="attr">#[cfg(all(test, feature = <span class="string">"sqlite"</span>))]
 </span><span class="kw">mod </span>tests;
 
-<span class="kw">type </span>BoxMigration&lt;DB, State&gt; = Box&lt;<span class="kw">dyn </span>Migration&lt;DB, State&gt;&gt;;
-<span class="kw">type </span>MigrationVec&lt;<span class="lifetime">'migration</span>, DB, State&gt; = Vec&lt;<span class="kw-2">&amp;</span><span class="lifetime">'migration </span>BoxMigration&lt;DB, State&gt;&gt;;
-<span class="kw">type </span>MigrationVecResult&lt;<span class="lifetime">'migration</span>, DB, State&gt; = <span class="prelude-ty">Result</span>&lt;MigrationVec&lt;<span class="lifetime">'migration</span>, DB, State&gt;, Error&gt;;
+<span class="kw">type </span>BoxMigration&lt;DB&gt; = Box&lt;<span class="kw">dyn </span>Migration&lt;DB&gt;&gt;;
+<span class="kw">type </span>MigrationVec&lt;<span class="lifetime">'migration</span>, DB&gt; = Vec&lt;<span class="kw-2">&amp;</span><span class="lifetime">'migration </span>BoxMigration&lt;DB&gt;&gt;;
+<span class="kw">type </span>MigrationVecResult&lt;<span class="lifetime">'migration</span>, DB&gt; = <span class="prelude-ty">Result</span>&lt;MigrationVec&lt;<span class="lifetime">'migration</span>, DB&gt;, Error&gt;;
 
 <span class="attr">#[derive(Debug)]
 </span><span class="kw">enum </span>PlanType {
     Apply,
     Revert,
 }
+
 <span class="doccomment">/// Struct that determines the type of migration plan to execute.
 ///
 /// A `Plan` can specify whether to apply or revert migrations, and may target
@@ -1133,7 +1110,8 @@ impl Migrate&lt;Postgres, ()&gt; for CustomMigrator {}
         <span class="self">Self</span>::new(PlanType::Apply, <span class="prelude-val">None</span>, <span class="prelude-val">None</span>)
     }
 
-    <span class="doccomment">/// Creates a new plan to apply a specific migration by name.
+    <span class="doccomment">/// Creates a new plan to apply a specific migration by name. If migration
+    /// name is not provided it will apply app all migrations
     </span><span class="attr">#[must_use]
     </span><span class="kw">pub fn </span>apply_name(app: <span class="kw-2">&amp;</span>str, name: <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span>&lt;String&gt;) -&gt; <span class="self">Self </span>{
         <span class="self">Self</span>::new(PlanType::Apply, <span class="prelude-val">Some</span>((app.to_string(), name.clone())), <span class="prelude-val">None</span>)
@@ -1151,7 +1129,8 @@ impl Migrate&lt;Postgres, ()&gt; for CustomMigrator {}
         <span class="self">Self</span>::new(PlanType::Revert, <span class="prelude-val">None</span>, <span class="prelude-val">None</span>)
     }
 
-    <span class="doccomment">/// Create new plan for revert for provided app and migration name
+    <span class="doccomment">/// Creates a new plan to revert a specific migration by name. If migration
+    /// name is not provided it will revert app all migrations
     </span><span class="attr">#[must_use]
     </span><span class="kw">pub fn </span>revert_name(app: <span class="kw-2">&amp;</span>str, name: <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span>&lt;String&gt;) -&gt; <span class="self">Self </span>{
         <span class="self">Self</span>::new(
@@ -1170,29 +1149,26 @@ impl Migrate&lt;Postgres, ()&gt; for CustomMigrator {}
 
 <span class="doccomment">/// The `Info` trait provides database-agnostic methods for managing migrations
 /// and interacting with migration states.
-</span><span class="kw">pub trait </span>Info&lt;DB, State&gt; {
-    <span class="doccomment">/// Returns the current state used by the migrator.
-    </span><span class="kw">fn </span>state(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>State;
-
+</span><span class="kw">pub trait </span>Info&lt;DB&gt; {
     <span class="doccomment">/// Returns a reference to the list of migrations.
-    </span><span class="kw">fn </span>migrations(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Vec&lt;BoxMigration&lt;DB, State&gt;&gt;;
+    </span><span class="kw">fn </span>migrations(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Vec&lt;BoxMigration&lt;DB&gt;&gt;;
 
     <span class="doccomment">/// Returns a mutable reference to the list of migrations.
-    </span><span class="kw">fn </span>migrations_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>Vec&lt;BoxMigration&lt;DB, State&gt;&gt;;
+    </span><span class="kw">fn </span>migrations_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>Vec&lt;BoxMigration&lt;DB&gt;&gt;;
 
     <span class="doccomment">/// Adds a list of migrations to the migrator.
     ///
     /// This method accepts a vector of migrations and adds each one
     /// individually to ensure proper handling of migration relationships
     /// and duplicates.
-    </span><span class="kw">fn </span>add_migrations(<span class="kw-2">&amp;mut </span><span class="self">self</span>, migrations: Vec&lt;BoxMigration&lt;DB, State&gt;&gt;) {
+    </span><span class="kw">fn </span>add_migrations(<span class="kw-2">&amp;mut </span><span class="self">self</span>, migrations: Vec&lt;BoxMigration&lt;DB&gt;&gt;) {
         <span class="kw">for </span>migration <span class="kw">in </span>migrations {
             <span class="self">self</span>.add_migration(migration);
         }
     }
 
     <span class="doccomment">/// Adds a single migration to the migrator.
-    </span><span class="kw">fn </span>add_migration(<span class="kw-2">&amp;mut </span><span class="self">self</span>, migration: BoxMigration&lt;DB, State&gt;) {
+    </span><span class="kw">fn </span>add_migration(<span class="kw-2">&amp;mut </span><span class="self">self</span>, migration: BoxMigration&lt;DB&gt;) {
         <span class="comment">// if virtual migration is present in list with same app and name than remove
         // virtual migration from list
         </span><span class="kw">if let </span><span class="prelude-val">Some</span>(migration_index) = <span class="self">self
@@ -1240,7 +1216,7 @@ impl Migrate&lt;Postgres, ()&gt; for CustomMigrator {}
 /// removing migrations from the table, and locking the database during
 /// migration processes.
 </span><span class="attr">#[async_trait::async_trait]
-</span><span class="kw">pub trait </span>DatabaseOperation&lt;DB, State&gt;
+</span><span class="kw">pub trait </span>DatabaseOperation&lt;DB&gt;
 <span class="kw">where
     </span>DB: sqlx::Database,
 {
@@ -1262,7 +1238,7 @@ impl Migrate&lt;Postgres, ()&gt; for CustomMigrator {}
     </span><span class="kw">async fn </span>add_migration_to_db_table(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         connection: <span class="kw-2">&amp;mut </span>&lt;DB <span class="kw">as </span>sqlx::Database&gt;::Connection,
-        migration: <span class="kw-2">&amp;</span>BoxMigration&lt;DB, State&gt;,
+        migration: <span class="kw-2">&amp;</span>BoxMigration&lt;DB&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt;;
 
     <span class="doccomment">/// Removes a migration record from the migration table in the database.
@@ -1270,7 +1246,7 @@ impl Migrate&lt;Postgres, ()&gt; for CustomMigrator {}
     </span><span class="kw">async fn </span>delete_migration_from_db_table(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         connection: <span class="kw-2">&amp;mut </span>&lt;DB <span class="kw">as </span>sqlx::Database&gt;::Connection,
-        migration: <span class="kw-2">&amp;</span>BoxMigration&lt;DB, State&gt;,
+        migration: <span class="kw-2">&amp;</span>BoxMigration&lt;DB&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt;;
 
     <span class="doccomment">/// Fetches the list of applied migrations from the migration table in the
@@ -1290,13 +1266,10 @@ impl Migrate&lt;Postgres, ()&gt; for CustomMigrator {}
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt;;
 }
 
-<span class="kw">fn </span>populate_recursive&lt;<span class="lifetime">'populate</span>, DB, State&gt;(
-    populate_hash_map: <span class="kw-2">&amp;mut </span>HashMap&lt;
-        <span class="kw-2">&amp;</span><span class="lifetime">'populate </span>BoxMigration&lt;DB, State&gt;,
-        Vec&lt;<span class="kw-2">&amp;</span><span class="lifetime">'populate </span>BoxMigration&lt;DB, State&gt;&gt;,
-    &gt;,
-    key: <span class="kw-2">&amp;</span><span class="lifetime">'populate </span>BoxMigration&lt;DB, State&gt;,
-    value: <span class="kw-2">&amp;</span><span class="lifetime">'populate </span>BoxMigration&lt;DB, State&gt;,
+<span class="kw">fn </span>populate_recursive&lt;<span class="lifetime">'populate</span>, DB&gt;(
+    populate_hash_map: <span class="kw-2">&amp;mut </span>HashMap&lt;<span class="kw-2">&amp;</span><span class="lifetime">'populate </span>BoxMigration&lt;DB&gt;, Vec&lt;<span class="kw-2">&amp;</span><span class="lifetime">'populate </span>BoxMigration&lt;DB&gt;&gt;&gt;,
+    key: <span class="kw-2">&amp;</span><span class="lifetime">'populate </span>BoxMigration&lt;DB&gt;,
+    value: <span class="kw-2">&amp;</span><span class="lifetime">'populate </span>BoxMigration&lt;DB&gt;,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
     <span class="comment">// protect against a case where two migration depends upon each other
     </span><span class="kw">if </span>key == value {
@@ -1322,9 +1295,7 @@ impl Migrate&lt;Postgres, ()&gt; for CustomMigrator {}
     <span class="prelude-val">Ok</span>(())
 }
 
-<span class="kw">fn </span>get_parent_recursive&lt;DB, State&gt;(
-    migration: <span class="kw-2">&amp;</span>BoxMigration&lt;DB, State&gt;,
-) -&gt; Vec&lt;BoxMigration&lt;DB, State&gt;&gt; {
+<span class="kw">fn </span>get_parent_recursive&lt;DB&gt;(migration: <span class="kw-2">&amp;</span>BoxMigration&lt;DB&gt;) -&gt; Vec&lt;BoxMigration&lt;DB&gt;&gt; {
     <span class="kw">let </span><span class="kw-2">mut </span>parents = migration.parents();
     <span class="kw">for </span>parent <span class="kw">in </span>migration.parents() {
         parents.extend(get_parent_recursive(<span class="kw-2">&amp;</span>parent));
@@ -1332,9 +1303,7 @@ impl Migrate&lt;Postgres, ()&gt; for CustomMigrator {}
     parents
 }
 
-<span class="kw">fn </span>get_run_before_recursive&lt;DB, State&gt;(
-    migration: <span class="kw-2">&amp;</span>BoxMigration&lt;DB, State&gt;,
-) -&gt; Vec&lt;BoxMigration&lt;DB, State&gt;&gt; {
+<span class="kw">fn </span>get_run_before_recursive&lt;DB&gt;(migration: <span class="kw-2">&amp;</span>BoxMigration&lt;DB&gt;) -&gt; Vec&lt;BoxMigration&lt;DB&gt;&gt; {
     <span class="kw">let </span><span class="kw-2">mut </span>run_before_list = migration.run_before();
     <span class="kw">for </span>run_before <span class="kw">in </span>migration.run_before() {
         run_before_list.extend(get_run_before_recursive(<span class="kw-2">&amp;</span>run_before));
@@ -1345,9 +1314,9 @@ impl Migrate&lt;Postgres, ()&gt; for CustomMigrator {}
 <span class="comment">// filter migration list to only contains migrations which is related to with
 // list migration, removes all migrations which is not related to them according
 // to provided plan
-</span><span class="kw">fn </span>only_related_migration&lt;DB, State&gt;(
-    migration_list: <span class="kw-2">&amp;mut </span>MigrationVec&lt;DB, State&gt;,
-    with_list: Vec&lt;<span class="kw-2">&amp;</span>BoxMigration&lt;DB, State&gt;&gt;,
+</span><span class="kw">fn </span>only_related_migration&lt;DB&gt;(
+    migration_list: <span class="kw-2">&amp;mut </span>MigrationVec&lt;DB&gt;,
+    with_list: Vec&lt;<span class="kw-2">&amp;</span>BoxMigration&lt;DB&gt;&gt;,
     plan_type: <span class="kw-2">&amp;</span>PlanType,
 ) {
     <span class="kw">let </span><span class="kw-2">mut </span>related_migrations = <span class="macro">vec!</span>[];
@@ -1387,9 +1356,9 @@ impl Migrate&lt;Postgres, ()&gt; for CustomMigrator {}
 }
 
 <span class="doccomment">/// Process plan to provided migrations list
-</span><span class="kw">fn </span>process_plan&lt;DB, State&gt;(
-    migration_list: <span class="kw-2">&amp;mut </span>MigrationVec&lt;DB, State&gt;,
-    applied_migrations: <span class="kw-2">&amp;</span>MigrationVec&lt;DB, State&gt;,
+</span><span class="kw">fn </span>process_plan&lt;DB&gt;(
+    migration_list: <span class="kw-2">&amp;mut </span>MigrationVec&lt;DB&gt;,
+    applied_migrations: <span class="kw-2">&amp;</span>MigrationVec&lt;DB&gt;,
     plan: <span class="kw-2">&amp;</span>Plan,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt;
 <span class="kw">where
@@ -1463,16 +1432,17 @@ impl Migrate&lt;Postgres, ()&gt; for CustomMigrator {}
     <span class="prelude-val">Ok</span>(())
 }
 
-<span class="kw">fn </span>get_recursive&lt;<span class="lifetime">'get</span>, DB, State&gt;(
-    hash_map: <span class="kw-2">&amp;</span><span class="lifetime">'get </span>HashMap&lt;BoxMigration&lt;DB, State&gt;, <span class="kw-2">&amp;</span><span class="lifetime">'get </span>BoxMigration&lt;DB, State&gt;&gt;,
-    val: <span class="kw-2">&amp;</span><span class="lifetime">'get </span>BoxMigration&lt;DB, State&gt;,
-) -&gt; Vec&lt;<span class="kw-2">&amp;</span><span class="lifetime">'get </span>BoxMigration&lt;DB, State&gt;&gt; {
+<span class="kw">fn </span>get_recursive&lt;<span class="lifetime">'get</span>, DB&gt;(
+    hash_map: <span class="kw-2">&amp;</span><span class="lifetime">'get </span>HashMap&lt;BoxMigration&lt;DB&gt;, <span class="kw-2">&amp;</span><span class="lifetime">'get </span>BoxMigration&lt;DB&gt;&gt;,
+    val: <span class="kw-2">&amp;</span><span class="lifetime">'get </span>BoxMigration&lt;DB&gt;,
+) -&gt; Vec&lt;<span class="kw-2">&amp;</span><span class="lifetime">'get </span>BoxMigration&lt;DB&gt;&gt; {
     <span class="kw">let </span><span class="kw-2">mut </span>recursive_vec = <span class="macro">vec!</span>[val];
     <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>parent) = hash_map.get(val) {
         recursive_vec.extend(get_recursive(hash_map, parent));
     }
     recursive_vec
 }
+
 <span class="doccomment">/// The `Migrate` trait defines methods to manage and apply database migrations
 /// according to a given plan.
 ///
@@ -1481,10 +1451,9 @@ impl Migrate&lt;Postgres, ()&gt; for CustomMigrator {}
 /// All methods have default implementations, meaning no explicit implementation
 /// is required. Additionally, all methods are database-agnostic.
 </span><span class="attr">#[async_trait::async_trait]
-</span><span class="kw">pub trait </span>Migrate&lt;DB, State&gt;: Info&lt;DB, State&gt; + DatabaseOperation&lt;DB, State&gt; + Send + Sync
+</span><span class="kw">pub trait </span>Migrate&lt;DB&gt;: Info&lt;DB&gt; + DatabaseOperation&lt;DB&gt; + Send + Sync
 <span class="kw">where
     </span>DB: sqlx::Database,
-    State: Send + Sync,
 {
     <span class="doccomment">/// Generate migration plan according to plan.
     ///
@@ -1495,7 +1464,7 @@ impl Migrate&lt;Postgres, ()&gt; for CustomMigrator {}
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         connection: <span class="kw-2">&amp;mut </span>&lt;DB <span class="kw">as </span>sqlx::Database&gt;::Connection,
         plan: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>Plan&gt;,
-    ) -&gt; MigrationVecResult&lt;DB, State&gt; {
+    ) -&gt; MigrationVecResult&lt;DB&gt; {
         <span class="kw">if </span><span class="self">self</span>.migrations().is_empty() {
             <span class="kw">return </span><span class="prelude-val">Err</span>(Error::PlanError {
                 message: <span class="string">"no migration are added to migration list"</span>.to_string(),
@@ -1728,14 +1697,14 @@ impl Migrate&lt;Postgres, ()&gt; for CustomMigrator {}
                     <span class="kw">if </span>migration.is_atomic() {
                         <span class="kw">let </span><span class="kw-2">mut </span>transaction = connection.begin().<span class="kw">await</span><span class="question-mark">?</span>;
                         <span class="kw">for </span>operation <span class="kw">in </span>migration.operations() {
-                            operation.up(<span class="kw-2">&amp;mut </span>transaction, <span class="self">self</span>.state()).<span class="kw">await</span><span class="question-mark">?</span>;
+                            operation.up(<span class="kw-2">&amp;mut </span>transaction).<span class="kw">await</span><span class="question-mark">?</span>;
                         }
                         <span class="self">self</span>.add_migration_to_db_table(<span class="kw-2">&amp;mut </span>transaction, migration)
                             .<span class="kw">await</span><span class="question-mark">?</span>;
                         transaction.commit().<span class="kw">await</span><span class="question-mark">?</span>;
                     } <span class="kw">else </span>{
                         <span class="kw">for </span>operation <span class="kw">in </span>migration.operations() {
-                            operation.up(connection, <span class="self">self</span>.state()).<span class="kw">await</span><span class="question-mark">?</span>;
+                            operation.up(connection).<span class="kw">await</span><span class="question-mark">?</span>;
                         }
                         <span class="self">self</span>.add_migration_to_db_table(connection, migration)
                             .<span class="kw">await</span><span class="question-mark">?</span>;
@@ -1751,14 +1720,14 @@ impl Migrate&lt;Postgres, ()&gt; for CustomMigrator {}
                     <span class="kw">if </span>migration.is_atomic() {
                         <span class="kw">let </span><span class="kw-2">mut </span>transaction = connection.begin().<span class="kw">await</span><span class="question-mark">?</span>;
                         <span class="kw">for </span>operation <span class="kw">in </span>operations {
-                            operation.down(<span class="kw-2">&amp;mut </span>transaction, <span class="self">self</span>.state()).<span class="kw">await</span><span class="question-mark">?</span>;
+                            operation.down(<span class="kw-2">&amp;mut </span>transaction).<span class="kw">await</span><span class="question-mark">?</span>;
                         }
                         <span class="self">self</span>.delete_migration_from_db_table(<span class="kw-2">&amp;mut </span>transaction, migration)
                             .<span class="kw">await</span><span class="question-mark">?</span>;
                         transaction.commit().<span class="kw">await</span><span class="question-mark">?</span>;
                     } <span class="kw">else </span>{
                         <span class="kw">for </span>operation <span class="kw">in </span>operations {
-                            operation.down(connection, <span class="self">self</span>.state()).<span class="kw">await</span><span class="question-mark">?</span>;
+                            operation.down(connection).<span class="kw">await</span><span class="question-mark">?</span>;
                         }
                         <span class="self">self</span>.delete_migration_from_db_table(connection, migration)
                             .<span class="kw">await</span><span class="question-mark">?</span>;
@@ -1775,19 +1744,18 @@ impl Migrate&lt;Postgres, ()&gt; for CustomMigrator {}
 
 <span class="doccomment">/// Migrator struct which store migrations graph and information related to
 /// different library supported migrations
-</span><span class="kw">pub struct </span>Migrator&lt;DB, State&gt; {
-    migrations: Vec&lt;BoxMigration&lt;DB, State&gt;&gt;,
+</span><span class="kw">pub struct </span>Migrator&lt;DB&gt; {
+    migrations: Vec&lt;BoxMigration&lt;DB&gt;&gt;,
     table_name: String,
-    state: State,
 }
 
-<span class="kw">impl</span>&lt;DB, State&gt; Migrator&lt;DB, State&gt; {
-    <span class="doccomment">/// Create new migrator with provided state
-    </span><span class="kw">pub fn </span>new(state: State) -&gt; <span class="self">Self </span>{
+<span class="kw">impl</span>&lt;DB&gt; Migrator&lt;DB&gt; {
+    <span class="doccomment">/// Create new migrator
+    </span><span class="attr">#[must_use]
+    </span><span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             migrations: Vec::default(),
             table_name: DEFAULT_TABLE_NAME.to_string(),
-            state,
         }
     }
 
@@ -1818,34 +1786,26 @@ impl Migrate&lt;Postgres, ()&gt; for CustomMigrator {}
     }
 }
 
-<span class="kw">impl</span>&lt;DB, State&gt; Default <span class="kw">for </span>Migrator&lt;DB, State&gt;
-<span class="kw">where
-    </span>State: Default,
-{
+<span class="kw">impl</span>&lt;DB&gt; Default <span class="kw">for </span>Migrator&lt;DB&gt; {
     <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
-        <span class="self">Self</span>::new(State::default())
+        <span class="self">Self</span>::new()
     }
 }
 
-<span class="kw">impl</span>&lt;DB, State&gt; Info&lt;DB, State&gt; <span class="kw">for </span>Migrator&lt;DB, State&gt; {
-    <span class="kw">fn </span>state(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>State {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.state
-    }
-
-    <span class="kw">fn </span>migrations(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Vec&lt;BoxMigration&lt;DB, State&gt;&gt; {
+<span class="kw">impl</span>&lt;DB&gt; Info&lt;DB&gt; <span class="kw">for </span>Migrator&lt;DB&gt; {
+    <span class="kw">fn </span>migrations(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Vec&lt;BoxMigration&lt;DB&gt;&gt; {
         <span class="kw-2">&amp;</span><span class="self">self</span>.migrations
     }
 
-    <span class="kw">fn </span>migrations_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>Vec&lt;BoxMigration&lt;DB, State&gt;&gt; {
+    <span class="kw">fn </span>migrations_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>Vec&lt;BoxMigration&lt;DB&gt;&gt; {
         <span class="kw-2">&amp;mut </span><span class="self">self</span>.migrations
     }
 }
 
-<span class="kw">impl</span>&lt;DB, State&gt; Migrate&lt;DB, State&gt; <span class="kw">for </span>Migrator&lt;DB, State&gt;
+<span class="kw">impl</span>&lt;DB&gt; Migrate&lt;DB&gt; <span class="kw">for </span>Migrator&lt;DB&gt;
 <span class="kw">where
     </span>DB: sqlx::Database,
-    <span class="self">Self</span>: DatabaseOperation&lt;DB, State&gt;,
-    State: Send + Sync,
+    <span class="self">Self</span>: DatabaseOperation&lt;DB&gt;,
 {
 }
 </code></pre></div></section></main></body></html>

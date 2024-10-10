@@ -1,4 +1,5 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/macros.rs`."><title>macros.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-b25d77b18a16a9a4.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="sqlx_migrator" data-themes="" data-resource-suffix="" data-rustdoc-version="1.82.0-nightly (6de928dce 2024-08-18)" data-channel="nightly" data-search-js="search-ef54e092fea9c776.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-118b08c4c78b968e.js"></script><script defer src="../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-cb0df477c2d67d00.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-3b12f09e550e0385.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/macros.rs`."><title>macros.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-6d8951b3ccd3cbca.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="sqlx_migrator" data-themes="" data-resource-suffix="" data-rustdoc-version="1.83.0-nightly (eb4e23467 2024-10-09)" data-channel="nightly" data-search-js="search-e056c65ede92db13.js" data-settings-js="settings-805db61a62df4bd2.js" ><script src="../../static.files/storage-1d39b6787ed640ff.js"></script><script defer src="../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-f070b9041d14864c.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-0111fcff984fae8f.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">sqlx_migrator/</div>macros.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers">
+<a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -93,32 +94,7 @@
 <a href="#93" id="93">93</a>
 <a href="#94" id="94">94</a>
 <a href="#95" id="95">95</a>
-<a href="#96" id="96">96</a>
-<a href="#97" id="97">97</a>
-<a href="#98" id="98">98</a>
-<a href="#99" id="99">99</a>
-<a href="#100" id="100">100</a>
-<a href="#101" id="101">101</a>
-<a href="#102" id="102">102</a>
-<a href="#103" id="103">103</a>
-<a href="#104" id="104">104</a>
-<a href="#105" id="105">105</a>
-<a href="#106" id="106">106</a>
-<a href="#107" id="107">107</a>
-<a href="#108" id="108">108</a>
-<a href="#109" id="109">109</a>
-<a href="#110" id="110">110</a>
-<a href="#111" id="111">111</a>
-<a href="#112" id="112">112</a>
-<a href="#113" id="113">113</a>
-<a href="#114" id="114">114</a>
-<a href="#115" id="115">115</a>
-<a href="#116" id="116">116</a>
-<a href="#117" id="117">117</a>
-<a href="#118" id="118">118</a>
-<a href="#119" id="119">119</a>
-<a href="#120" id="120">120</a>
-</pre></div><pre class="rust"><code><span class="doccomment">/// Macro for vector of [`Box`]
+<a href="#96" id="96">96</a></pre></div><pre class="rust"><code><span class="doccomment">/// Macro for vector of [`Box`]
 </span><span class="attr">#[macro_export]
 </span><span class="macro">macro_rules!</span> vec_box {
     (<span class="macro-nonterminal">$elem</span>:expr; <span class="macro-nonterminal">$n</span>:expr) =&gt; (<span class="macro">vec!</span>[Box::new(<span class="macro-nonterminal">$elem</span>); <span class="macro-nonterminal">$n</span>]);
@@ -133,17 +109,15 @@
 ///
 /// This macro expects the following arguments:
 /// - `$db:ty`: the type of database
-/// - `$state:ty`: the type of state for migration (optional). If not present
-///   this will by default set as `()`
 /// - `$op:ty`: The type for which the migration is being implemented
 /// - `$app_name:expr`: Name of app to be used for app variable
 /// - `$parents:expr`: List of parents migration.
 /// - `$operations:expr`: List of operations
 </span><span class="attr">#[macro_export]
 </span><span class="macro">macro_rules!</span> migration {
-    (<span class="macro-nonterminal">$db</span>:ty, <span class="macro-nonterminal">$state</span>:ty, <span class="macro-nonterminal">$op</span>:ty, <span class="macro-nonterminal">$app_name</span>:expr, <span class="macro-nonterminal">$parents</span>:expr, <span class="macro-nonterminal">$operations</span>:expr) =&gt; {
+    (<span class="macro-nonterminal">$db</span>:ty, <span class="macro-nonterminal">$op</span>:ty, <span class="macro-nonterminal">$app_name</span>:expr, <span class="macro-nonterminal">$parents</span>:expr, <span class="macro-nonterminal">$operations</span>:expr) =&gt; {
         <span class="attr">#[async_trait::async_trait]
-        </span><span class="kw">impl </span>sqlx_migrator::migration::Migration&lt;<span class="macro-nonterminal">$db</span>, <span class="macro-nonterminal">$state</span>&gt; <span class="kw">for </span><span class="macro-nonterminal">$op </span>{
+        </span><span class="kw">impl </span>sqlx_migrator::migration::Migration&lt;<span class="macro-nonterminal">$db</span>&gt; <span class="kw">for </span><span class="macro-nonterminal">$op </span>{
             <span class="kw">fn </span>app(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>str {
                 <span class="macro-nonterminal">$app_name
             </span>}
@@ -155,17 +129,14 @@
                     .unwrap_or_default()
             }
 
-            <span class="kw">fn </span>parents(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;Box&lt;<span class="kw">dyn </span>sqlx_migrator::migration::Migration&lt;<span class="macro-nonterminal">$db</span>, <span class="macro-nonterminal">$state</span>&gt;&gt;&gt; {
+            <span class="kw">fn </span>parents(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;Box&lt;<span class="kw">dyn </span>sqlx_migrator::migration::Migration&lt;<span class="macro-nonterminal">$db</span>&gt;&gt;&gt; {
                 <span class="macro-nonterminal">$parents
             </span>}
 
-            <span class="kw">fn </span>operations(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;Box&lt;<span class="kw">dyn </span>sqlx_migrator::operation::Operation&lt;<span class="macro-nonterminal">$db</span>, <span class="macro-nonterminal">$state</span>&gt;&gt;&gt; {
+            <span class="kw">fn </span>operations(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;Box&lt;<span class="kw">dyn </span>sqlx_migrator::operation::Operation&lt;<span class="macro-nonterminal">$db</span>&gt;&gt;&gt; {
                 <span class="macro-nonterminal">$operations
             </span>}
         }
-    };
-    (<span class="macro-nonterminal">$db</span>:ty, <span class="macro-nonterminal">$op</span>:ty, <span class="macro-nonterminal">$app_name</span>:expr, <span class="macro-nonterminal">$parents</span>:expr, <span class="macro-nonterminal">$operations</span>:expr) =&gt; {
-        <span class="macro">sqlx_migrator::migration!</span>(<span class="macro-nonterminal">$db</span>, (), <span class="macro-nonterminal">$op</span>, <span class="macro-nonterminal">$app_name</span>, <span class="macro-nonterminal">$parents</span>, <span class="macro-nonterminal">$operations</span>);
     };
 }
 
@@ -179,11 +150,8 @@
     feature = <span class="string">"any"
 </span>))]
 </span><span class="macro">macro_rules!</span> any_migration {
-    (<span class="macro-nonterminal">$state</span>:ty, <span class="macro-nonterminal">$op</span>:ty, <span class="macro-nonterminal">$app_name</span>:expr, <span class="macro-nonterminal">$parents</span>:expr, <span class="macro-nonterminal">$operations</span>:expr) =&gt; {
-        <span class="macro">sqlx_migrator::migration!</span>(sqlx::Any, <span class="macro-nonterminal">$state</span>, <span class="macro-nonterminal">$op</span>, <span class="macro-nonterminal">$app_name</span>, <span class="macro-nonterminal">$parents</span>, <span class="macro-nonterminal">$operations</span>);
-    };
     (<span class="macro-nonterminal">$op</span>:ty, <span class="macro-nonterminal">$app_name</span>:expr, <span class="macro-nonterminal">$parents</span>:expr, <span class="macro-nonterminal">$operations</span>:expr) =&gt; {
-        <span class="macro">sqlx_migrator::any_migration!</span>((), <span class="macro-nonterminal">$op</span>, <span class="macro-nonterminal">$app_name</span>, <span class="macro-nonterminal">$parents</span>, <span class="macro-nonterminal">$operations</span>);
+        <span class="macro">sqlx_migrator::migration!</span>(sqlx::Any, <span class="macro-nonterminal">$op</span>, <span class="macro-nonterminal">$app_name</span>, <span class="macro-nonterminal">$parents</span>, <span class="macro-nonterminal">$operations</span>);
     };
 }
 
@@ -194,11 +162,8 @@
 </span><span class="attr">#[macro_export]
 #[cfg(feature = <span class="string">"mysql"</span>)]
 </span><span class="macro">macro_rules!</span> mysql_migration {
-    (<span class="macro-nonterminal">$state</span>:ty, <span class="macro-nonterminal">$op</span>:ty, <span class="macro-nonterminal">$app_name</span>:expr, <span class="macro-nonterminal">$parents</span>:expr, <span class="macro-nonterminal">$operations</span>:expr) =&gt; {
-        <span class="macro">sqlx_migrator::migration!</span>(sqlx::MySql, <span class="macro-nonterminal">$state</span>, <span class="macro-nonterminal">$op</span>, <span class="macro-nonterminal">$app_name</span>, <span class="macro-nonterminal">$parents</span>, <span class="macro-nonterminal">$operations</span>);
-    };
     (<span class="macro-nonterminal">$op</span>:ty, <span class="macro-nonterminal">$app_name</span>:expr, <span class="macro-nonterminal">$parents</span>:expr, <span class="macro-nonterminal">$operations</span>:expr) =&gt; {
-        <span class="macro">sqlx_migrator::mysql_migration!</span>((), <span class="macro-nonterminal">$op</span>, <span class="macro-nonterminal">$app_name</span>, <span class="macro-nonterminal">$parents</span>, <span class="macro-nonterminal">$operations</span>);
+        <span class="macro">sqlx_migrator::migration!</span>(sqlx::MySql, <span class="macro-nonterminal">$op</span>, <span class="macro-nonterminal">$app_name</span>, <span class="macro-nonterminal">$parents</span>, <span class="macro-nonterminal">$operations</span>);
     };
 }
 
@@ -209,18 +174,8 @@
 </span><span class="attr">#[macro_export]
 #[cfg(feature = <span class="string">"postgres"</span>)]
 </span><span class="macro">macro_rules!</span> postgres_migration {
-    (<span class="macro-nonterminal">$state</span>:ty, <span class="macro-nonterminal">$op</span>:ty, <span class="macro-nonterminal">$app_name</span>:expr, <span class="macro-nonterminal">$parents</span>:expr, <span class="macro-nonterminal">$operations</span>:expr) =&gt; {
-        <span class="macro">sqlx_migrator::migration!</span>(
-            sqlx::Postgres,
-            <span class="macro-nonterminal">$state</span>,
-            <span class="macro-nonterminal">$op</span>,
-            <span class="macro-nonterminal">$app_name</span>,
-            <span class="macro-nonterminal">$parents</span>,
-            <span class="macro-nonterminal">$operations
-        </span>);
-    };
     (<span class="macro-nonterminal">$op</span>:ty, <span class="macro-nonterminal">$app_name</span>:expr, <span class="macro-nonterminal">$parents</span>:expr, <span class="macro-nonterminal">$operations</span>:expr) =&gt; {
-        <span class="macro">sqlx_migrator::postgres_migration!</span>((), <span class="macro-nonterminal">$op</span>, <span class="macro-nonterminal">$app_name</span>, <span class="macro-nonterminal">$parents</span>, <span class="macro-nonterminal">$operations</span>);
+        <span class="macro">sqlx_migrator::migration!</span>(sqlx::Postgres, <span class="macro-nonterminal">$op</span>, <span class="macro-nonterminal">$app_name</span>, <span class="macro-nonterminal">$parents</span>, <span class="macro-nonterminal">$operations</span>);
     };
 }
 
@@ -231,11 +186,8 @@
 </span><span class="attr">#[macro_export]
 #[cfg(feature = <span class="string">"sqlite"</span>)]
 </span><span class="macro">macro_rules!</span> sqlite_migration {
-    (<span class="macro-nonterminal">$state</span>:ty, <span class="macro-nonterminal">$op</span>:ty, <span class="macro-nonterminal">$app_name</span>:expr, <span class="macro-nonterminal">$parents</span>:expr, <span class="macro-nonterminal">$operations</span>:expr) =&gt; {
-        <span class="macro">sqlx_migrator::migration!</span>(sqlx::Sqlite, <span class="macro-nonterminal">$state</span>, <span class="macro-nonterminal">$op</span>, <span class="macro-nonterminal">$app_name</span>, <span class="macro-nonterminal">$parents</span>, <span class="macro-nonterminal">$operations</span>);
-    };
     (<span class="macro-nonterminal">$op</span>:ty, <span class="macro-nonterminal">$app_name</span>:expr, <span class="macro-nonterminal">$parents</span>:expr, <span class="macro-nonterminal">$operations</span>:expr) =&gt; {
-        <span class="macro">sqlx_migrator::sqlite_migration!</span>((), <span class="macro-nonterminal">$op</span>, <span class="macro-nonterminal">$app_name</span>, <span class="macro-nonterminal">$parents</span>, <span class="macro-nonterminal">$operations</span>);
+        <span class="macro">sqlx_migrator::migration!</span>(sqlx::Sqlite, <span class="macro-nonterminal">$op</span>, <span class="macro-nonterminal">$app_name</span>, <span class="macro-nonterminal">$parents</span>, <span class="macro-nonterminal">$operations</span>);
     };
 }
 </code></pre></div></section></main></body></html>
