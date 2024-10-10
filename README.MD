@@ -115,6 +115,7 @@ sqlx_migrator::migration!(
     sqlx::Postgres,
     FirstMigration,
     "main",
+    "first_migration",
     vec_box![], 
     vec_box![FirstOperation]
 );
@@ -122,6 +123,7 @@ sqlx_migrator::migration!(
 sqlx_migrator::postgres_migration!(
     FirstMigration,
     "main",
+    "first_migration",
     vec_box![], 
     vec_box![FirstOperation]
 );
@@ -132,6 +134,7 @@ If your up and down queries are simple strings, you can simplify the implementat
 sqlx_migrator::postgres_migration!(
     FirstMigration,
     "main",
+    "first_migration",
     sqlx_migrator::vec_box![],
     sqlx_migrator::vec_box![
         (

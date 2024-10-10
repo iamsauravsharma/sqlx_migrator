@@ -15,11 +15,12 @@ macro_rules! vec_box {
 /// - `$db:ty`: the type of database
 /// - `$op:ty`: The type for which the migration is being implemented
 /// - `$app_name:expr`: Name of app to be used for app variable
+/// - `$migration_name:expr`: Name of app to be used for app variable
 /// - `$parents:expr`: List of parents migration.
 /// - `$operations:expr`: List of operations
 #[macro_export]
 macro_rules! migration {
-    ($db:ty, $op:ty, $app_name:expr, $parents:expr, $operations:expr) => {
+    ($db:ty, $op:ty, $app_name:expr, $migration_name:expr, $parents:expr, $operations:expr) => {
         #[async_trait::async_trait]
         impl sqlx_migrator::migration::Migration<$db> for $op {
             fn app(&self) -> &str {
@@ -27,10 +28,7 @@ macro_rules! migration {
             }
 
             fn name(&self) -> &str {
-                std::path::Path::new(file!())
-                    .file_stem()
-                    .map(|stem_os_str| stem_os_str.to_str().unwrap_or_default())
-                    .unwrap_or_default()
+                $migration_name
             }
 
             fn parents(&self) -> Vec<Box<dyn sqlx_migrator::migration::Migration<$db>>> {
@@ -54,8 +52,15 @@ macro_rules! migration {
     feature = "any"
 ))]
 macro_rules! any_migration {
-    ($op:ty, $app_name:expr, $parents:expr, $operations:expr) => {
-        sqlx_migrator::migration!(sqlx::Any, $op, $app_name, $parents, $operations);
+    ($op:ty, $app_name:expr, $migration_name:expr, $parents:expr, $operations:expr) => {
+        sqlx_migrator::migration!(
+            sqlx::Any,
+            $op,
+            $app_name,
+            $migration_name,
+            $parents,
+            $operations
+        );
     };
 }
 
@@ -66,8 +71,15 @@ macro_rules! any_migration {
 #[macro_export]
 #[cfg(feature = "mysql")]
 macro_rules! mysql_migration {
-    ($op:ty, $app_name:expr, $parents:expr, $operations:expr) => {
-        sqlx_migrator::migration!(sqlx::MySql, $op, $app_name, $parents, $operations);
+    ($op:ty, $app_name:expr, $migration_name:expr, $parents:expr, $operations:expr) => {
+        sqlx_migrator::migration!(
+            sqlx::MySql,
+            $op,
+            $app_name,
+            $migration_name,
+            $parents,
+            $operations
+        );
     };
 }
 
@@ -78,8 +90,15 @@ macro_rules! mysql_migration {
 #[macro_export]
 #[cfg(feature = "postgres")]
 macro_rules! postgres_migration {
-    ($op:ty, $app_name:expr, $parents:expr, $operations:expr) => {
-        sqlx_migrator::migration!(sqlx::Postgres, $op, $app_name, $parents, $operations);
+    ($op:ty, $app_name:expr, $migration_name:expr, $parents:expr, $operations:expr) => {
+        sqlx_migrator::migration!(
+            sqlx::Postgres,
+            $op,
+            $app_name,
+            $migration_name,
+            $parents,
+            $operations
+        );
     };
 }
 
@@ -90,7 +109,14 @@ macro_rules! postgres_migration {
 #[macro_export]
 #[cfg(feature = "sqlite")]
 macro_rules! sqlite_migration {
-    ($op:ty, $app_name:expr, $parents:expr, $operations:expr) => {
-        sqlx_migrator::migration!(sqlx::Sqlite, $op, $app_name, $parents, $operations);
+    ($op:ty, $app_name:expr, $migration_name:expr, $parents:expr, $operations:expr) => {
+        sqlx_migrator::migration!(
+            sqlx::Sqlite,
+            $op,
+            $app_name,
+            $migration_name,
+            $parents,
+            $operations
+        );
     };
 }
