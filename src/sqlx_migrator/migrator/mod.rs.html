@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/migrator/mod.rs`."><title>mod.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-b0742ba02757f159.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="sqlx_migrator" data-themes="" data-resource-suffix="" data-rustdoc-version="1.83.0-nightly (1bc403daa 2024-10-11)" data-channel="nightly" data-search-js="search-e056c65ede92db13.js" data-settings-js="settings-805db61a62df4bd2.js" ><script src="../../../static.files/storage-1d39b6787ed640ff.js"></script><script defer src="../../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-f070b9041d14864c.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-0111fcff984fae8f.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">sqlx_migrator/migrator/</div>mod.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers">
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/migrator/mod.rs`."><title>mod.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-b0742ba02757f159.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="sqlx_migrator" data-themes="" data-resource-suffix="" data-rustdoc-version="1.84.0-nightly (9322d183f 2024-10-14)" data-channel="nightly" data-search-js="search-e056c65ede92db13.js" data-settings-js="settings-805db61a62df4bd2.js" ><script src="../../../static.files/storage-1d39b6787ed640ff.js"></script><script defer src="../../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-f070b9041d14864c.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-0111fcff984fae8f.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">sqlx_migrator/migrator/</div>mod.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers">
 <a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
@@ -900,10 +900,7 @@
 <a href="#899" id="899">899</a>
 <a href="#900" id="900">900</a>
 <a href="#901" id="901">901</a>
-<a href="#902" id="902">902</a>
-<a href="#903" id="903">903</a>
-<a href="#904" id="904">904</a>
-<a href="#905" id="905">905</a></pre></div><pre class="rust"><code><span class="doccomment">//! Migrator module
+<a href="#902" id="902">902</a></pre></div><pre class="rust"><code><span class="doccomment">//! Migrator module
 //!
 //! It contains common enum and trait for implementing migrator for sqlx
 //! supported database
@@ -918,7 +915,7 @@ Create own custom Migrator which only supports postgres and uses own unique
 table name instead of default table name
 
 ```rust,no_run
-use sqlx::{Pool, Postgres};
+use sqlx::{Database, Pool, Postgres};
 use sqlx_migrator::error::Error;
 use sqlx_migrator::migration::{AppliedMigrationSqlRow, Migration};
 use sqlx_migrator::migrator::{DatabaseOperation, Info, Migrate};
@@ -960,7 +957,7 @@ impl DatabaseOperation&lt;Postgres&gt; for CustomMigrator {
 
     async fn drop_migration_table_if_exists(
         &amp;self,
-        connection: &amp;mut &lt;Postgres as sqlx::Database&gt;::Connection,
+        connection: &amp;mut &lt;Postgres as Database&gt;::Connection,
     ) -&gt; Result&lt;(), Error&gt; {
         sqlx::query("DROP TABLE IF EXISTS _custom_table_name")
             .execute(connection)
@@ -970,7 +967,7 @@ impl DatabaseOperation&lt;Postgres&gt; for CustomMigrator {
 
     async fn add_migration_to_db_table(
         &amp;self,
-        connection: &amp;mut &lt;Postgres as sqlx::Database&gt;::Connection,
+        connection: &amp;mut &lt;Postgres as Database&gt;::Connection,
         migration: &amp;Box&lt;dyn Migration&lt;Postgres&gt;&gt;,
     ) -&gt; Result&lt;(), Error&gt; {
         sqlx::query("INSERT INTO _custom_table_name(app, name) VALUES ($1, $2)")
@@ -983,7 +980,7 @@ impl DatabaseOperation&lt;Postgres&gt; for CustomMigrator {
 
     async fn delete_migration_from_db_table(
         &amp;self,
-        connection: &amp;mut &lt;Postgres as sqlx::Database&gt;::Connection,
+        connection: &amp;mut &lt;Postgres as Database&gt;::Connection,
         migration: &amp;Box&lt;dyn Migration&lt;Postgres&gt;&gt;,
     ) -&gt; Result&lt;(), Error&gt; {
         sqlx::query("DELETE FROM _custom_table_name WHERE app = $1 AND name = $2")
@@ -996,7 +993,7 @@ impl DatabaseOperation&lt;Postgres&gt; for CustomMigrator {
 
     async fn fetch_applied_migration_from_db(
         &amp;self,
-        connection: &amp;mut &lt;Postgres as sqlx::Database&gt;::Connection,
+        connection: &amp;mut &lt;Postgres as Database&gt;::Connection,
     ) -&gt; Result&lt;Vec&lt;AppliedMigrationSqlRow&gt;, Error&gt; {
         Ok(sqlx::query_as::&lt;_, AppliedMigrationSqlRow&gt;(
             "SELECT id, app, name, applied_time FROM _custom_table_name",
@@ -1007,7 +1004,7 @@ impl DatabaseOperation&lt;Postgres&gt; for CustomMigrator {
 
     async fn lock(
         &amp;self,
-        connection: &amp;mut &lt;Postgres as sqlx::Database&gt;::Connection,
+        connection: &amp;mut &lt;Postgres as Database&gt;::Connection,
     ) -&gt; Result&lt;(), Error&gt; {
         let (database_name,): (String,) = sqlx::query_as("SELECT CURRENT_DATABASE()")
             .fetch_one(&amp;mut *connection)
@@ -1022,7 +1019,7 @@ impl DatabaseOperation&lt;Postgres&gt; for CustomMigrator {
 
     async fn unlock(
         &amp;self,
-        connection: &amp;mut &lt;Postgres as sqlx::Database&gt;::Connection,
+        connection: &amp;mut &lt;Postgres as Database&gt;::Connection,
     ) -&gt; Result&lt;(), Error&gt; {
         let (database_name,): (String,) = sqlx::query_as("SELECT CURRENT_DATABASE()")
             .fetch_one(&amp;mut *connection)
@@ -1042,7 +1039,7 @@ impl Migrate&lt;Postgres&gt; for CustomMigrator {}
 
 </span><span class="kw">use </span>std::collections::HashMap;
 
-<span class="kw">use </span>sqlx::Connection;
+<span class="kw">use </span>sqlx::{Connection, Database};
 
 <span class="kw">use </span><span class="kw">crate</span>::error::Error;
 <span class="kw">use </span><span class="kw">crate</span>::migration::{AppliedMigrationSqlRow, Migration};
@@ -1218,26 +1215,26 @@ impl Migrate&lt;Postgres&gt; for CustomMigrator {}
 </span><span class="attr">#[async_trait::async_trait]
 </span><span class="kw">pub trait </span>DatabaseOperation&lt;DB&gt;
 <span class="kw">where
-    </span>DB: sqlx::Database,
+    </span>DB: Database,
 {
     <span class="doccomment">/// Ensure migration table is created before running migrations. If not
     /// create one
     </span><span class="kw">async fn </span>ensure_migration_table_exists(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        connection: <span class="kw-2">&amp;mut </span>&lt;DB <span class="kw">as </span>sqlx::Database&gt;::Connection,
+        connection: <span class="kw-2">&amp;mut </span>&lt;DB <span class="kw">as </span>Database&gt;::Connection,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt;;
 
     <span class="doccomment">/// Drop migration table if migration table exists
     </span><span class="kw">async fn </span>drop_migration_table_if_exists(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        connection: <span class="kw-2">&amp;mut </span>&lt;DB <span class="kw">as </span>sqlx::Database&gt;::Connection,
+        connection: <span class="kw-2">&amp;mut </span>&lt;DB <span class="kw">as </span>Database&gt;::Connection,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt;;
 
     <span class="doccomment">/// Adds a migration record to the migration table in the database.
     </span><span class="attr">#[allow(clippy::borrowed_box)]
     </span><span class="kw">async fn </span>add_migration_to_db_table(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        connection: <span class="kw-2">&amp;mut </span>&lt;DB <span class="kw">as </span>sqlx::Database&gt;::Connection,
+        connection: <span class="kw-2">&amp;mut </span>&lt;DB <span class="kw">as </span>Database&gt;::Connection,
         migration: <span class="kw-2">&amp;</span>BoxMigration&lt;DB&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt;;
 
@@ -1245,7 +1242,7 @@ impl Migrate&lt;Postgres&gt; for CustomMigrator {}
     </span><span class="attr">#[allow(clippy::borrowed_box)]
     </span><span class="kw">async fn </span>delete_migration_from_db_table(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        connection: <span class="kw-2">&amp;mut </span>&lt;DB <span class="kw">as </span>sqlx::Database&gt;::Connection,
+        connection: <span class="kw-2">&amp;mut </span>&lt;DB <span class="kw">as </span>Database&gt;::Connection,
         migration: <span class="kw-2">&amp;</span>BoxMigration&lt;DB&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt;;
 
@@ -1253,17 +1250,14 @@ impl Migrate&lt;Postgres&gt; for CustomMigrator {}
     /// database.
     </span><span class="kw">async fn </span>fetch_applied_migration_from_db(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        connection: <span class="kw-2">&amp;mut </span>&lt;DB <span class="kw">as </span>sqlx::Database&gt;::Connection,
+        connection: <span class="kw-2">&amp;mut </span>&lt;DB <span class="kw">as </span>Database&gt;::Connection,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;AppliedMigrationSqlRow&gt;, Error&gt;;
 
     <span class="doccomment">/// Lock database while doing migrations so no two migrations run together
-    </span><span class="kw">async fn </span>lock(<span class="kw-2">&amp;</span><span class="self">self</span>, connection: <span class="kw-2">&amp;mut </span>&lt;DB <span class="kw">as </span>sqlx::Database&gt;::Connection) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt;;
+    </span><span class="kw">async fn </span>lock(<span class="kw-2">&amp;</span><span class="self">self</span>, connection: <span class="kw-2">&amp;mut </span>&lt;DB <span class="kw">as </span>Database&gt;::Connection) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt;;
 
     <span class="doccomment">/// Unlock locked database
-    </span><span class="kw">async fn </span>unlock(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        connection: <span class="kw-2">&amp;mut </span>&lt;DB <span class="kw">as </span>sqlx::Database&gt;::Connection,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt;;
+    </span><span class="kw">async fn </span>unlock(<span class="kw-2">&amp;</span><span class="self">self</span>, connection: <span class="kw-2">&amp;mut </span>&lt;DB <span class="kw">as </span>Database&gt;::Connection) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt;;
 }
 
 <span class="kw">fn </span>populate_recursive&lt;<span class="lifetime">'populate</span>, DB&gt;(
@@ -1362,7 +1356,7 @@ impl Migrate&lt;Postgres&gt; for CustomMigrator {}
     plan: <span class="kw-2">&amp;</span>Plan,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt;
 <span class="kw">where
-    </span>DB: sqlx::Database,
+    </span>DB: Database,
 {
     <span class="comment">// Modify migration list according to plan type
     </span><span class="kw">match </span>plan.plan_type {
@@ -1453,7 +1447,7 @@ impl Migrate&lt;Postgres&gt; for CustomMigrator {}
 </span><span class="attr">#[async_trait::async_trait]
 </span><span class="kw">pub trait </span>Migrate&lt;DB&gt;: Info&lt;DB&gt; + DatabaseOperation&lt;DB&gt; + Send + Sync
 <span class="kw">where
-    </span>DB: sqlx::Database,
+    </span>DB: Database,
 {
     <span class="doccomment">/// Generate migration plan according to plan.
     ///
@@ -1462,7 +1456,7 @@ impl Migrate&lt;Postgres&gt; for CustomMigrator {}
     </span><span class="attr">#[allow(clippy::too_many_lines)]
     </span><span class="kw">async fn </span>generate_migration_plan(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        connection: <span class="kw-2">&amp;mut </span>&lt;DB <span class="kw">as </span>sqlx::Database&gt;::Connection,
+        connection: <span class="kw-2">&amp;mut </span>&lt;DB <span class="kw">as </span>Database&gt;::Connection,
         plan: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>Plan&gt;,
     ) -&gt; MigrationVecResult&lt;DB&gt; {
         <span class="kw">if </span><span class="self">self</span>.migrations().is_empty() {
@@ -1685,7 +1679,7 @@ impl Migrate&lt;Postgres&gt; for CustomMigrator {}
     /// If failed to run provided plan migrations
     </span><span class="kw">async fn </span>run(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        connection: <span class="kw-2">&amp;mut </span>&lt;DB <span class="kw">as </span>sqlx::Database&gt;::Connection,
+        connection: <span class="kw-2">&amp;mut </span>&lt;DB <span class="kw">as </span>Database&gt;::Connection,
         plan: <span class="kw-2">&amp;</span>Plan,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
         <span class="macro">tracing::debug!</span>(<span class="string">"running plan {:?}"</span>, plan);
@@ -1804,7 +1798,7 @@ impl Migrate&lt;Postgres&gt; for CustomMigrator {}
 
 <span class="kw">impl</span>&lt;DB&gt; Migrate&lt;DB&gt; <span class="kw">for </span>Migrator&lt;DB&gt;
 <span class="kw">where
-    </span>DB: sqlx::Database,
+    </span>DB: Database,
     <span class="self">Self</span>: DatabaseOperation&lt;DB&gt;,
 {
 }

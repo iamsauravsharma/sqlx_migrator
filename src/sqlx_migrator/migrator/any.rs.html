@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/migrator/any.rs`."><title>any.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-b0742ba02757f159.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="sqlx_migrator" data-themes="" data-resource-suffix="" data-rustdoc-version="1.83.0-nightly (1bc403daa 2024-10-11)" data-channel="nightly" data-search-js="search-e056c65ede92db13.js" data-settings-js="settings-805db61a62df4bd2.js" ><script src="../../../static.files/storage-1d39b6787ed640ff.js"></script><script defer src="../../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-f070b9041d14864c.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-0111fcff984fae8f.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">sqlx_migrator/migrator/</div>any.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers">
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/migrator/any.rs`."><title>any.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-b0742ba02757f159.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="sqlx_migrator" data-themes="" data-resource-suffix="" data-rustdoc-version="1.84.0-nightly (9322d183f 2024-10-14)" data-channel="nightly" data-search-js="search-e056c65ede92db13.js" data-settings-js="settings-805db61a62df4bd2.js" ><script src="../../../static.files/storage-1d39b6787ed640ff.js"></script><script defer src="../../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-f070b9041d14864c.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-0111fcff984fae8f.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">sqlx_migrator/migrator/</div>any.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers">
 <a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
@@ -193,26 +193,14 @@
 <a href="#192" id="192">192</a>
 <a href="#193" id="193">193</a>
 <a href="#194" id="194">194</a>
-<a href="#195" id="195">195</a>
-<a href="#196" id="196">196</a>
-<a href="#197" id="197">197</a>
-<a href="#198" id="198">198</a>
-<a href="#199" id="199">199</a>
-<a href="#200" id="200">200</a>
-<a href="#201" id="201">201</a>
-<a href="#202" id="202">202</a>
-<a href="#203" id="203">203</a>
-<a href="#204" id="204">204</a>
-<a href="#205" id="205">205</a>
-<a href="#206" id="206">206</a>
-<a href="#207" id="207">207</a></pre></div><pre class="rust"><code><span class="kw">use </span>sqlx::any::AnyArguments;
+<a href="#195" id="195">195</a></pre></div><pre class="rust"><code><span class="kw">use </span>sqlx::any::AnyArguments;
 <span class="attr">#[cfg(feature = <span class="string">"mysql"</span>)]
 </span><span class="kw">use </span>sqlx::MySql;
 <span class="attr">#[cfg(feature = <span class="string">"postgres"</span>)]
 </span><span class="kw">use </span>sqlx::Postgres;
 <span class="attr">#[cfg(feature = <span class="string">"sqlite"</span>)]
 </span><span class="kw">use </span>sqlx::Sqlite;
-<span class="kw">use </span>sqlx::{Any, Arguments};
+<span class="kw">use </span>sqlx::{Any, Arguments, Database};
 
 <span class="attr">#[cfg(feature = <span class="string">"mysql"</span>)]
 </span><span class="kw">use </span><span class="kw">super</span>::mysql;
@@ -226,16 +214,16 @@
 
 <span class="doccomment">/// get database name
 </span><span class="kw">async fn </span>get_database_name(
-    connection: <span class="kw-2">&amp;mut </span>&lt;Any <span class="kw">as </span>sqlx::Database&gt;::Connection,
+    connection: <span class="kw-2">&amp;mut </span>&lt;Any <span class="kw">as </span>Database&gt;::Connection,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;String&gt;, Error&gt; {
     <span class="kw">let </span>backend_name = connection.backend_name();
     <span class="kw">let </span>database_name_query = <span class="kw">match </span>backend_name {
         <span class="attr">#[cfg(feature = <span class="string">"postgres"</span>)]
-        </span>&lt;Postgres <span class="kw">as </span>sqlx::Database&gt;::NAME =&gt; <span class="prelude-val">Some</span>(postgres::current_database_query()),
+        </span>&lt;Postgres <span class="kw">as </span>Database&gt;::NAME =&gt; <span class="prelude-val">Some</span>(postgres::current_database_query()),
         <span class="attr">#[cfg(feature = <span class="string">"sqlite"</span>)]
-        </span>&lt;Sqlite <span class="kw">as </span>sqlx::Database&gt;::NAME =&gt; <span class="prelude-val">None</span>,
+        </span>&lt;Sqlite <span class="kw">as </span>Database&gt;::NAME =&gt; <span class="prelude-val">None</span>,
         <span class="attr">#[cfg(feature = <span class="string">"mysql"</span>)]
-        </span>&lt;MySql <span class="kw">as </span>sqlx::Database&gt;::NAME =&gt; <span class="prelude-val">Some</span>(mysql::current_database_query()),
+        </span>&lt;MySql <span class="kw">as </span>Database&gt;::NAME =&gt; <span class="prelude-val">Some</span>(mysql::current_database_query()),
         <span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(Error::UnsupportedDatabase),
     };
     <span class="kw">if let </span><span class="prelude-val">Some</span>(sql) = database_name_query {
@@ -251,21 +239,17 @@
 </span><span class="kw">impl </span>DatabaseOperation&lt;Any&gt; <span class="kw">for </span>Migrator&lt;Any&gt; {
     <span class="kw">async fn </span>ensure_migration_table_exists(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        connection: <span class="kw-2">&amp;mut </span>&lt;Any <span class="kw">as </span>sqlx::Database&gt;::Connection,
+        connection: <span class="kw-2">&amp;mut </span>&lt;Any <span class="kw">as </span>Database&gt;::Connection,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
         <span class="kw">let </span>sql_query = <span class="kw">match </span>connection.backend_name() {
             <span class="attr">#[cfg(feature = <span class="string">"postgres"</span>)]
-            </span>&lt;Postgres <span class="kw">as </span>sqlx::Database&gt;::NAME =&gt; {
+            </span>&lt;Postgres <span class="kw">as </span>Database&gt;::NAME =&gt; {
                 postgres::create_migrator_table_query(<span class="self">self</span>.table_name())
             }
             <span class="attr">#[cfg(feature = <span class="string">"sqlite"</span>)]
-            </span>&lt;Sqlite <span class="kw">as </span>sqlx::Database&gt;::NAME =&gt; {
-                sqlite::create_migrator_table_query(<span class="self">self</span>.table_name())
-            }
+            </span>&lt;Sqlite <span class="kw">as </span>Database&gt;::NAME =&gt; sqlite::create_migrator_table_query(<span class="self">self</span>.table_name()),
             <span class="attr">#[cfg(feature = <span class="string">"mysql"</span>)]
-            </span>&lt;MySql <span class="kw">as </span>sqlx::Database&gt;::NAME =&gt; {
-                mysql::create_migrator_table_query(<span class="self">self</span>.table_name())
-            }
+            </span>&lt;MySql <span class="kw">as </span>Database&gt;::NAME =&gt; mysql::create_migrator_table_query(<span class="self">self</span>.table_name()),
             <span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(Error::UnsupportedDatabase),
         };
         sqlx::query(<span class="kw-2">&amp;</span>sql_query).execute(connection).<span class="kw">await</span><span class="question-mark">?</span>;
@@ -274,15 +258,15 @@
 
     <span class="kw">async fn </span>drop_migration_table_if_exists(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        connection: <span class="kw-2">&amp;mut </span>&lt;Any <span class="kw">as </span>sqlx::Database&gt;::Connection,
+        connection: <span class="kw-2">&amp;mut </span>&lt;Any <span class="kw">as </span>Database&gt;::Connection,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
         <span class="kw">let </span>sql_query = <span class="kw">match </span>connection.backend_name() {
             <span class="attr">#[cfg(feature = <span class="string">"postgres"</span>)]
-            </span>&lt;Postgres <span class="kw">as </span>sqlx::Database&gt;::NAME =&gt; postgres::drop_table_query(<span class="self">self</span>.table_name()),
+            </span>&lt;Postgres <span class="kw">as </span>Database&gt;::NAME =&gt; postgres::drop_table_query(<span class="self">self</span>.table_name()),
             <span class="attr">#[cfg(feature = <span class="string">"sqlite"</span>)]
-            </span>&lt;Sqlite <span class="kw">as </span>sqlx::Database&gt;::NAME =&gt; sqlite::drop_table_query(<span class="self">self</span>.table_name()),
+            </span>&lt;Sqlite <span class="kw">as </span>Database&gt;::NAME =&gt; sqlite::drop_table_query(<span class="self">self</span>.table_name()),
             <span class="attr">#[cfg(feature = <span class="string">"mysql"</span>)]
-            </span>&lt;MySql <span class="kw">as </span>sqlx::Database&gt;::NAME =&gt; mysql::drop_table_query(<span class="self">self</span>.table_name()),
+            </span>&lt;MySql <span class="kw">as </span>Database&gt;::NAME =&gt; mysql::drop_table_query(<span class="self">self</span>.table_name()),
             <span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(Error::UnsupportedDatabase),
         };
         sqlx::query(<span class="kw-2">&amp;</span>sql_query).execute(connection).<span class="kw">await</span><span class="question-mark">?</span>;
@@ -291,16 +275,16 @@
 
     <span class="kw">async fn </span>add_migration_to_db_table(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        connection: <span class="kw-2">&amp;mut </span>&lt;Any <span class="kw">as </span>sqlx::Database&gt;::Connection,
+        connection: <span class="kw-2">&amp;mut </span>&lt;Any <span class="kw">as </span>Database&gt;::Connection,
         migration: <span class="kw-2">&amp;</span>Box&lt;<span class="kw">dyn </span>Migration&lt;Any&gt;&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
         <span class="kw">let </span>sql_query = <span class="kw">match </span>connection.backend_name() {
             <span class="attr">#[cfg(feature = <span class="string">"postgres"</span>)]
-            </span>&lt;Postgres <span class="kw">as </span>sqlx::Database&gt;::NAME =&gt; postgres::add_migration_query(<span class="self">self</span>.table_name()),
+            </span>&lt;Postgres <span class="kw">as </span>Database&gt;::NAME =&gt; postgres::add_migration_query(<span class="self">self</span>.table_name()),
             <span class="attr">#[cfg(feature = <span class="string">"sqlite"</span>)]
-            </span>&lt;Sqlite <span class="kw">as </span>sqlx::Database&gt;::NAME =&gt; sqlite::add_migration_query(<span class="self">self</span>.table_name()),
+            </span>&lt;Sqlite <span class="kw">as </span>Database&gt;::NAME =&gt; sqlite::add_migration_query(<span class="self">self</span>.table_name()),
             <span class="attr">#[cfg(feature = <span class="string">"mysql"</span>)]
-            </span>&lt;MySql <span class="kw">as </span>sqlx::Database&gt;::NAME =&gt; mysql::add_migration_query(<span class="self">self</span>.table_name()),
+            </span>&lt;MySql <span class="kw">as </span>Database&gt;::NAME =&gt; mysql::add_migration_query(<span class="self">self</span>.table_name()),
             <span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(Error::UnsupportedDatabase),
         };
         sqlx::query(<span class="kw-2">&amp;</span>sql_query)
@@ -313,18 +297,16 @@
 
     <span class="kw">async fn </span>delete_migration_from_db_table(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        connection: <span class="kw-2">&amp;mut </span>&lt;Any <span class="kw">as </span>sqlx::Database&gt;::Connection,
+        connection: <span class="kw-2">&amp;mut </span>&lt;Any <span class="kw">as </span>Database&gt;::Connection,
         migration: <span class="kw-2">&amp;</span>Box&lt;<span class="kw">dyn </span>Migration&lt;Any&gt;&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
         <span class="kw">let </span>sql_query = <span class="kw">match </span>connection.backend_name() {
             <span class="attr">#[cfg(feature = <span class="string">"postgres"</span>)]
-            </span>&lt;Postgres <span class="kw">as </span>sqlx::Database&gt;::NAME =&gt; {
-                postgres::delete_migration_query(<span class="self">self</span>.table_name())
-            }
+            </span>&lt;Postgres <span class="kw">as </span>Database&gt;::NAME =&gt; postgres::delete_migration_query(<span class="self">self</span>.table_name()),
             <span class="attr">#[cfg(feature = <span class="string">"sqlite"</span>)]
-            </span>&lt;Sqlite <span class="kw">as </span>sqlx::Database&gt;::NAME =&gt; sqlite::delete_migration_query(<span class="self">self</span>.table_name()),
+            </span>&lt;Sqlite <span class="kw">as </span>Database&gt;::NAME =&gt; sqlite::delete_migration_query(<span class="self">self</span>.table_name()),
             <span class="attr">#[cfg(feature = <span class="string">"mysql"</span>)]
-            </span>&lt;MySql <span class="kw">as </span>sqlx::Database&gt;::NAME =&gt; mysql::delete_migration_query(<span class="self">self</span>.table_name()),
+            </span>&lt;MySql <span class="kw">as </span>Database&gt;::NAME =&gt; mysql::delete_migration_query(<span class="self">self</span>.table_name()),
             <span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(Error::UnsupportedDatabase),
         };
         sqlx::query(<span class="kw-2">&amp;</span>sql_query)
@@ -337,16 +319,16 @@
 
     <span class="kw">async fn </span>fetch_applied_migration_from_db(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        connection: <span class="kw-2">&amp;mut </span>&lt;Any <span class="kw">as </span>sqlx::Database&gt;::Connection,
+        connection: <span class="kw-2">&amp;mut </span>&lt;Any <span class="kw">as </span>Database&gt;::Connection,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;AppliedMigrationSqlRow&gt;, Error&gt; {
         <span class="kw">let </span>backend_name = connection.backend_name();
         <span class="kw">let </span>query = <span class="kw">match </span>backend_name {
             <span class="attr">#[cfg(feature = <span class="string">"postgres"</span>)]
-            </span>&lt;Postgres <span class="kw">as </span>sqlx::Database&gt;::NAME =&gt; postgres::fetch_rows_query(<span class="self">self</span>.table_name()),
+            </span>&lt;Postgres <span class="kw">as </span>Database&gt;::NAME =&gt; postgres::fetch_rows_query(<span class="self">self</span>.table_name()),
             <span class="attr">#[cfg(feature = <span class="string">"sqlite"</span>)]
-            </span>&lt;Sqlite <span class="kw">as </span>sqlx::Database&gt;::NAME =&gt; sqlite::fetch_rows_query(<span class="self">self</span>.table_name()),
+            </span>&lt;Sqlite <span class="kw">as </span>Database&gt;::NAME =&gt; sqlite::fetch_rows_query(<span class="self">self</span>.table_name()),
             <span class="attr">#[cfg(feature = <span class="string">"mysql"</span>)]
-            </span>&lt;MySql <span class="kw">as </span>sqlx::Database&gt;::NAME =&gt; mysql::fetch_rows_query(<span class="self">self</span>.table_name()),
+            </span>&lt;MySql <span class="kw">as </span>Database&gt;::NAME =&gt; mysql::fetch_rows_query(<span class="self">self</span>.table_name()),
             <span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(Error::UnsupportedDatabase),
         };
         <span class="prelude-val">Ok</span>(sqlx::query_as::&lt;<span class="kw">_</span>, AppliedMigrationSqlRow&gt;(<span class="kw-2">&amp;</span>query)
@@ -354,23 +336,20 @@
             .<span class="kw">await</span><span class="question-mark">?</span>)
     }
 
-    <span class="kw">async fn </span>lock(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        connection: <span class="kw-2">&amp;mut </span>&lt;Any <span class="kw">as </span>sqlx::Database&gt;::Connection,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
+    <span class="kw">async fn </span>lock(<span class="kw-2">&amp;</span><span class="self">self</span>, connection: <span class="kw-2">&amp;mut </span>&lt;Any <span class="kw">as </span>Database&gt;::Connection) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
         <span class="kw">let </span>database_name = get_database_name(connection).<span class="kw">await</span><span class="question-mark">?</span>;
         <span class="kw">if let </span><span class="prelude-val">Some</span>(name) = database_name {
             <span class="kw">let </span><span class="kw-2">mut </span>arguments = AnyArguments::default();
             <span class="kw">let </span>query = <span class="kw">match </span>connection.backend_name() {
                 <span class="attr">#[cfg(feature = <span class="string">"postgres"</span>)]
-                </span>&lt;Postgres <span class="kw">as </span>sqlx::Database&gt;::NAME =&gt; {
+                </span>&lt;Postgres <span class="kw">as </span>Database&gt;::NAME =&gt; {
                     arguments.add(postgres::get_lock_id(<span class="kw-2">&amp;</span>name, <span class="self">self</span>.table_name()))<span class="question-mark">?</span>;
                     postgres::lock_database_query()
                 }
                 <span class="attr">#[cfg(feature = <span class="string">"sqlite"</span>)]
-                </span>&lt;Sqlite <span class="kw">as </span>sqlx::Database&gt;::NAME =&gt; <span class="kw">return </span><span class="prelude-val">Ok</span>(()),
+                </span>&lt;Sqlite <span class="kw">as </span>Database&gt;::NAME =&gt; <span class="kw">return </span><span class="prelude-val">Ok</span>(()),
                 <span class="attr">#[cfg(feature = <span class="string">"mysql"</span>)]
-                </span>&lt;MySql <span class="kw">as </span>sqlx::Database&gt;::NAME =&gt; {
+                </span>&lt;MySql <span class="kw">as </span>Database&gt;::NAME =&gt; {
                     arguments.add(mysql::get_lock_id(<span class="kw-2">&amp;</span>name, <span class="self">self</span>.table_name()))<span class="question-mark">?</span>;
                     mysql::lock_database_query()
                 }
@@ -383,23 +362,20 @@
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="kw">async fn </span>unlock(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        connection: <span class="kw-2">&amp;mut </span>&lt;Any <span class="kw">as </span>sqlx::Database&gt;::Connection,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
+    <span class="kw">async fn </span>unlock(<span class="kw-2">&amp;</span><span class="self">self</span>, connection: <span class="kw-2">&amp;mut </span>&lt;Any <span class="kw">as </span>Database&gt;::Connection) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
         <span class="kw">let </span>database_name = get_database_name(connection).<span class="kw">await</span><span class="question-mark">?</span>;
         <span class="kw">if let </span><span class="prelude-val">Some</span>(name) = database_name {
             <span class="kw">let </span><span class="kw-2">mut </span>arguments = AnyArguments::default();
             <span class="kw">let </span>query = <span class="kw">match </span>connection.backend_name() {
                 <span class="attr">#[cfg(feature = <span class="string">"postgres"</span>)]
-                </span>&lt;Postgres <span class="kw">as </span>sqlx::Database&gt;::NAME =&gt; {
+                </span>&lt;Postgres <span class="kw">as </span>Database&gt;::NAME =&gt; {
                     arguments.add(postgres::get_lock_id(<span class="kw-2">&amp;</span>name, <span class="self">self</span>.table_name()))<span class="question-mark">?</span>;
                     postgres::unlock_database_query()
                 }
                 <span class="attr">#[cfg(feature = <span class="string">"sqlite"</span>)]
-                </span>&lt;Sqlite <span class="kw">as </span>sqlx::Database&gt;::NAME =&gt; <span class="kw">return </span><span class="prelude-val">Ok</span>(()),
+                </span>&lt;Sqlite <span class="kw">as </span>Database&gt;::NAME =&gt; <span class="kw">return </span><span class="prelude-val">Ok</span>(()),
                 <span class="attr">#[cfg(feature = <span class="string">"mysql"</span>)]
-                </span>&lt;MySql <span class="kw">as </span>sqlx::Database&gt;::NAME =&gt; {
+                </span>&lt;MySql <span class="kw">as </span>Database&gt;::NAME =&gt; {
                     arguments.add(mysql::get_lock_id(<span class="kw-2">&amp;</span>name, <span class="self">self</span>.table_name()))<span class="question-mark">?</span>;
                     mysql::unlock_database_query()
                 }
