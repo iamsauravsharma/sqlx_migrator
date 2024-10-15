@@ -13,7 +13,7 @@ Create own custom Migrator which only supports postgres and uses own unique
 table name instead of default table name
 
 ```rust,no_run
-use sqlx::{Pool, Postgres};
+use sqlx::{Database, Pool, Postgres};
 use sqlx_migrator::error::Error;
 use sqlx_migrator::migration::{AppliedMigrationSqlRow, Migration};
 use sqlx_migrator::migrator::{DatabaseOperation, Info, Migrate};
@@ -55,7 +55,7 @@ impl DatabaseOperation<Postgres> for CustomMigrator {
 
     async fn drop_migration_table_if_exists(
         &self,
-        connection: &mut <Postgres as sqlx::Database>::Connection,
+        connection: &mut <Postgres as Database>::Connection,
     ) -> Result<(), Error> {
         sqlx::query("DROP TABLE IF EXISTS _custom_table_name")
             .execute(connection)
@@ -65,7 +65,7 @@ impl DatabaseOperation<Postgres> for CustomMigrator {
 
     async fn add_migration_to_db_table(
         &self,
-        connection: &mut <Postgres as sqlx::Database>::Connection,
+        connection: &mut <Postgres as Database>::Connection,
         migration: &Box<dyn Migration<Postgres>>,
     ) -> Result<(), Error> {
         sqlx::query("INSERT INTO _custom_table_name(app, name) VALUES ($1, $2)")
@@ -78,7 +78,7 @@ impl DatabaseOperation<Postgres> for CustomMigrator {
 
     async fn delete_migration_from_db_table(
         &self,
-        connection: &mut <Postgres as sqlx::Database>::Connection,
+        connection: &mut <Postgres as Database>::Connection,
         migration: &Box<dyn Migration<Postgres>>,
     ) -> Result<(), Error> {
         sqlx::query("DELETE FROM _custom_table_name WHERE app = $1 AND name = $2")
@@ -91,7 +91,7 @@ impl DatabaseOperation<Postgres> for CustomMigrator {
 
     async fn fetch_applied_migration_from_db(
         &self,
-        connection: &mut <Postgres as sqlx::Database>::Connection,
+        connection: &mut <Postgres as Database>::Connection,
     ) -> Result<Vec<AppliedMigrationSqlRow>, Error> {
         Ok(sqlx::query_as::<_, AppliedMigrationSqlRow>(
             "SELECT id, app, name, applied_time FROM _custom_table_name",
@@ -102,7 +102,7 @@ impl DatabaseOperation<Postgres> for CustomMigrator {
 
     async fn lock(
         &self,
-        connection: &mut <Postgres as sqlx::Database>::Connection,
+        connection: &mut <Postgres as Database>::Connection,
     ) -> Result<(), Error> {
         let (database_name,): (String,) = sqlx::query_as("SELECT CURRENT_DATABASE()")
             .fetch_one(&mut *connection)
@@ -117,7 +117,7 @@ impl DatabaseOperation<Postgres> for CustomMigrator {
 
     async fn unlock(
         &self,
-        connection: &mut <Postgres as sqlx::Database>::Connection,
+        connection: &mut <Postgres as Database>::Connection,
     ) -> Result<(), Error> {
         let (database_name,): (String,) = sqlx::query_as("SELECT CURRENT_DATABASE()")
             .fetch_one(&mut *connection)
@@ -137,7 +137,7 @@ impl Migrate<Postgres> for CustomMigrator {}
 
 use std::collections::HashMap;
 
-use sqlx::Connection;
+use sqlx::{Connection, Database};
 
 use crate::error::Error;
 use crate::migration::{AppliedMigrationSqlRow, Migration};
@@ -313,26 +313,26 @@ pub trait Info<DB> {
 #[async_trait::async_trait]
 pub trait DatabaseOperation<DB>
 where
-    DB: sqlx::Database,
+    DB: Database,
 {
     /// Ensure migration table is created before running migrations. If not
     /// create one
     async fn ensure_migration_table_exists(
         &self,
-        connection: &mut <DB as sqlx::Database>::Connection,
+        connection: &mut <DB as Database>::Connection,
     ) -> Result<(), Error>;
 
     /// Drop migration table if migration table exists
     async fn drop_migration_table_if_exists(
         &self,
-        connection: &mut <DB as sqlx::Database>::Connection,
+        connection: &mut <DB as Database>::Connection,
     ) -> Result<(), Error>;
 
     /// Adds a migration record to the migration table in the database.
     #[allow(clippy::borrowed_box)]
     async fn add_migration_to_db_table(
         &self,
-        connection: &mut <DB as sqlx::Database>::Connection,
+        connection: &mut <DB as Database>::Connection,
         migration: &BoxMigration<DB>,
     ) -> Result<(), Error>;
 
@@ -340,7 +340,7 @@ where
     #[allow(clippy::borrowed_box)]
     async fn delete_migration_from_db_table(
         &self,
-        connection: &mut <DB as sqlx::Database>::Connection,
+        connection: &mut <DB as Database>::Connection,
         migration: &BoxMigration<DB>,
     ) -> Result<(), Error>;
 
@@ -348,17 +348,14 @@ where
     /// database.
     async fn fetch_applied_migration_from_db(
         &self,
-        connection: &mut <DB as sqlx::Database>::Connection,
+        connection: &mut <DB as Database>::Connection,
     ) -> Result<Vec<AppliedMigrationSqlRow>, Error>;
 
     /// Lock database while doing migrations so no two migrations run together
-    async fn lock(&self, connection: &mut <DB as sqlx::Database>::Connection) -> Result<(), Error>;
+    async fn lock(&self, connection: &mut <DB as Database>::Connection) -> Result<(), Error>;
 
     /// Unlock locked database
-    async fn unlock(
-        &self,
-        connection: &mut <DB as sqlx::Database>::Connection,
-    ) -> Result<(), Error>;
+    async fn unlock(&self, connection: &mut <DB as Database>::Connection) -> Result<(), Error>;
 }
 
 fn populate_recursive<'populate, DB>(
@@ -457,7 +454,7 @@ fn process_plan<DB>(
     plan: &Plan,
 ) -> Result<(), Error>
 where
-    DB: sqlx::Database,
+    DB: Database,
 {
     // Modify migration list according to plan type
     match plan.plan_type {
@@ -548,7 +545,7 @@ fn get_recursive<'get, DB>(
 #[async_trait::async_trait]
 pub trait Migrate<DB>: Info<DB> + DatabaseOperation<DB> + Send + Sync
 where
-    DB: sqlx::Database,
+    DB: Database,
 {
     /// Generate migration plan according to plan.
     ///
@@ -557,7 +554,7 @@ where
     #[allow(clippy::too_many_lines)]
     async fn generate_migration_plan(
         &self,
-        connection: &mut <DB as sqlx::Database>::Connection,
+        connection: &mut <DB as Database>::Connection,
         plan: Option<&Plan>,
     ) -> MigrationVecResult<DB> {
         if self.migrations().is_empty() {
@@ -780,7 +777,7 @@ where
     /// If failed to run provided plan migrations
     async fn run(
         &self,
-        connection: &mut <DB as sqlx::Database>::Connection,
+        connection: &mut <DB as Database>::Connection,
         plan: &Plan,
     ) -> Result<(), Error> {
         tracing::debug!("running plan {:?}", plan);
@@ -899,7 +896,7 @@ impl<DB> Info<DB> for Migrator<DB> {
 
 impl<DB> Migrate<DB> for Migrator<DB>
 where
-    DB: sqlx::Database,
+    DB: Database,
     Self: DatabaseOperation<DB>,
 {
 }

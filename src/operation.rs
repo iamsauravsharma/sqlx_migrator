@@ -40,6 +40,8 @@ impl Operation<Sqlite> for ExampleOperation {
 "##
 )]
 
+use sqlx::Database;
+
 use crate::error::Error;
 
 /// Trait for defining a database operation.
@@ -55,14 +57,14 @@ use crate::error::Error;
 #[async_trait::async_trait]
 pub trait Operation<DB>: Send + Sync
 where
-    DB: sqlx::Database,
+    DB: Database,
 {
     /// The up method executes the operation when applying the migration.
     ///
     /// This method is called when the migration is being applied to the
     /// database. Implement this method to define the changes you want to
     /// apply.
-    async fn up(&self, connection: &mut <DB as sqlx::Database>::Connection) -> Result<(), Error>;
+    async fn up(&self, connection: &mut <DB as Database>::Connection) -> Result<(), Error>;
 
     /// The `down` method reverses the operation when rolling back the
     /// migration.
@@ -70,7 +72,7 @@ where
     /// This method is called when the migration is being rolled back. Implement
     /// this method if you want to make the operation reversible. If not
     /// implemented, the operation is considered irreversible.
-    async fn down(&self, connection: &mut <DB as sqlx::Database>::Connection) -> Result<(), Error> {
+    async fn down(&self, connection: &mut <DB as Database>::Connection) -> Result<(), Error> {
         let _connection = connection;
         return Err(Error::IrreversibleOperation);
     }
@@ -90,13 +92,13 @@ where
 #[async_trait::async_trait]
 impl<DB, U, D> Operation<DB> for (U, D)
 where
-    DB: sqlx::Database,
+    DB: Database,
     U: AsRef<str> + Send + Sync,
     D: AsRef<str> + Send + Sync,
-    for<'c> &'c mut <DB as sqlx::Database>::Connection: sqlx::Executor<'c, Database = DB>,
-    for<'q> <DB as sqlx::Database>::Arguments<'q>: sqlx::IntoArguments<'q, DB>,
+    for<'c> &'c mut <DB as Database>::Connection: sqlx::Executor<'c, Database = DB>,
+    for<'q> <DB as Database>::Arguments<'q>: sqlx::IntoArguments<'q, DB>,
 {
-    async fn up(&self, connection: &mut <DB as sqlx::Database>::Connection) -> Result<(), Error> {
+    async fn up(&self, connection: &mut <DB as Database>::Connection) -> Result<(), Error> {
         sqlx::query(self.0.as_ref())
             .execute(connection)
             .await
@@ -104,7 +106,7 @@ where
         Ok(())
     }
 
-    async fn down(&self, connection: &mut <DB as sqlx::Database>::Connection) -> Result<(), Error> {
+    async fn down(&self, connection: &mut <DB as Database>::Connection) -> Result<(), Error> {
         sqlx::query(self.1.as_ref())
             .execute(connection)
             .await

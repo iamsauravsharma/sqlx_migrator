@@ -1,4 +1,4 @@
-use sqlx::Sqlite;
+use sqlx::{Database, Sqlite};
 
 use super::{DatabaseOperation, Migrator};
 use crate::error::Error;
@@ -45,7 +45,7 @@ pub(crate) fn delete_migration_query(table_name: &str) -> String {
 impl DatabaseOperation<Sqlite> for Migrator<Sqlite> {
     async fn ensure_migration_table_exists(
         &self,
-        connection: &mut <Sqlite as sqlx::Database>::Connection,
+        connection: &mut <Sqlite as Database>::Connection,
     ) -> Result<(), Error> {
         sqlx::query(&create_migrator_table_query(self.table_name()))
             .execute(connection)
@@ -55,7 +55,7 @@ impl DatabaseOperation<Sqlite> for Migrator<Sqlite> {
 
     async fn drop_migration_table_if_exists(
         &self,
-        connection: &mut <Sqlite as sqlx::Database>::Connection,
+        connection: &mut <Sqlite as Database>::Connection,
     ) -> Result<(), Error> {
         sqlx::query(&drop_table_query(self.table_name()))
             .execute(connection)
@@ -65,7 +65,7 @@ impl DatabaseOperation<Sqlite> for Migrator<Sqlite> {
 
     async fn add_migration_to_db_table(
         &self,
-        connection: &mut <Sqlite as sqlx::Database>::Connection,
+        connection: &mut <Sqlite as Database>::Connection,
         migration: &Box<dyn Migration<Sqlite>>,
     ) -> Result<(), Error> {
         sqlx::query(&add_migration_query(self.table_name()))
@@ -78,7 +78,7 @@ impl DatabaseOperation<Sqlite> for Migrator<Sqlite> {
 
     async fn delete_migration_from_db_table(
         &self,
-        connection: &mut <Sqlite as sqlx::Database>::Connection,
+        connection: &mut <Sqlite as Database>::Connection,
         migration: &Box<dyn Migration<Sqlite>>,
     ) -> Result<(), Error> {
         sqlx::query(&delete_migration_query(self.table_name()))
@@ -91,7 +91,7 @@ impl DatabaseOperation<Sqlite> for Migrator<Sqlite> {
 
     async fn fetch_applied_migration_from_db(
         &self,
-        connection: &mut <Sqlite as sqlx::Database>::Connection,
+        connection: &mut <Sqlite as Database>::Connection,
     ) -> Result<Vec<AppliedMigrationSqlRow>, Error> {
         Ok(
             sqlx::query_as::<_, AppliedMigrationSqlRow>(&fetch_rows_query(self.table_name()))
@@ -100,16 +100,13 @@ impl DatabaseOperation<Sqlite> for Migrator<Sqlite> {
         )
     }
 
-    async fn lock(
-        &self,
-        _connection: &mut <Sqlite as sqlx::Database>::Connection,
-    ) -> Result<(), Error> {
+    async fn lock(&self, _connection: &mut <Sqlite as Database>::Connection) -> Result<(), Error> {
         Ok(())
     }
 
     async fn unlock(
         &self,
-        _connection: &mut <Sqlite as sqlx::Database>::Connection,
+        _connection: &mut <Sqlite as Database>::Connection,
     ) -> Result<(), Error> {
         Ok(())
     }

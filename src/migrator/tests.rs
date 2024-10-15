@@ -1,4 +1,4 @@
-use sqlx::{Sqlite, SqlitePool};
+use sqlx::{Database, Sqlite, SqlitePool};
 
 use super::{DatabaseOperation, Info, Migrate};
 use crate::error::Error;
@@ -44,21 +44,21 @@ impl Info<Sqlite> for CustomMigrator {
 impl DatabaseOperation<Sqlite> for CustomMigrator {
     async fn ensure_migration_table_exists(
         &self,
-        _connection: &mut <Sqlite as sqlx::Database>::Connection,
+        _connection: &mut <Sqlite as Database>::Connection,
     ) -> Result<(), Error> {
         Ok(())
     }
 
     async fn drop_migration_table_if_exists(
         &self,
-        _connection: &mut <Sqlite as sqlx::Database>::Connection,
+        _connection: &mut <Sqlite as Database>::Connection,
     ) -> Result<(), Error> {
         Ok(())
     }
 
     async fn add_migration_to_db_table(
         &self,
-        _connection: &mut <Sqlite as sqlx::Database>::Connection,
+        _connection: &mut <Sqlite as Database>::Connection,
         _migration: &Box<dyn Migration<Sqlite>>,
     ) -> Result<(), Error> {
         Ok(())
@@ -66,7 +66,7 @@ impl DatabaseOperation<Sqlite> for CustomMigrator {
 
     async fn delete_migration_from_db_table(
         &self,
-        _connection: &mut <Sqlite as sqlx::Database>::Connection,
+        _connection: &mut <Sqlite as Database>::Connection,
         _migration: &Box<dyn Migration<Sqlite>>,
     ) -> Result<(), Error> {
         Ok(())
@@ -74,21 +74,18 @@ impl DatabaseOperation<Sqlite> for CustomMigrator {
 
     async fn fetch_applied_migration_from_db(
         &self,
-        _connection: &mut <Sqlite as sqlx::Database>::Connection,
+        _connection: &mut <Sqlite as Database>::Connection,
     ) -> Result<Vec<AppliedMigrationSqlRow>, Error> {
         Ok(self.applied_migrations.clone())
     }
 
-    async fn lock(
-        &self,
-        _connection: &mut <Sqlite as sqlx::Database>::Connection,
-    ) -> Result<(), Error> {
+    async fn lock(&self, _connection: &mut <Sqlite as Database>::Connection) -> Result<(), Error> {
         Ok(())
     }
 
     async fn unlock(
         &self,
-        _connection: &mut <Sqlite as sqlx::Database>::Connection,
+        _connection: &mut <Sqlite as Database>::Connection,
     ) -> Result<(), Error> {
         Ok(())
     }

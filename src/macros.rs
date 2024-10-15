@@ -44,7 +44,7 @@ macro_rules! migration {
 
 /// Macro for implementing the [`migration`] macro for the `Any`.
 ///
-/// This macro calls [`migration`] macro with db value already set asg
+/// This macro calls [`migration`] macro with db value already set as
 /// `sqlx::Any`
 #[macro_export]
 #[cfg(all(
@@ -66,7 +66,7 @@ macro_rules! any_migration {
 
 /// Macro for implementing the [`migration`] macro for the `MySql`.
 ///
-/// This macro calls [`migration`] macro with db value already set asg
+/// This macro calls [`migration`] macro with db value already set as
 /// `sqlx::MySql`
 #[macro_export]
 #[cfg(feature = "mysql")]
@@ -85,7 +85,7 @@ macro_rules! mysql_migration {
 
 /// Macro for implementing the [`migration`] macro for the `Postgres`.
 ///
-/// This macro calls [`migration`] macro with db value already set asg
+/// This macro calls [`migration`] macro with db value already set as
 /// `sqlx::Postgres`
 #[macro_export]
 #[cfg(feature = "postgres")]
