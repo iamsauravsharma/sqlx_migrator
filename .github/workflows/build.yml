@@ -39,7 +39,7 @@ jobs:
       - name: Install cargo make
         uses: davidB/rust-cargo-make@v1.10.0
       - name: Create env file
-        uses: iamsauravsharma/create-dotenv@v2.0.1
+        uses: iamsauravsharma/create-dotenv@v3.0.0
         with:
           input-prefix: "MAKE_"
       - name: Run tests
