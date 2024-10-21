@@ -26,11 +26,11 @@ pub(crate) struct M0002Migration;
 
 #[async_trait::async_trait]
 impl Migration<MySql> for M0002Migration {
-    fn app(&self) -> &str {
+    fn app(&self) -> &'static str {
         "main"
     }
 
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "m0002_with_parents"
     }
 

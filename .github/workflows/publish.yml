@@ -1,7 +1,8 @@
 name: Publish
 on:
   push:
-    tags: "v*"
+    tags:
+      - "v*"
 
 permissions:
   contents: write
@@ -19,7 +20,7 @@ jobs:
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
         run: |
-          cargo publish --features postgres,sqlite,mysql,any
+          cargo publish --all-features
 
   publish_release_note:
     name: Publish release note

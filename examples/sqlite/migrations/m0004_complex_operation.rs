@@ -35,11 +35,11 @@ pub(crate) struct M0004Migration {
 
 #[async_trait::async_trait]
 impl Migration<Sqlite> for M0004Migration {
-    fn app(&self) -> &str {
+    fn app(&self) -> &'static str {
         "main"
     }
 
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "m0004_complex_operation"
     }
 

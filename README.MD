@@ -91,7 +91,7 @@ impl Migration<sqlx::Postgres> for FirstMigration {
     }
 
     // Use the parent function to add parents of a migration.
-    // If you cannot access the parent migration, you can also use
+    // If you cannot access or create the parent migration easily, you can also use
     // `(A,N) where A: AsRef<str>, N: AsRef<str>` where A is the app name
     // and N is the name of the migration.
     fn parents(&self) -> Vec<Box<dyn Migration<sqlx::Postgres>>> {

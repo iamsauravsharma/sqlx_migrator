@@ -24,11 +24,11 @@ pub(crate) struct M0001Migration;
 
 #[async_trait::async_trait]
 impl Migration<Postgres> for M0001Migration {
-    fn app(&self) -> &str {
+    fn app(&self) -> &'static str {
         "main"
     }
 
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "m0001_simple"
     }
 

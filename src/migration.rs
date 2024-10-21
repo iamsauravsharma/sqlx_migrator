@@ -65,6 +65,11 @@ use crate::operation::Operation;
 ///
 /// Migrations can also replace existing migrations, enforce ordering with
 /// run before and parents, and control atomicity and virtualization.
+///
+/// Migration trait is implemented for `(A,N) where A: AsRef<str>, N:
+/// AsRef<str>` where A is the app name and N is the name of the migration. You
+/// can use migration in this form in `parents`, `replaces` and `run_before` if
+/// you cannot reference migration or create migration easily
 #[allow(clippy::module_name_repetitions)]
 pub trait Migration<DB>: Send + Sync {
     /// Returns the application name associated with the migration.
@@ -128,7 +133,9 @@ pub trait Migration<DB>: Send + Sync {
     ///
     /// A virtual migration serves as a reference to another migration with the
     /// same app and name. If the migration is virtual, all other methods
-    /// are ignored expect its application name and its own name.
+    /// are ignored expect its application name and its own name to check with
+    /// non virtual migration so such non virtual migration can be used in its
+    /// place.
     fn is_virtual(&self) -> bool {
         false
     }
