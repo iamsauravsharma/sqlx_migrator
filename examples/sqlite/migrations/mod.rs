@@ -6,6 +6,7 @@ pub(crate) mod m0001_simple;
 pub(crate) mod m0002_with_parents;
 pub(crate) mod m0003_use_macros;
 pub(crate) mod m0004_complex_operation;
+pub(crate) mod m0005_reference_complex;
 
 pub(crate) fn migrations() -> Vec<Box<dyn Migration<Sqlite>>> {
     vec_box![
@@ -15,6 +16,7 @@ pub(crate) fn migrations() -> Vec<Box<dyn Migration<Sqlite>>> {
         m0004_complex_operation::M0004Migration {
             id: 23,
             message: "Custom String".to_string()
-        }
+        },
+        m0005_reference_complex::M0005Migration,
     ]
 }
