@@ -15,7 +15,7 @@ pub enum Error {
     #[error(transparent)]
     StdIo(#[from] std::io::Error),
     /// Error generated during planning state
-    #[error("planning error: {message}")]
+    #[error("plan error: {message}")]
     PlanError {
         /// Message for error
         message: String,
