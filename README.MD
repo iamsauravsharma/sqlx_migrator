@@ -18,25 +18,25 @@ Supported Databases:
 Add `sqlx_migrator` to your `Cargo.toml` with the appropriate database feature:
 
 ```toml
-sqlx_migrator = { version = "0.16.0", features=["postgres"] }
+sqlx_migrator = { version = "0.16.1", features=["postgres"] }
 ```
 
 OR
 
 ```toml
-sqlx_migrator = { version = "0.16.0", features=["mysql"] }
+sqlx_migrator = { version = "0.16.1", features=["mysql"] }
 ```
 
 OR
 
 ```toml
-sqlx_migrator = { version = "0.16.0", features=["sqlite"] }
+sqlx_migrator = { version = "0.16.1", features=["sqlite"] }
 ```
 
 OR
 
 ```toml
-sqlx_migrator = { version = "0.16.0", features=[
+sqlx_migrator = { version = "0.16.1", features=[
     "any",
     # Plus any one of above database driver
     ] }
