@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/migrator/mod.rs`."><title>mod.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-a5dc3bae.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="sqlx_migrator" data-themes="" data-resource-suffix="" data-rustdoc-version="1.84.0-nightly (662180b34 2024-10-20)" data-channel="nightly" data-search-js="search-c5a66128.js" data-settings-js="settings-0f613d39.js" ><script src="../../../static.files/storage-59e33391.js"></script><script defer src="../../../static.files/src-script-56102188.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-5f194d8c.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-893ab5e7.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">sqlx_migrator/migrator/</div>mod.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers">
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/migrator/mod.rs`."><title>mod.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-4ee5002b.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="sqlx_migrator" data-themes="" data-resource-suffix="" data-rustdoc-version="1.84.0-nightly (a93c1718c 2024-10-24)" data-channel="nightly" data-search-js="search-c5a66128.js" data-settings-js="settings-0f613d39.js" ><script src="../../../static.files/storage-59e33391.js"></script><script defer src="../../../static.files/src-script-56102188.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-5f194d8c.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-893ab5e7.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">sqlx_migrator/migrator/</div>mod.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers">
 <a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
@@ -900,7 +900,75 @@
 <a href="#899" id="899">899</a>
 <a href="#900" id="900">900</a>
 <a href="#901" id="901">901</a>
-<a href="#902" id="902">902</a></pre></div><pre class="rust"><code><span class="doccomment">//! Migrator module
+<a href="#902" id="902">902</a>
+<a href="#903" id="903">903</a>
+<a href="#904" id="904">904</a>
+<a href="#905" id="905">905</a>
+<a href="#906" id="906">906</a>
+<a href="#907" id="907">907</a>
+<a href="#908" id="908">908</a>
+<a href="#909" id="909">909</a>
+<a href="#910" id="910">910</a>
+<a href="#911" id="911">911</a>
+<a href="#912" id="912">912</a>
+<a href="#913" id="913">913</a>
+<a href="#914" id="914">914</a>
+<a href="#915" id="915">915</a>
+<a href="#916" id="916">916</a>
+<a href="#917" id="917">917</a>
+<a href="#918" id="918">918</a>
+<a href="#919" id="919">919</a>
+<a href="#920" id="920">920</a>
+<a href="#921" id="921">921</a>
+<a href="#922" id="922">922</a>
+<a href="#923" id="923">923</a>
+<a href="#924" id="924">924</a>
+<a href="#925" id="925">925</a>
+<a href="#926" id="926">926</a>
+<a href="#927" id="927">927</a>
+<a href="#928" id="928">928</a>
+<a href="#929" id="929">929</a>
+<a href="#930" id="930">930</a>
+<a href="#931" id="931">931</a>
+<a href="#932" id="932">932</a>
+<a href="#933" id="933">933</a>
+<a href="#934" id="934">934</a>
+<a href="#935" id="935">935</a>
+<a href="#936" id="936">936</a>
+<a href="#937" id="937">937</a>
+<a href="#938" id="938">938</a>
+<a href="#939" id="939">939</a>
+<a href="#940" id="940">940</a>
+<a href="#941" id="941">941</a>
+<a href="#942" id="942">942</a>
+<a href="#943" id="943">943</a>
+<a href="#944" id="944">944</a>
+<a href="#945" id="945">945</a>
+<a href="#946" id="946">946</a>
+<a href="#947" id="947">947</a>
+<a href="#948" id="948">948</a>
+<a href="#949" id="949">949</a>
+<a href="#950" id="950">950</a>
+<a href="#951" id="951">951</a>
+<a href="#952" id="952">952</a>
+<a href="#953" id="953">953</a>
+<a href="#954" id="954">954</a>
+<a href="#955" id="955">955</a>
+<a href="#956" id="956">956</a>
+<a href="#957" id="957">957</a>
+<a href="#958" id="958">958</a>
+<a href="#959" id="959">959</a>
+<a href="#960" id="960">960</a>
+<a href="#961" id="961">961</a>
+<a href="#962" id="962">962</a>
+<a href="#963" id="963">963</a>
+<a href="#964" id="964">964</a>
+<a href="#965" id="965">965</a>
+<a href="#966" id="966">966</a>
+<a href="#967" id="967">967</a>
+<a href="#968" id="968">968</a>
+<a href="#969" id="969">969</a>
+<a href="#970" id="970">970</a></pre></div><pre class="rust"><code><span class="doccomment">//! Migrator module
 //!
 //! It contains common enum and trait for implementing migrator for sqlx
 //! supported database
@@ -1260,59 +1328,89 @@ impl Migrate&lt;Postgres&gt; for CustomMigrator {}
     </span><span class="kw">async fn </span>unlock(<span class="kw-2">&amp;</span><span class="self">self</span>, connection: <span class="kw-2">&amp;mut </span>&lt;DB <span class="kw">as </span>Database&gt;::Connection) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt;;
 }
 
-<span class="kw">fn </span>populate_recursive&lt;<span class="lifetime">'populate</span>, DB&gt;(
-    populate_hash_map: <span class="kw-2">&amp;mut </span>HashMap&lt;<span class="kw-2">&amp;</span><span class="lifetime">'populate </span>BoxMigration&lt;DB&gt;, Vec&lt;<span class="kw-2">&amp;</span><span class="lifetime">'populate </span>BoxMigration&lt;DB&gt;&gt;&gt;,
+<span class="kw">fn </span>populate_replace_recursive&lt;<span class="lifetime">'populate</span>, DB&gt;(
+    replace_hash_map: <span class="kw-2">&amp;mut </span>HashMap&lt;<span class="kw-2">&amp;</span><span class="lifetime">'populate </span>BoxMigration&lt;DB&gt;, Vec&lt;<span class="kw-2">&amp;</span><span class="lifetime">'populate </span>BoxMigration&lt;DB&gt;&gt;&gt;,
     key: <span class="kw-2">&amp;</span><span class="lifetime">'populate </span>BoxMigration&lt;DB&gt;,
     value: <span class="kw-2">&amp;</span><span class="lifetime">'populate </span>BoxMigration&lt;DB&gt;,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
-    <span class="comment">// protect against a case where two migration depends upon each other
+    <span class="comment">// protect against a case where two migration replaces each other
     </span><span class="kw">if </span>key == value {
         <span class="kw">return </span><span class="prelude-val">Err</span>(Error::PlanError {
-            message: <span class="macro">format!</span>(
-                <span class="string">"migration {}:{} and migration {}:{} depends with each other"</span>,
-                key.app(),
-                key.name(),
-                value.app(),
-                value.name()
-            ),
+            message: <span class="string">"two migrations replaces each other"</span>.to_string(),
         });
     }
-    <span class="kw">let </span>populate_hash_map_vec = populate_hash_map.entry(key).or_default();
-    <span class="kw">if </span>!populate_hash_map_vec.contains(<span class="kw-2">&amp;</span>value) {
-        populate_hash_map_vec.push(value);
+    <span class="kw">let </span>replace_hash_map_vec = replace_hash_map.entry(key).or_default();
+    <span class="kw">if </span>!replace_hash_map_vec.contains(<span class="kw-2">&amp;</span>value) {
+        replace_hash_map_vec.push(value);
     }
-    <span class="kw">if let </span><span class="prelude-val">Some</span>(grand_values) = populate_hash_map.clone().get(value) {
+    <span class="kw">if let </span><span class="prelude-val">Some</span>(grand_values) = replace_hash_map.clone().get(value) {
         <span class="kw">for </span>grand_value <span class="kw">in </span>grand_values {
-            populate_recursive(populate_hash_map, key, grand_value)<span class="question-mark">?</span>;
+            populate_replace_recursive(replace_hash_map, key, grand_value)<span class="question-mark">?</span>;
         }
     }
     <span class="prelude-val">Ok</span>(())
 }
 
-<span class="kw">fn </span>get_parent_recursive&lt;DB&gt;(migration: <span class="kw-2">&amp;</span>BoxMigration&lt;DB&gt;) -&gt; Vec&lt;BoxMigration&lt;DB&gt;&gt; {
-    <span class="kw">let </span><span class="kw-2">mut </span>parents = migration.parents();
+<span class="kw">fn </span>get_parent_recursive&lt;DB&gt;(
+    migration: <span class="kw-2">&amp;</span>BoxMigration&lt;DB&gt;,
+    original_migration: <span class="kw-2">&amp;</span>[BoxMigration&lt;DB&gt;],
+) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;BoxMigration&lt;DB&gt;&gt;, Error&gt; {
+    <span class="kw">let </span><span class="kw-2">mut </span>parents: Vec&lt;BoxMigration&lt;DB&gt;&gt; = <span class="macro">vec!</span>[];
     <span class="kw">for </span>parent <span class="kw">in </span>migration.parents() {
-        parents.extend(get_parent_recursive(<span class="kw-2">&amp;</span>parent));
+        parents.push(Box::new((
+            parent.app().to_string(),
+            parent.name().to_string(),
+        )));
+        <span class="kw">let </span>found_parent = <span class="kw">if </span>parent.is_virtual() {
+            original_migration
+                .iter()
+                .find(|<span class="kw-2">&amp;</span>search_parent| search_parent == <span class="kw-2">&amp;</span>parent)
+                .ok_or(Error::PlanError {
+                    message: <span class="string">"failed to find parent non virtual migration"</span>.to_string(),
+                })<span class="question-mark">?
+        </span>} <span class="kw">else </span>{
+            <span class="kw-2">&amp;</span>parent
+        };
+        parents.extend(get_parent_recursive(found_parent, original_migration)<span class="question-mark">?</span>);
     }
-    parents
+    <span class="prelude-val">Ok</span>(parents)
 }
 
-<span class="kw">fn </span>get_run_before_recursive&lt;DB&gt;(migration: <span class="kw-2">&amp;</span>BoxMigration&lt;DB&gt;) -&gt; Vec&lt;BoxMigration&lt;DB&gt;&gt; {
-    <span class="kw">let </span><span class="kw-2">mut </span>run_before_list = migration.run_before();
+<span class="kw">fn </span>get_run_before_recursive&lt;DB&gt;(
+    migration: <span class="kw-2">&amp;</span>BoxMigration&lt;DB&gt;,
+    original_migration: <span class="kw-2">&amp;</span>[BoxMigration&lt;DB&gt;],
+) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;BoxMigration&lt;DB&gt;&gt;, Error&gt; {
+    <span class="kw">let </span><span class="kw-2">mut </span>run_before_list: Vec&lt;BoxMigration&lt;DB&gt;&gt; = <span class="macro">vec!</span>[];
     <span class="kw">for </span>run_before <span class="kw">in </span>migration.run_before() {
-        run_before_list.extend(get_run_before_recursive(<span class="kw-2">&amp;</span>run_before));
+        run_before_list.push(Box::new((
+            run_before.app().to_string(),
+            run_before.name().to_string(),
+        )));
+        <span class="kw">let </span>found_run_before = <span class="kw">if </span>run_before.is_virtual() {
+            original_migration
+                .iter()
+                .find(|<span class="kw-2">&amp;</span>search_run_before| search_run_before == <span class="kw-2">&amp;</span>run_before)
+                .ok_or(Error::PlanError {
+                    message: <span class="string">"failed to find run before non virtual migration"</span>.to_string(),
+                })<span class="question-mark">?
+        </span>} <span class="kw">else </span>{
+            <span class="kw-2">&amp;</span>run_before
+        };
+        run_before_list.extend(get_parent_recursive(found_run_before, original_migration)<span class="question-mark">?</span>);
     }
-    run_before_list
+    <span class="prelude-val">Ok</span>(run_before_list)
 }
 
 <span class="comment">// filter migration list to only contains migrations which is related to with
 // list migration, removes all migrations which is not related to them according
-// to provided plan
+// to provided plan. We should not check replaces migration since it is already
+// handled and all replaces migration are removed as required
 </span><span class="kw">fn </span>only_related_migration&lt;DB&gt;(
     migration_list: <span class="kw-2">&amp;mut </span>MigrationVec&lt;DB&gt;,
     with_list: Vec&lt;<span class="kw-2">&amp;</span>BoxMigration&lt;DB&gt;&gt;,
     plan_type: <span class="kw-2">&amp;</span>PlanType,
-) {
+    original_migration: <span class="kw-2">&amp;</span>[BoxMigration&lt;DB&gt;],
+) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
     <span class="kw">let </span><span class="kw-2">mut </span>related_migrations = <span class="macro">vec!</span>[];
     <span class="kw">for </span>with <span class="kw">in </span>with_list {
         <span class="comment">// check if with migrations is already added or not. Sometimes with list
@@ -1322,22 +1420,24 @@ impl Migrate&lt;Postgres&gt; for CustomMigrator {}
             related_migrations.push(with);
             <span class="kw">match </span>plan_type {
                 PlanType::Apply =&gt; {
-                    <span class="kw">let </span>with_parents = get_parent_recursive(with);
+                    <span class="kw">let </span>with_parents = get_parent_recursive(with, original_migration)<span class="question-mark">?</span>;
                     <span class="kw">for </span><span class="kw-2">&amp;</span>migration <span class="kw">in </span>migration_list.iter() {
                         <span class="kw">if </span>!related_migrations.contains(<span class="kw-2">&amp;</span>migration)
                             &amp;&amp; (with_parents.contains(migration)
-                                || get_run_before_recursive(migration).contains(with))
+                                || get_run_before_recursive(migration, original_migration)<span class="question-mark">?
+                                    </span>.contains(with))
                         {
                             related_migrations.push(migration);
                         }
                     }
                 }
                 PlanType::Revert =&gt; {
-                    <span class="kw">let </span>with_run_before = get_run_before_recursive(with);
+                    <span class="kw">let </span>with_run_before = get_run_before_recursive(with, original_migration)<span class="question-mark">?</span>;
                     <span class="kw">for </span><span class="kw-2">&amp;</span>migration <span class="kw">in </span>migration_list.iter() {
                         <span class="kw">if </span>!related_migrations.contains(<span class="kw-2">&amp;</span>migration)
                             &amp;&amp; (with_run_before.contains(migration)
-                                || get_parent_recursive(migration).contains(with))
+                                || get_parent_recursive(migration, original_migration)<span class="question-mark">?
+                                    </span>.contains(with))
                         {
                             related_migrations.push(migration);
                         }
@@ -1347,6 +1447,7 @@ impl Migrate&lt;Postgres&gt; for CustomMigrator {}
         }
     }
     migration_list.retain(|<span class="kw-2">&amp;</span>migration| related_migrations.contains(<span class="kw-2">&amp;</span>migration));
+    <span class="prelude-val">Ok</span>(())
 }
 
 <span class="doccomment">/// Process plan to provided migrations list
@@ -1354,6 +1455,7 @@ impl Migrate&lt;Postgres&gt; for CustomMigrator {}
     migration_list: <span class="kw-2">&amp;mut </span>MigrationVec&lt;DB&gt;,
     applied_migrations: <span class="kw-2">&amp;</span>MigrationVec&lt;DB&gt;,
     plan: <span class="kw-2">&amp;</span>Plan,
+    original_migration: <span class="kw-2">&amp;</span>[BoxMigration&lt;DB&gt;],
 ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt;
 <span class="kw">where
     </span>DB: Database,
@@ -1411,7 +1513,12 @@ impl Migrate&lt;Postgres&gt; for CustomMigrator {}
                 .copied()
                 .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
         };
-        only_related_migration(migration_list, with_list, <span class="kw-2">&amp;</span>plan.plan_type);
+        only_related_migration(
+            migration_list,
+            with_list,
+            <span class="kw-2">&amp;</span>plan.plan_type,
+            original_migration,
+        )<span class="question-mark">?</span>;
     } <span class="kw">else if let </span><span class="prelude-val">Some</span>(count) = plan.count {
         <span class="kw">let </span>actual_len = migration_list.len();
         <span class="kw">if </span>count &gt; actual_len {
@@ -1478,12 +1585,12 @@ impl Migrate&lt;Postgres&gt; for CustomMigrator {}
 
         <span class="comment">// Hashmap which contains key as migration and value is migration which replaces
         // this migration. One migration can only have one parent
-        </span><span class="kw">let </span><span class="kw-2">mut </span>parent_due_to_replaces = HashMap::new();
+        </span><span class="kw">let </span><span class="kw-2">mut </span>replaces_child_parent_hash_map = HashMap::new();
 
         <span class="kw">for </span>parent_migration <span class="kw">in </span><span class="self">self</span>.migrations() {
             <span class="kw">for </span>child_migration <span class="kw">in </span>parent_migration.replaces() {
                 <span class="kw">let </span>child_name = <span class="macro">format!</span>(<span class="string">"{}:{}"</span>, child_migration.app(), child_migration.name());
-                <span class="kw">if </span>parent_due_to_replaces
+                <span class="kw">if </span>replaces_child_parent_hash_map
                     .insert(child_migration, parent_migration)
                     .is_some()
                 {
@@ -1497,21 +1604,45 @@ impl Migrate&lt;Postgres&gt; for CustomMigrator {}
         <span class="comment">// Hashmap which contains all children of migration generated from replace list
         </span><span class="kw">let </span><span class="kw-2">mut </span>replace_children = HashMap::&lt;<span class="kw">_</span>, Vec&lt;<span class="kw">_</span>&gt;&gt;::new();
         <span class="comment">// in first loop add initial parent and child from parent due to replace
-        </span><span class="kw">for </span>(child, <span class="kw-2">&amp;</span>parent) <span class="kw">in </span><span class="kw-2">&amp;</span>parent_due_to_replaces {
-            replace_children.entry(parent).or_default().push(child);
+        </span><span class="kw">for </span>(child, <span class="kw-2">&amp;</span>parent) <span class="kw">in </span><span class="kw-2">&amp;</span>replaces_child_parent_hash_map {
+            <span class="kw">let </span>children_migration = <span class="kw">if </span>child.is_virtual() {
+                <span class="self">self</span>.migrations()
+                    .iter()
+                    .find(|<span class="kw-2">&amp;</span>search_migration| search_migration == child)
+                    .ok_or(Error::PlanError {
+                        message: <span class="string">"Failed finding non virtual migration for virtual migration"
+                            </span>.to_string(),
+                    })<span class="question-mark">?
+            </span>} <span class="kw">else </span>{
+                child
+            };
+            replace_children
+                .entry(parent)
+                .or_default()
+                .push(children_migration);
         }
         <span class="comment">// in second loop through recursive add all descendants
-        </span><span class="kw">for </span>(child, <span class="kw-2">&amp;</span>parent) <span class="kw">in </span><span class="kw-2">&amp;</span>parent_due_to_replaces {
-            populate_recursive(<span class="kw-2">&amp;mut </span>replace_children, parent, child)<span class="question-mark">?</span>;
+        </span><span class="kw">for </span>(child, <span class="kw-2">&amp;</span>parent) <span class="kw">in </span><span class="kw-2">&amp;</span>replaces_child_parent_hash_map {
+            <span class="kw">let </span>children_migration = <span class="kw">if </span>child.is_virtual() {
+                <span class="self">self</span>.migrations()
+                    .iter()
+                    .find(|<span class="kw-2">&amp;</span>search_migration| search_migration == child)
+                    .ok_or(Error::PlanError {
+                        message: <span class="string">"Failed finding non virtual migration for virtual migration"
+                            </span>.to_string(),
+                    })<span class="question-mark">?
+            </span>} <span class="kw">else </span>{
+                child
+            };
+            populate_replace_recursive(<span class="kw-2">&amp;mut </span>replace_children, parent, children_migration)<span class="question-mark">?</span>;
         }
-
         <span class="comment">// Hashmap which contains key as migration and value as list of migration
         // which becomes parent for key due to value having key as run before value
-        </span><span class="kw">let </span><span class="kw-2">mut </span>parents_due_to_run_before = HashMap::&lt;<span class="kw">_</span>, Vec&lt;<span class="kw">_</span>&gt;&gt;::new();
+        </span><span class="kw">let </span><span class="kw-2">mut </span>run_before_child_parent_hash_map = HashMap::&lt;<span class="kw">_</span>, Vec&lt;<span class="kw">_</span>&gt;&gt;::new();
 
         <span class="kw">for </span>parent_migration <span class="kw">in </span><span class="self">self</span>.migrations() {
             <span class="kw">for </span>run_before_migration <span class="kw">in </span>parent_migration.run_before() {
-                parents_due_to_run_before
+                run_before_child_parent_hash_map
                     .entry(run_before_migration)
                     .or_default()
                     .push(parent_migration);
@@ -1531,12 +1662,12 @@ impl Migrate&lt;Postgres&gt; for CustomMigrator {}
                         .parents()
                         .iter()
                         .all(|parent_migration| migration_list.contains(<span class="kw-2">&amp;</span>parent_migration))
-                    &amp;&amp; parents_due_to_run_before
+                    &amp;&amp; run_before_child_parent_hash_map
                         .get(migration)
                         .unwrap_or(<span class="kw-2">&amp;</span><span class="macro">vec!</span>[])
                         .iter()
                         .all(|run_before_migration| migration_list.contains(run_before_migration))
-                    &amp;&amp; parent_due_to_replaces
+                    &amp;&amp; replaces_child_parent_hash_map
                         .get(migration)
                         .map_or(<span class="bool-val">true</span>, |replace_migration| {
                             migration_list.contains(replace_migration)
@@ -1549,15 +1680,15 @@ impl Migrate&lt;Postgres&gt; for CustomMigrator {}
                             child
                                 .parents()
                                 .iter()
-                                .all(|child_parent| migration_list.contains(<span class="kw-2">&amp;</span>child_parent));
-                            parents_due_to_run_before
-                                .get(child)
-                                .unwrap_or(<span class="kw-2">&amp;</span><span class="macro">vec!</span>[])
-                                .iter()
-                                .all(|run_before_migration| {
-                                    migration_list.contains(run_before_migration)
-                                        || children.contains(run_before_migration)
-                                })
+                                .all(|child_parent| migration_list.contains(<span class="kw-2">&amp;</span>child_parent))
+                                &amp;&amp; run_before_child_parent_hash_map
+                                    .get(child)
+                                    .unwrap_or(<span class="kw-2">&amp;</span><span class="macro">vec!</span>[])
+                                    .iter()
+                                    .all(|run_before_migration| {
+                                        migration_list.contains(run_before_migration)
+                                            || children.contains(run_before_migration)
+                                    })
                         })
                     });
                 <span class="kw">if </span>all_required_added {
@@ -1603,7 +1734,7 @@ impl Migrate&lt;Postgres&gt; for CustomMigrator {}
             // error also takes consideration of replace migration
             </span><span class="kw">for </span><span class="kw-2">&amp;</span>migration <span class="kw">in </span><span class="kw-2">&amp;</span>applied_migrations {
                 <span class="kw">let </span><span class="kw-2">mut </span>parents = <span class="macro">vec!</span>[];
-                <span class="kw">if let </span><span class="prelude-val">Some</span>(run_before_list) = parents_due_to_run_before.get(migration) {
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(run_before_list) = run_before_child_parent_hash_map.get(migration) {
                     <span class="kw">for </span><span class="kw-2">&amp;</span>run_before <span class="kw">in </span>run_before_list {
                         parents.push(run_before);
                     }
@@ -1613,7 +1744,7 @@ impl Migrate&lt;Postgres&gt; for CustomMigrator {}
                     parents.push(parent);
                 }
                 <span class="kw">for </span>parent <span class="kw">in </span>parents {
-                    <span class="kw">let </span>recursive_vec = get_recursive(<span class="kw-2">&amp;</span>parent_due_to_replaces, parent);
+                    <span class="kw">let </span>recursive_vec = get_recursive(<span class="kw-2">&amp;</span>replaces_child_parent_hash_map, parent);
                     <span class="kw">if </span>!applied_migrations
                         .iter()
                         .any(|applied| recursive_vec.contains(applied))
@@ -1667,7 +1798,12 @@ impl Migrate&lt;Postgres&gt; for CustomMigrator {}
                 }
             }
 
-            process_plan(<span class="kw-2">&amp;mut </span>migration_list, <span class="kw-2">&amp;</span>applied_migrations, some_plan)<span class="question-mark">?</span>;
+            process_plan(
+                <span class="kw-2">&amp;mut </span>migration_list,
+                <span class="kw-2">&amp;</span>applied_migrations,
+                some_plan,
+                <span class="self">self</span>.migrations(),
+            )<span class="question-mark">?</span>;
         }
 
         <span class="prelude-val">Ok</span>(migration_list)
