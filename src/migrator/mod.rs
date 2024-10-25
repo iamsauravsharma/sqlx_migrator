@@ -358,59 +358,89 @@ where
     async fn unlock(&self, connection: &mut <DB as Database>::Connection) -> Result<(), Error>;
 }
 
-fn populate_recursive<'populate, DB>(
-    populate_hash_map: &mut HashMap<&'populate BoxMigration<DB>, Vec<&'populate BoxMigration<DB>>>,
+fn populate_replace_recursive<'populate, DB>(
+    replace_hash_map: &mut HashMap<&'populate BoxMigration<DB>, Vec<&'populate BoxMigration<DB>>>,
     key: &'populate BoxMigration<DB>,
     value: &'populate BoxMigration<DB>,
 ) -> Result<(), Error> {
-    // protect against a case where two migration depends upon each other
+    // protect against a case where two migration replaces each other
     if key == value {
         return Err(Error::PlanError {
-            message: format!(
-                "migration {}:{} and migration {}:{} depends with each other",
-                key.app(),
-                key.name(),
-                value.app(),
-                value.name()
-            ),
+            message: "two migrations replaces each other".to_string(),
         });
     }
-    let populate_hash_map_vec = populate_hash_map.entry(key).or_default();
-    if !populate_hash_map_vec.contains(&value) {
-        populate_hash_map_vec.push(value);
+    let replace_hash_map_vec = replace_hash_map.entry(key).or_default();
+    if !replace_hash_map_vec.contains(&value) {
+        replace_hash_map_vec.push(value);
     }
-    if let Some(grand_values) = populate_hash_map.clone().get(value) {
+    if let Some(grand_values) = replace_hash_map.clone().get(value) {
         for grand_value in grand_values {
-            populate_recursive(populate_hash_map, key, grand_value)?;
+            populate_replace_recursive(replace_hash_map, key, grand_value)?;
         }
     }
     Ok(())
 }
 
-fn get_parent_recursive<DB>(migration: &BoxMigration<DB>) -> Vec<BoxMigration<DB>> {
-    let mut parents = migration.parents();
+fn get_parent_recursive<DB>(
+    migration: &BoxMigration<DB>,
+    original_migration: &[BoxMigration<DB>],
+) -> Result<Vec<BoxMigration<DB>>, Error> {
+    let mut parents: Vec<BoxMigration<DB>> = vec![];
     for parent in migration.parents() {
-        parents.extend(get_parent_recursive(&parent));
+        parents.push(Box::new((
+            parent.app().to_string(),
+            parent.name().to_string(),
+        )));
+        let found_parent = if parent.is_virtual() {
+            original_migration
+                .iter()
+                .find(|&search_parent| search_parent == &parent)
+                .ok_or(Error::PlanError {
+                    message: "failed to find parent non virtual migration".to_string(),
+                })?
+        } else {
+            &parent
+        };
+        parents.extend(get_parent_recursive(found_parent, original_migration)?);
     }
-    parents
+    Ok(parents)
 }
 
-fn get_run_before_recursive<DB>(migration: &BoxMigration<DB>) -> Vec<BoxMigration<DB>> {
-    let mut run_before_list = migration.run_before();
+fn get_run_before_recursive<DB>(
+    migration: &BoxMigration<DB>,
+    original_migration: &[BoxMigration<DB>],
+) -> Result<Vec<BoxMigration<DB>>, Error> {
+    let mut run_before_list: Vec<BoxMigration<DB>> = vec![];
     for run_before in migration.run_before() {
-        run_before_list.extend(get_run_before_recursive(&run_before));
+        run_before_list.push(Box::new((
+            run_before.app().to_string(),
+            run_before.name().to_string(),
+        )));
+        let found_run_before = if run_before.is_virtual() {
+            original_migration
+                .iter()
+                .find(|&search_run_before| search_run_before == &run_before)
+                .ok_or(Error::PlanError {
+                    message: "failed to find run before non virtual migration".to_string(),
+                })?
+        } else {
+            &run_before
+        };
+        run_before_list.extend(get_parent_recursive(found_run_before, original_migration)?);
     }
-    run_before_list
+    Ok(run_before_list)
 }
 
 // filter migration list to only contains migrations which is related to with
 // list migration, removes all migrations which is not related to them according
-// to provided plan
+// to provided plan. We should not check replaces migration since it is already
+// handled and all replaces migration are removed as required
 fn only_related_migration<DB>(
     migration_list: &mut MigrationVec<DB>,
     with_list: Vec<&BoxMigration<DB>>,
     plan_type: &PlanType,
-) {
+    original_migration: &[BoxMigration<DB>],
+) -> Result<(), Error> {
     let mut related_migrations = vec![];
     for with in with_list {
         // check if with migrations is already added or not. Sometimes with list
@@ -420,22 +450,24 @@ fn only_related_migration<DB>(
             related_migrations.push(with);
             match plan_type {
                 PlanType::Apply => {
-                    let with_parents = get_parent_recursive(with);
+                    let with_parents = get_parent_recursive(with, original_migration)?;
                     for &migration in migration_list.iter() {
                         if !related_migrations.contains(&migration)
                             && (with_parents.contains(migration)
-                                || get_run_before_recursive(migration).contains(with))
+                                || get_run_before_recursive(migration, original_migration)?
+                                    .contains(with))
                         {
                             related_migrations.push(migration);
                         }
                     }
                 }
                 PlanType::Revert => {
-                    let with_run_before = get_run_before_recursive(with);
+                    let with_run_before = get_run_before_recursive(with, original_migration)?;
                     for &migration in migration_list.iter() {
                         if !related_migrations.contains(&migration)
                             && (with_run_before.contains(migration)
-                                || get_parent_recursive(migration).contains(with))
+                                || get_parent_recursive(migration, original_migration)?
+                                    .contains(with))
                         {
                             related_migrations.push(migration);
                         }
@@ -445,6 +477,7 @@ fn only_related_migration<DB>(
         }
     }
     migration_list.retain(|&migration| related_migrations.contains(&migration));
+    Ok(())
 }
 
 /// Process plan to provided migrations list
@@ -452,6 +485,7 @@ fn process_plan<DB>(
     migration_list: &mut MigrationVec<DB>,
     applied_migrations: &MigrationVec<DB>,
     plan: &Plan,
+    original_migration: &[BoxMigration<DB>],
 ) -> Result<(), Error>
 where
     DB: Database,
@@ -509,7 +543,12 @@ where
                 .copied()
                 .collect::<Vec<_>>()
         };
-        only_related_migration(migration_list, with_list, &plan.plan_type);
+        only_related_migration(
+            migration_list,
+            with_list,
+            &plan.plan_type,
+            original_migration,
+        )?;
     } else if let Some(count) = plan.count {
         let actual_len = migration_list.len();
         if count > actual_len {
@@ -576,12 +615,12 @@ where
 
         // Hashmap which contains key as migration and value is migration which replaces
         // this migration. One migration can only have one parent
-        let mut parent_due_to_replaces = HashMap::new();
+        let mut replaces_child_parent_hash_map = HashMap::new();
 
         for parent_migration in self.migrations() {
             for child_migration in parent_migration.replaces() {
                 let child_name = format!("{}:{}", child_migration.app(), child_migration.name());
-                if parent_due_to_replaces
+                if replaces_child_parent_hash_map
                     .insert(child_migration, parent_migration)
                     .is_some()
                 {
@@ -595,21 +634,45 @@ where
         // Hashmap which contains all children of migration generated from replace list
         let mut replace_children = HashMap::<_, Vec<_>>::new();
         // in first loop add initial parent and child from parent due to replace
-        for (child, &parent) in &parent_due_to_replaces {
-            replace_children.entry(parent).or_default().push(child);
+        for (child, &parent) in &replaces_child_parent_hash_map {
+            let children_migration = if child.is_virtual() {
+                self.migrations()
+                    .iter()
+                    .find(|&search_migration| search_migration == child)
+                    .ok_or(Error::PlanError {
+                        message: "Failed finding non virtual migration for virtual migration"
+                            .to_string(),
+                    })?
+            } else {
+                child
+            };
+            replace_children
+                .entry(parent)
+                .or_default()
+                .push(children_migration);
         }
         // in second loop through recursive add all descendants
-        for (child, &parent) in &parent_due_to_replaces {
-            populate_recursive(&mut replace_children, parent, child)?;
+        for (child, &parent) in &replaces_child_parent_hash_map {
+            let children_migration = if child.is_virtual() {
+                self.migrations()
+                    .iter()
+                    .find(|&search_migration| search_migration == child)
+                    .ok_or(Error::PlanError {
+                        message: "Failed finding non virtual migration for virtual migration"
+                            .to_string(),
+                    })?
+            } else {
+                child
+            };
+            populate_replace_recursive(&mut replace_children, parent, children_migration)?;
         }
-
         // Hashmap which contains key as migration and value as list of migration
         // which becomes parent for key due to value having key as run before value
-        let mut parents_due_to_run_before = HashMap::<_, Vec<_>>::new();
+        let mut run_before_child_parent_hash_map = HashMap::<_, Vec<_>>::new();
 
         for parent_migration in self.migrations() {
             for run_before_migration in parent_migration.run_before() {
-                parents_due_to_run_before
+                run_before_child_parent_hash_map
                     .entry(run_before_migration)
                     .or_default()
                     .push(parent_migration);
@@ -629,12 +692,12 @@ where
                         .parents()
                         .iter()
                         .all(|parent_migration| migration_list.contains(&parent_migration))
-                    && parents_due_to_run_before
+                    && run_before_child_parent_hash_map
                         .get(migration)
                         .unwrap_or(&vec![])
                         .iter()
                         .all(|run_before_migration| migration_list.contains(run_before_migration))
-                    && parent_due_to_replaces
+                    && replaces_child_parent_hash_map
                         .get(migration)
                         .map_or(true, |replace_migration| {
                             migration_list.contains(replace_migration)
@@ -647,15 +710,15 @@ where
                             child
                                 .parents()
                                 .iter()
-                                .all(|child_parent| migration_list.contains(&child_parent));
-                            parents_due_to_run_before
-                                .get(child)
-                                .unwrap_or(&vec![])
-                                .iter()
-                                .all(|run_before_migration| {
-                                    migration_list.contains(run_before_migration)
-                                        || children.contains(run_before_migration)
-                                })
+                                .all(|child_parent| migration_list.contains(&child_parent))
+                                && run_before_child_parent_hash_map
+                                    .get(child)
+                                    .unwrap_or(&vec![])
+                                    .iter()
+                                    .all(|run_before_migration| {
+                                        migration_list.contains(run_before_migration)
+                                            || children.contains(run_before_migration)
+                                    })
                         })
                     });
                 if all_required_added {
@@ -701,7 +764,7 @@ where
             // error also takes consideration of replace migration
             for &migration in &applied_migrations {
                 let mut parents = vec![];
-                if let Some(run_before_list) = parents_due_to_run_before.get(migration) {
+                if let Some(run_before_list) = run_before_child_parent_hash_map.get(migration) {
                     for &run_before in run_before_list {
                         parents.push(run_before);
                     }
@@ -711,7 +774,7 @@ where
                     parents.push(parent);
                 }
                 for parent in parents {
-                    let recursive_vec = get_recursive(&parent_due_to_replaces, parent);
+                    let recursive_vec = get_recursive(&replaces_child_parent_hash_map, parent);
                     if !applied_migrations
                         .iter()
                         .any(|applied| recursive_vec.contains(applied))
@@ -765,7 +828,12 @@ where
                 }
             }
 
-            process_plan(&mut migration_list, &applied_migrations, some_plan)?;
+            process_plan(
+                &mut migration_list,
+                &applied_migrations,
+                some_plan,
+                self.migrations(),
+            )?;
         }
 
         Ok(migration_list)
