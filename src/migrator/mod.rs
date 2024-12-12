@@ -3,11 +3,12 @@
 //! It contains common enum and trait for implementing migrator for sqlx
 //! supported database
 //!
-//! It also provides its own struct Migrator which supports Any, Postgres,
-//! Sqlite and Mysql database
+//! It also provides its own struct [`Migrator`] which supports
+//! [Any](sqlx::Any), [Postgres](sqlx::Postgres), [Sqlite](sqlx::Sqlite) and
+//! [MySql](sqlx::MySql) database
 #![cfg_attr(
     feature = "postgres",
-    doc = r##"
+    doc = r#"
 # Example
 Create own custom Migrator which only supports postgres and uses own unique
 table name instead of default table name
@@ -132,7 +133,7 @@ impl DatabaseOperation<Postgres> for CustomMigrator {
 }
 impl Migrate<Postgres> for CustomMigrator {}
 ```
-"##
+"#
 )]
 
 use std::collections::HashMap;
@@ -177,7 +178,7 @@ enum PlanType {
 
 /// Struct that determines the type of migration plan to execute.
 ///
-/// A `Plan` can specify whether to apply or revert migrations, and may target
+/// A [`Plan`] can specify whether to apply or revert migrations, and may target
 /// all migrations, specific migrations, or a limited number of migrations.
 #[derive(Debug)]
 pub struct Plan {
@@ -242,8 +243,8 @@ impl Plan {
     }
 }
 
-/// The `Info` trait provides database-agnostic methods for managing migrations
-/// and interacting with migration states.
+/// The [`Info`] trait provides database-agnostic methods for managing
+/// migrations and interacting with migration states.
 pub trait Info<DB> {
     /// Returns a reference to the list of migrations.
     fn migrations(&self) -> &Vec<BoxMigration<DB>>;
@@ -303,7 +304,7 @@ pub trait Info<DB> {
     }
 }
 
-/// The `DatabaseOperation` trait defines a set of methods for performing
+/// The [`DatabaseOperation`] trait defines a set of methods for performing
 /// operations related to migration management on the database.
 ///
 /// This trait is typically implemented for a database to support migration
@@ -329,7 +330,6 @@ where
     ) -> Result<(), Error>;
 
     /// Adds a migration record to the migration table in the database.
-    #[allow(clippy::borrowed_box)]
     async fn add_migration_to_db_table(
         &self,
         connection: &mut <DB as Database>::Connection,
@@ -337,7 +337,6 @@ where
     ) -> Result<(), Error>;
 
     /// Removes a migration record from the migration table in the database.
-    #[allow(clippy::borrowed_box)]
     async fn delete_migration_from_db_table(
         &self,
         connection: &mut <DB as Database>::Connection,
@@ -574,13 +573,13 @@ fn get_recursive<'get, DB>(
     recursive_vec
 }
 
-/// The `Migrate` trait defines methods to manage and apply database migrations
-/// according to a given plan.
+/// The [`Migrate`] trait defines methods to manage and apply database
+/// migrations according to a given plan.
 ///
-/// This trait combines the functionalities of the `Info` and
-/// `DatabaseOperation` traits, providing a full set of migration capabilities.
-/// All methods have default implementations, meaning no explicit implementation
-/// is required. Additionally, all methods are database-agnostic.
+/// This trait combines the functionalities of the [`Info`] and
+/// [`DatabaseOperation`] traits, providing a full set of migration
+/// capabilities. All methods have default implementations, meaning no explicit
+/// implementation is required. Additionally, all methods are database-agnostic.
 #[async_trait::async_trait]
 pub trait Migrate<DB>: Info<DB> + DatabaseOperation<DB> + Send + Sync
 where
@@ -590,7 +589,7 @@ where
     ///
     /// Returns a vector of migration. If plan is none than it will generate
     /// plan with all migrations in order of apply
-    #[allow(clippy::too_many_lines)]
+    #[expect(clippy::too_many_lines)]
     async fn generate_migration_plan(
         &self,
         connection: &mut <DB as Database>::Connection,
@@ -699,10 +698,8 @@ where
                         .all(|run_before_migration| migration_list.contains(run_before_migration))
                     && replaces_child_parent_hash_map
                         .get(migration)
-                        .map_or(true, |replace_migration| {
-                            migration_list.contains(replace_migration)
-                        })
-                    && replace_children.get(migration).map_or(true, |children| {
+                        .is_none_or(|replace_migration| migration_list.contains(replace_migration))
+                    && replace_children.get(migration).is_none_or(|children| {
                         // check if children parents and run before are added or not already before
                         // adding replace migration. Since replace migration may not depend on
                         // children parent its need to be added first

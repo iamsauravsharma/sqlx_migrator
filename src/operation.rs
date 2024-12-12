@@ -1,11 +1,11 @@
-//! Module for defining the `Operation` trait
+//! Module for defining the [`Operation`] trait
 //!
-//! This module provides the `Operation` trait, allowing users to define
+//! This module provides the [`Operation`] trait, allowing users to define
 //! database operations that can be executed as part of a migration process.
 //! These operations can be applied (`up`) or optionally reverted (`down`).
 #![cfg_attr(
     feature = "sqlite",
-    doc = r##"
+    doc = "
 To create own operation implement trait for type
 
 ### Example
@@ -37,7 +37,7 @@ impl Operation<Sqlite> for ExampleOperation {
     }
 }
 ```
-"##
+"
 )]
 
 use sqlx::Database;
@@ -50,10 +50,9 @@ use crate::error::Error;
 /// database during a migration. Each operation can have an up method for
 /// applying the change and an optional down method for rolling it back.
 ///
-/// Operations can also specify whether they are "destructible," meaning that
-/// they require user confirmation before being applied, due to potential data
-/// loss or irreversible changes
-#[allow(clippy::module_name_repetitions)]
+/// Operations can also specify whether they are destructible meaning that they
+/// require user confirmation before being applied, due to potential data loss
+/// or irreversible changes
 #[async_trait::async_trait]
 pub trait Operation<DB>: Send + Sync
 where
@@ -66,7 +65,7 @@ where
     /// apply.
     async fn up(&self, connection: &mut <DB as Database>::Connection) -> Result<(), Error>;
 
-    /// The `down` method reverses the operation when rolling back the
+    /// The down method reverses the operation when rolling back the
     /// migration.
     ///
     /// This method is called when the migration is being rolled back. Implement

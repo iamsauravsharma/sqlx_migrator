@@ -7,7 +7,8 @@ macro_rules! vec_box {
     ($($x:expr,)*) => (sqlx_migrator::vec_box![$($x),*]);
 }
 
-/// Macro for implementing the `Migration` trait for the provided database.
+/// Macro for implementing the [Migration](crate::migration::Migration) trait
+/// for the provided database.
 ///
 /// This macro will use current file name as name for migration
 ///

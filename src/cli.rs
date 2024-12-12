@@ -37,7 +37,7 @@ pub struct MigrationCommand {
 }
 
 impl MigrationCommand {
-    /// Parse `MigrationCommand` and run migration command line interface
+    /// Parse [`MigrationCommand`] and run migration command line interface
     ///
     /// # Errors
     /// If migration command fails to complete and raise some issue
@@ -192,7 +192,7 @@ where
 }
 
 #[derive(Parser, Debug)]
-#[allow(clippy::struct_excessive_bools)]
+#[expect(clippy::struct_excessive_bools)]
 struct Apply {
     /// App name up to which migration needs to be applied. If migration option
     /// is also present than only till migration is applied
@@ -295,7 +295,7 @@ impl Apply {
 }
 
 #[derive(Parser, Debug)]
-#[allow(clippy::struct_excessive_bools)]
+#[expect(clippy::struct_excessive_bools)]
 struct Revert {
     /// Revert all migration. Conflicts with app args
     #[arg(long, conflicts_with = "app")]

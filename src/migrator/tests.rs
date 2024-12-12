@@ -19,7 +19,7 @@ impl CustomMigrator {
         }
     }
 
-    #[allow(clippy::borrowed_box)]
+    #[expect(clippy::borrowed_box)]
     fn add_applied_migration(&mut self, migration: &Box<dyn Migration<Sqlite>>) {
         let current_length = self.migrations.len();
         self.applied_migrations.push(AppliedMigrationSqlRow::new(

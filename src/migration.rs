@@ -1,10 +1,10 @@
-//! Module for defining the `Migration` trait, which represents a database
+//! Module for defining the [`Migration`] trait, which represents a database
 //! migration.
 //!
 //! This module provides the necessary abstractions for defining migrations
 #![cfg_attr(
     feature = "sqlite",
-    doc = r##"
+    doc = r#"
 To create own implement migration trait for type
 
 ### Example
@@ -50,7 +50,7 @@ impl Migration<Sqlite> for ExampleMigration {
     }
 }
 ```
-"##
+"#
 )]
 
 use std::hash::Hash;
@@ -70,7 +70,6 @@ use crate::operation::Operation;
 /// AsRef<str>` where A is the app name and N is the name of the migration. You
 /// can use migration in this form in `parents`, `replaces` and `run_before` if
 /// you cannot reference migration or create migration easily
-#[allow(clippy::module_name_repetitions)]
 pub trait Migration<DB>: Send + Sync {
     /// Returns the application name associated with the migration.
     /// This can be the name of the folder or library where the migration is
