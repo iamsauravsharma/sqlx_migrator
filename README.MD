@@ -163,7 +163,7 @@ async fn main() {
 # Running Migrations
 
 You can run migrations directly or integrate them into a CLI:
-## Direct Execution
+## Programmatic Execution
 ```rust
 use sqlx_migrator::migrator::Plan;
 let mut conn = pool.acquire().await?;
@@ -171,9 +171,15 @@ let mut conn = pool.acquire().await?;
 migrator.run(&mut *conn, Plan::apply_all()).await.unwrap();
 // or use revert all to revert all applied migrations
 migrator.run(&mut *conn, Plan::revert_all()).await.unwrap();
+// If you need to apply or revert to certain stage than see `Plan` docs
 ```
 
 ## CLI Integration
+To integrate sqlx_migrator into your CLI, you can either use the built-in
+`MigrationCommand` or extend your own CLI with migrator support. Below are
+examples of both approaches:
+
+#### Built-in Migration Command
 
 ```rust
 use sqlx_migrator::cli::MigrationCommand;
@@ -181,7 +187,7 @@ use sqlx_migrator::cli::MigrationCommand;
 MigrationCommand::parse_and_run(&mut *conn, Box::new(migrator)).await.unwrap();
 ```
 
-Or extend your own CLI with migrator support:
+#### Extending Your Own CLI with Migrator Support
 
 ```rust
 #[derive(clap::Parser)]
@@ -211,31 +217,29 @@ impl Cli {
 
 # Migrate from sqlx default sql based migration
 
-To migrate from sqlx sql based migration you have two alternative:
+To migrate from sqlx sql based migration to rust migration the recommended approach
+is to rewrite your SQL migrations as Rust operations and migrations as explained above.
+After rewriting your SQL migrations, you need to mark them as applied without re-executing them.
+This step ensures that the migration state aligns with the existing database.
+There are two ways to perform a fake apply:
 
-1. Rewrite SQL migrations as Rust operations and run fake apply cli command
-`<COMMAND_NAME> apply --fake`: Follow the usage example above.
-2. Create a single Rust operation to apply/revert SQL migrations:
+#### Programmatic Fake Apply
 
+Use the fake option with the `Plan::apply_all()` function:
 ```rust
-use sqlx_migrator::error::Error;
-use sqlx_migrator::operation::Operation;
+use sqlx_migrator::migrator::{Plan, Migrator};
 
-pub(crate) struct SqlxOperation;
-
-#[async_trait::async_trait]
-impl Operation<sqlx::Postgres> for SqlxOperation {
-    async fn up(&self, connection: &mut sqlx::PgConnection) -> Result<(), Error> {
-        sqlx::migrate!("migrations").run(connection).await?;
-        Ok(())
-    }
-
-    async fn down(&self, connection: &mut sqlx::PgConnection) -> Result<(), Error> {
-        sqlx::migrate!("migrations").undo(connection, 0).await?;
-        Ok(())
-    }
-}
+migrator.run(&mut *conn, Plan::apply_all().fake(true)).await.unwrap();
 ```
+
+#### CLI-Based Fake Apply
+If you're using a CLI, use the --fake flag with the apply command: `<migrator_cli_command> apply --fake`
+
+### Note: Before writing any other migrations
+
+Before adding new migrations for future updates, ensure you complete the above steps to mark existing migrations as applied. Run the fake apply only once to align the migration state. After this, remove the `fake(true)` option or the `--fake` flag to allow new migrations to execute normally.
+
+By following these steps, you can seamlessly transition from SQLX SQL-based migrations to Rust migrations while maintaining an accurate migration state and ensuring compatibility for future updates.
 
 [license_badge]: https://img.shields.io/github/license/iamsauravsharma/sqlx_migrator.svg?style=for-the-badge
 [license_link]: LICENSE

@@ -185,6 +185,7 @@ pub struct Plan {
     plan_type: PlanType,
     app_migration: Option<(String, Option<String>)>,
     count: Option<usize>,
+    fake: bool,
 }
 
 impl Plan {
@@ -197,7 +198,25 @@ impl Plan {
             plan_type,
             app_migration,
             count,
+            fake: false,
         }
+    }
+
+    /// Sets the plan as a "fake" plan.
+    ///
+    /// When the plan is marked as fake, the migration status is updated to
+    /// either "applied" or "reverted" without actually performing any
+    /// migration operations. This is useful for scenarios where you want to
+    /// simulate the effect of applying or reverting a migration, but
+    /// without making changes to the database.
+    ///
+    /// By default, the `fake` flag is set to `false`, and the migration
+    /// operations are executed as expected.
+    #[must_use]
+    pub fn fake(self, fake: bool) -> Self {
+        let mut plan = self;
+        plan.fake = fake;
+        plan
     }
 
     /// Creates a new plan to apply all migrations.
@@ -853,15 +872,19 @@ where
                     tracing::debug!("applying {} : {}", migration.app(), migration.name());
                     if migration.is_atomic() {
                         let mut transaction = connection.begin().await?;
-                        for operation in migration.operations() {
-                            operation.up(&mut transaction).await?;
+                        if !plan.fake {
+                            for operation in migration.operations() {
+                                operation.up(&mut transaction).await?;
+                            }
                         }
                         self.add_migration_to_db_table(&mut transaction, migration)
                             .await?;
                         transaction.commit().await?;
                     } else {
-                        for operation in migration.operations() {
-                            operation.up(connection).await?;
+                        if !plan.fake {
+                            for operation in migration.operations() {
+                                operation.up(connection).await?;
+                            }
                         }
                         self.add_migration_to_db_table(connection, migration)
                             .await?;
@@ -876,15 +899,19 @@ where
 
                     if migration.is_atomic() {
                         let mut transaction = connection.begin().await?;
-                        for operation in operations {
-                            operation.down(&mut transaction).await?;
+                        if !plan.fake {
+                            for operation in operations {
+                                operation.down(&mut transaction).await?;
+                            }
                         }
                         self.delete_migration_from_db_table(&mut transaction, migration)
                             .await?;
                         transaction.commit().await?;
                     } else {
-                        for operation in operations {
-                            operation.down(connection).await?;
+                        if !plan.fake {
+                            for operation in operations {
+                                operation.down(connection).await?;
+                            }
                         }
                         self.delete_migration_from_db_table(connection, migration)
                             .await?;
