@@ -236,6 +236,7 @@ impl Apply {
         } else {
             plan = Plan::apply_all();
         };
+        let plan = plan.fake(self.fake);
         let migrations = migrator
             .generate_migration_plan(connection, Some(&plan))
             .await?;
@@ -259,18 +260,12 @@ impl Apply {
                     );
                 }
             }
-        } else if self.fake {
-            for migration in migrations {
-                migrator
-                    .add_migration_to_db_table(connection, migration)
-                    .await?;
-            }
         } else {
             let destructible_migrations = migrations
                 .iter()
                 .filter(|m| m.operations().iter().any(|o| o.is_destructible()))
                 .collect::<Vec<_>>();
-            if !self.force && !destructible_migrations.is_empty() {
+            if !self.force && !destructible_migrations.is_empty() && !self.fake {
                 let mut input = String::new();
                 println!(
                     "Do you want to apply destructible migrations {} (y/N)",
@@ -340,6 +335,7 @@ impl Revert {
         } else {
             plan = Plan::revert_count(1);
         };
+        let plan = plan.fake(self.fake);
         let revert_migrations = migrator
             .generate_migration_plan(connection, Some(&plan))
             .await?;
@@ -361,14 +357,8 @@ impl Revert {
                     );
                 }
             }
-        } else if self.fake {
-            for migration in revert_migrations {
-                migrator
-                    .delete_migration_from_db_table(connection, migration)
-                    .await?;
-            }
         } else {
-            if !self.force && !revert_migrations.is_empty() {
+            if !self.force && !revert_migrations.is_empty() && !self.fake {
                 let mut input = String::new();
                 println!(
                     "Do you want to revert {} migrations (y/N)",
