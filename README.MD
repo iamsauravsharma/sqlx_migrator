@@ -18,25 +18,25 @@ Supported Databases:
 Add `sqlx_migrator` to your `Cargo.toml` with the appropriate database feature:
 
 ```toml
-sqlx_migrator = { version = "0.16.1", features=["postgres"] }
+sqlx_migrator = { version = "0.16.2", features=["postgres"] }
 ```
 
 OR
 
 ```toml
-sqlx_migrator = { version = "0.16.1", features=["mysql"] }
+sqlx_migrator = { version = "0.16.2", features=["mysql"] }
 ```
 
 OR
 
 ```toml
-sqlx_migrator = { version = "0.16.1", features=["sqlite"] }
+sqlx_migrator = { version = "0.16.2", features=["sqlite"] }
 ```
 
 OR
 
 ```toml
-sqlx_migrator = { version = "0.16.1", features=[
+sqlx_migrator = { version = "0.16.2", features=[
     "any",
     # Plus any one of above database driver
     ] }
@@ -227,7 +227,7 @@ There are two ways to perform a fake apply:
 
 Use the fake option with the `Plan::apply_all()` function:
 ```rust
-use sqlx_migrator::migrator::{Plan, Migrator};
+use sqlx_migrator::migrator::Plan;
 
 migrator.run(&mut *conn, Plan::apply_all().fake(true)).await.unwrap();
 ```
