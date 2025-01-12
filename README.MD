@@ -63,7 +63,7 @@ impl Operation<sqlx::Postgres> for FirstOperation {
     }
 
     // down migration runs down migration
-    async fn down(connection: &mut sqlx::PgConnection) -> Result<(), Error> {
+    async fn down(&self, connection: &mut sqlx::PgConnection) -> Result<(), Error> {
         sqlx::query("DROP TABLE sample").execute(connection).await?;
         Ok(())
     }

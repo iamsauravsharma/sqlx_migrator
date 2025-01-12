@@ -870,10 +870,11 @@ where
             match plan.plan_type {
                 PlanType::Apply => {
                     tracing::debug!("applying {} : {}", migration.app(), migration.name());
+                    let operations = migration.operations();
                     if migration.is_atomic() {
                         let mut transaction = connection.begin().await?;
                         if !plan.fake {
-                            for operation in migration.operations() {
+                            for operation in operations {
                                 operation.up(&mut transaction).await?;
                             }
                         }
@@ -882,7 +883,7 @@ where
                         transaction.commit().await?;
                     } else {
                         if !plan.fake {
-                            for operation in migration.operations() {
+                            for operation in operations {
                                 operation.up(connection).await?;
                             }
                         }
