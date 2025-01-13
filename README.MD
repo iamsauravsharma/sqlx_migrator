@@ -57,6 +57,8 @@ impl Operation<sqlx::Postgres> for FirstOperation {
     // Up function runs apply migration
     async fn up(&self, connection: &mut sqlx::PgConnection) -> Result<(), Error> {
         sqlx::query("CREATE TABLE sample (id INTEGER PRIMARY KEY, name TEXT)")
+            // NOTE: if you want to use connection multiple times pass `&mut *connection`
+            // as a parameter instead of `connection`
             .execute(connection)
             .await?;
         Ok(())
