@@ -1,3 +1,4 @@
+#![expect(unused_crate_dependencies)]
 //! Example crate for sqlite
 use sqlx::Sqlite;
 use sqlx_migrator::cli::MigrationCommand;

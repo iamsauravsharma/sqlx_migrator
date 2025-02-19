@@ -1,3 +1,4 @@
+#![expect(unused_crate_dependencies)]
 //! Example crate for mysql
 use sqlx::MySql;
 use sqlx_migrator::cli::MigrationCommand;

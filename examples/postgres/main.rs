@@ -1,3 +1,4 @@
+#![expect(unused_crate_dependencies)]
 //! Example crate for postgres
 use sqlx::Postgres;
 use sqlx_migrator::cli::MigrationCommand;

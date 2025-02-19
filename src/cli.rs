@@ -235,7 +235,7 @@ impl Apply {
             plan = Plan::apply_name(app, &self.migration);
         } else {
             plan = Plan::apply_all();
-        };
+        }
         let plan = plan.fake(self.fake);
         let migrations = migrator
             .generate_migration_plan(connection, Some(&plan))
@@ -334,7 +334,7 @@ impl Revert {
             plan = Plan::revert_all();
         } else {
             plan = Plan::revert_count(1);
-        };
+        }
         let plan = plan.fake(self.fake);
         let revert_migrations = migrator
             .generate_migration_plan(connection, Some(&plan))

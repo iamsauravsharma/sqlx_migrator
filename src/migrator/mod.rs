@@ -4,8 +4,8 @@
 //! supported database
 //!
 //! It also provides its own struct [`Migrator`] which supports
-//! [Any](sqlx::Any), [Postgres](sqlx::Postgres), [Sqlite](sqlx::Sqlite) and
-//! [MySql](sqlx::MySql) database
+//! [`Any`](sqlx::Any), [`Postgres`](sqlx::Postgres), [`Sqlite`](sqlx::Sqlite)
+//! and [`MySql`](sqlx::MySql) database
 #![cfg_attr(
     feature = "postgres",
     doc = r#"
@@ -918,7 +918,7 @@ where
                             .await?;
                     }
                 }
-            };
+            }
         }
         self.unlock(connection).await?;
         Ok(())
