@@ -33,7 +33,6 @@ pub(crate) struct M0004Migration {
     pub(crate) message: String,
 }
 
-#[async_trait::async_trait]
 impl Migration<Sqlite> for M0004Migration {
     fn app(&self) -> &'static str {
         "main"

@@ -24,7 +24,6 @@ impl Operation<MySql> for M0002Operation {
 
 pub(crate) struct M0002Migration;
 
-#[async_trait::async_trait]
 impl Migration<MySql> for M0002Migration {
     fn app(&self) -> &'static str {
         "main"
