@@ -94,7 +94,7 @@ impl DatabaseOperation<Sqlite> for CustomMigrator {
 impl Migrate<Sqlite> for CustomMigrator {}
 
 macro_rules! migration {
-    ($op:ty, $name:expr, $parents:expr, $replaces:expr, $run_before:expr) => {
+    ($op:ty, $name:literal, $parents:expr, $replaces:expr, $run_before:expr) => {
         #[async_trait::async_trait]
         impl crate::migration::Migration<sqlx::Sqlite> for $op {
             fn app(&self) -> &str {

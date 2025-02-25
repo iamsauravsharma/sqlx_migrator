@@ -15,13 +15,15 @@ macro_rules! vec_box {
 /// This macro expects the following arguments:
 /// - `$db:ty`: the type of database
 /// - `$op:ty`: The type for which the migration is being implemented
-/// - `$app_name:expr`: Name of app to be used for app variable
-/// - `$migration_name:expr`: Name of app to be used for app variable
+/// - `$app_name:literal`: Name of app to be used for app variable
+/// - `$migration_name:literal`: Name of app to be used for app variable
 /// - `$parents:expr`: List of parents migration.
 /// - `$operations:expr`: List of operations
 #[macro_export]
 macro_rules! migration {
-    ($db:ty, $op:ty, $app_name:expr, $migration_name:expr, $parents:expr, $operations:expr) => {
+    (
+        $db:ty, $op:ty, $app_name:literal, $migration_name:literal, $parents:expr, $operations:expr
+    ) => {
         #[async_trait::async_trait]
         impl sqlx_migrator::migration::Migration<$db> for $op {
             fn app(&self) -> &str {
