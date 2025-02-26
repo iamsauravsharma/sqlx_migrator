@@ -10,7 +10,7 @@ async fn main() {
     let uri = std::env::var("SQLITE_DATABASE_URL").unwrap();
     let pool = sqlx::Pool::<Sqlite>::connect(&uri).await.unwrap();
     let mut migrator = Migrator::default();
-    migrator.add_migrations(migrations::migrations());
+    migrator.add_migrations(migrations::migrations()).unwrap();
     // There are two way to run migration. Either you can create cli as shown below
     let mut conn = pool.acquire().await.unwrap();
     MigrationCommand::parse_and_run(&mut *conn, Box::new(migrator))

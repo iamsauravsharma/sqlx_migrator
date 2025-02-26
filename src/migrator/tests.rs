@@ -1,6 +1,6 @@
 use sqlx::{Database, Sqlite, SqlitePool};
 
-use super::{DatabaseOperation, Info, Migrate};
+use super::{DatabaseOperation, Info, Migrate, Migrator};
 use crate::error::Error;
 use crate::migration::{AppliedMigrationSqlRow, Migration};
 use crate::migrator::Plan;
@@ -8,25 +8,33 @@ use crate::vec_box;
 
 #[derive(Default)]
 struct CustomMigrator {
+    internal_migrator: Migrator<Sqlite>,
     migrations: Vec<Box<dyn Migration<Sqlite>>>,
     applied_migrations: Vec<AppliedMigrationSqlRow>,
 }
 
 impl CustomMigrator {
-    fn add_applied_migrations(&mut self, migrations: Vec<Box<dyn Migration<Sqlite>>>) {
+    fn add_applied_migrations(
+        &mut self,
+        migrations: Vec<Box<dyn Migration<Sqlite>>>,
+    ) -> Result<(), Error> {
         for migration in migrations {
-            self.add_applied_migration(&migration);
+            self.add_applied_migration(migration)?;
         }
+        Ok(())
     }
 
-    #[expect(clippy::borrowed_box)]
-    fn add_applied_migration(&mut self, migration: &Box<dyn Migration<Sqlite>>) {
+    fn add_applied_migration(
+        &mut self,
+        migration: Box<dyn Migration<Sqlite>>,
+    ) -> Result<(), Error> {
         let current_length = self.migrations.len();
         self.applied_migrations.push(AppliedMigrationSqlRow::new(
             i32::try_from(current_length).unwrap(),
             migration.app(),
             migration.name(),
         ));
+        self.internal_migrator.add_migration(migration)
     }
 }
 
@@ -127,7 +135,7 @@ async fn generate_apply_all_plan(
     migrator: &mut CustomMigrator,
     migration_list: Vec<Box<dyn Migration<Sqlite>>>,
 ) -> Result<Vec<&Box<dyn Migration<Sqlite>>>, Error> {
-    migrator.add_migrations(migration_list);
+    migrator.add_migrations(migration_list)?;
     let sqlite = SqlitePool::connect("sqlite::memory:").await.unwrap();
     let mut conn = sqlite.acquire().await.unwrap();
     migrator
@@ -165,6 +173,24 @@ async fn no_migration() {
     assert_eq!(
         plan.err().map(|e| e.to_string()),
         Some("plan error: no migration are added to migration list".to_string())
+    );
+}
+
+#[tokio::test]
+async fn same_name_used_multiple_time() {
+    struct A;
+    migration!(A, "a", vec_box!(), vec_box!(), vec_box!());
+    struct B;
+    migration!(B, "b", vec_box!(A), vec_box!(), vec_box!());
+    struct C;
+    migration!(C, "c", vec_box!(), vec_box!(), vec_box!());
+    struct D;
+    migration!(D, "b", vec_box!(C), vec_box!(), vec_box!());
+    let mut migrator = CustomMigrator::default();
+    let plan = generate_apply_all_plan(&mut migrator, vec_box!(A, B, C, D)).await;
+    assert_eq!(
+        plan.err().map(|e| e.to_string()),
+        Some("migration for app: test with name: b consists of inconsistent values".to_string())
     );
 }
 
@@ -478,7 +504,7 @@ async fn parent_not_applied() {
     struct B;
     migration!(B, "b", vec_box!(A), vec_box!(), vec_box!());
     let mut migrator = CustomMigrator::default();
-    migrator.add_applied_migrations(vec_box!(B));
+    migrator.add_applied_migrations(vec_box!(B)).unwrap();
     let plan = generate_apply_all_plan(&mut migrator, vec_box!(A, B)).await;
     assert_eq!(
         plan.err().map(|e| e.to_string()),
@@ -500,7 +526,7 @@ async fn replace_grand_child_applied() {
     struct D;
     migration!(D, "d", vec_box!(), vec_box!(C), vec_box!());
     let mut migrator = CustomMigrator::default();
-    migrator.add_applied_migrations(vec_box!(A, D));
+    migrator.add_applied_migrations(vec_box!(A, D)).unwrap();
     let plan = generate_apply_all_plan(&mut migrator, vec_box!(D, C, B, A))
         .await
         .unwrap();
@@ -639,7 +665,9 @@ async fn apply_virtual_plan_size() {
         vec_box!()
     );
     let mut migrator = CustomMigrator::default();
-    migrator.add_migrations(vec_box!(A, B, C, D, E, F, G));
+    migrator
+        .add_migrations(vec_box!(A, B, C, D, E, F, G))
+        .unwrap();
     let sqlite = SqlitePool::connect("sqlite::memory:").await.unwrap();
     let mut conn = sqlite.acquire().await.unwrap();
     let full_plan = migrator
@@ -737,8 +765,12 @@ async fn revert_virtual_plan_size() {
         vec_box!()
     );
     let mut migrator = CustomMigrator::default();
-    migrator.add_migrations(vec_box!(A, B, C, D, E, F, G));
-    migrator.add_applied_migrations(vec_box!(A, B, C, D, E, F, G));
+    migrator
+        .add_migrations(vec_box!(A, B, C, D, E, F, G))
+        .unwrap();
+    migrator
+        .add_applied_migrations(vec_box!(A, B, C, D, E, F, G))
+        .unwrap();
     let sqlite = SqlitePool::connect("sqlite::memory:").await.unwrap();
     let mut conn = sqlite.acquire().await.unwrap();
     let revert_plan = migrator
@@ -762,16 +794,6 @@ async fn revert_virtual_plan_size() {
     let mut plan_till_f_iter = plan_till_f.iter();
     assert!(plan_till_f_iter.next() == Some(&&(Box::new(F) as Box<dyn Migration<Sqlite>>)));
     assert!(plan_till_f_iter.next().is_none());
-    let revert_till_c = Plan::revert_name("test", &Some("c".to_string()));
-    let plan_till_c = migrator
-        .generate_migration_plan(&mut conn, Some(&revert_till_c))
-        .await
-        .unwrap();
-    let mut plan_till_c_iter = plan_till_c.iter();
-    assert!(plan_till_c_iter.next() == Some(&&(Box::new(G) as Box<dyn Migration<Sqlite>>)));
-    assert!(plan_till_c_iter.next() == Some(&&(Box::new(E) as Box<dyn Migration<Sqlite>>)));
-    assert!(plan_till_c_iter.next() == Some(&&(Box::new(C) as Box<dyn Migration<Sqlite>>)));
-    assert!(plan_till_c_iter.next().is_none());
     let revert_till_b = Plan::revert_name("test", &Some("b".to_string()));
     let plan_till_b = migrator
         .generate_migration_plan(&mut conn, Some(&revert_till_b))

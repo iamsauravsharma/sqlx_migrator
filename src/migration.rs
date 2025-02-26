@@ -74,10 +74,16 @@ pub trait Migration<DB>: Send + Sync {
     /// Returns the application name associated with the migration.
     /// This can be the name of the folder or library where the migration is
     /// located.
+    ///
+    /// This value is used in combination with the migration name to uniquely
+    /// identify a migration.
     fn app(&self) -> &str;
 
     /// Returns the migration name, typically the file name without the
     /// extension.
+    ///
+    /// This value, together with the application name, is used to uniquely
+    /// identify a migration and determine equality between migrations.
     fn name(&self) -> &str;
 
     /// Returns the list of parent migrations.
