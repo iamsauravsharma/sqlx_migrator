@@ -276,30 +276,59 @@ pub trait Info<DB> {
     /// This method accepts a vector of migrations and adds each one
     /// individually to ensure proper handling of migration relationships
     /// and duplicates.
-    fn add_migrations(&mut self, migrations: Vec<BoxMigration<DB>>) {
+    ///
+    /// # Errors
+    /// If migration is added with same app and name but inconsistent value i.e
+    /// its parents, run before, replaces and is atomic differ and do not have
+    /// same number of operation
+    fn add_migrations(&mut self, migrations: Vec<BoxMigration<DB>>) -> Result<(), Error> {
         for migration in migrations {
-            self.add_migration(migration);
+            self.add_migration(migration)?;
         }
+        Ok(())
     }
 
     /// Adds a single migration to the migrator.
-    fn add_migration(&mut self, migration: BoxMigration<DB>) {
-        // if virtual migration is present in list with same app and name than remove
-        // virtual migration from list
-        if let Some(migration_index) = self
-            .migrations()
-            .iter()
-            .position(|elem| elem == &migration && elem.is_virtual() && !migration.is_virtual())
-        {
-            self.migrations_mut().remove(migration_index);
+    ///
+    /// # Errors
+    /// If migration is added with same app and name but inconsistent value i.e
+    /// its parents, run before, replaces and is atomic differ and do not have
+    /// same number of operation
+    fn add_migration(&mut self, migration: BoxMigration<DB>) -> Result<(), Error> {
+        // only check old value if provided migration for adding is not virtual
+        if !migration.is_virtual() {
+            if let Some((migration_index, found_migration)) = self
+                .migrations()
+                .iter()
+                .enumerate()
+                .find(|(_, elem)| elem == &&migration)
+            {
+                // if virtual migration is present in list with same app and name than remove
+                // virtual migration from list first
+                if found_migration.is_virtual() {
+                    self.migrations_mut().remove(migration_index);
+                }
+                // if found migrations value are not consistent to current provided migration then
+                // raise error only raise error when found migration is not virtual
+                else if found_migration.parents() != migration.parents()
+                    || found_migration.operations().len() != migration.operations().len()
+                    || found_migration.replaces() != migration.replaces()
+                    || found_migration.run_before() != migration.run_before()
+                    || found_migration.is_atomic() != migration.is_atomic()
+                {
+                    return Err(Error::InconsistentMigration {
+                        app: migration.app().to_string(),
+                        name: migration.name().to_string(),
+                    });
+                }
+            }
         }
 
-        // check if migration is already added or not we want to use vec here even if
-        // hash set can be used but hash set do not have consistent order which may
-        // bring issue such as plan may be different between between dry run and
-        // actually running migration
+        // check if migration is already added or not and only do operation if migration
+        // is not added till now
         if !self.migrations().contains(&migration) {
-            // ignore parents, replaces and run before for virtual migration
+            // ignore parents, replaces and run before for virtual migration only add
+            // migration only. If virtual migration provides those value than it is ignored
             if migration.is_virtual() {
                 self.migrations_mut().push(migration);
             } else {
@@ -310,16 +339,17 @@ pub trait Info<DB> {
                 self.migrations_mut().push(migration);
 
                 for parent in migration_parents {
-                    self.add_migration(parent);
+                    self.add_migration(parent)?;
                 }
                 for replace in migration_replaces {
-                    self.add_migration(replace);
+                    self.add_migration(replace)?;
                 }
                 for run_before in migration_run_before {
-                    self.add_migration(run_before);
+                    self.add_migration(run_before)?;
                 }
             }
         }
+        Ok(())
     }
 }
 

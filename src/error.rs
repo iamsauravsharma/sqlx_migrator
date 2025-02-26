@@ -37,4 +37,13 @@ pub enum Error {
     /// Error when passed prefix is not alpha numeric
     #[error("prefix can only be ascii alphanumeric and underscore character")]
     NonAsciiAlphaNumeric,
+    /// Error raised when two migration with same name are added and there value
+    /// is not consistent
+    #[error("migration for app: {app} with name: {name} consists of inconsistent values")]
+    InconsistentMigration {
+        /// Migration application name
+        app: String,
+        /// Migration name
+        name: String,
+    },
 }

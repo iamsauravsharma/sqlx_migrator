@@ -158,7 +158,9 @@ async fn main() {
     let uri = std::env::var("DATABASE_URL").unwrap();
     let pool = sqlx::Pool::<Postgres>::connect(&uri).await.unwrap();
     let mut migrator = Migrator::default();
-    migrator.add_migration(Box::new(FirstMigration));
+    // Adding migration can fail if another migration with same app and name and different values gets added
+    // Adding migrations add its parents, replaces and not before as well
+    migrator.add_migration(Box::new(FirstMigration)).unwrap();
 }
 ```
 
