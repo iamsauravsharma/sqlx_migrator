@@ -24,7 +24,6 @@ macro_rules! migration {
     (
         $db:ty, $op:ty, $app_name:literal, $migration_name:literal, $parents:expr, $operations:expr
     ) => {
-        #[async_trait::async_trait]
         impl sqlx_migrator::migration::Migration<$db> for $op {
             fn app(&self) -> &str {
                 $app_name
