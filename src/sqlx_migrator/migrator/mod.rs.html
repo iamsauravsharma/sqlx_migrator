@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/migrator/mod.rs`."><title>mod.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-916cea96.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="sqlx_migrator" data-themes="" data-resource-suffix="" data-rustdoc-version="1.87.0-nightly (85abb2763 2025-02-25)" data-channel="nightly" data-search-js="search-f7327375.js" data-settings-js="settings-d72f25bb.js" ><script src="../../../static.files/storage-d8ac8691.js"></script><script defer src="../../../static.files/src-script-b8d3f215.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-a7bf3405.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-893ab5e7.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">sqlx_migrator/migrator/</div>mod.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-4"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="doccomment">//! Migrator module
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/migrator/mod.rs`."><title>mod.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-916cea96.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="sqlx_migrator" data-themes="" data-resource-suffix="" data-rustdoc-version="1.87.0-nightly (96cfc7558 2025-02-27)" data-channel="nightly" data-search-js="search-f7327375.js" data-settings-js="settings-d72f25bb.js" ><script src="../../../static.files/storage-d8ac8691.js"></script><script defer src="../../../static.files/src-script-b8d3f215.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-a7bf3405.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-893ab5e7.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">sqlx_migrator/migrator/</div>mod.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-4"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="doccomment">//! Migrator module
 <a href=#2 id=2 data-nosnippet>2</a>//!
 <a href=#3 id=3 data-nosnippet>3</a>//! It contains common enum and trait for implementing migrator for sqlx
 <a href=#4 id=4 data-nosnippet>4</a>//! supported database
@@ -896,130 +896,137 @@
 <a href=#896 id=896 data-nosnippet>896</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
 <a href=#897 id=897 data-nosnippet>897</a>        <span class="macro">tracing::debug!</span>(<span class="string">"running plan {:?}"</span>, plan);
 <a href=#898 id=898 data-nosnippet>898</a>        <span class="self">self</span>.lock(connection).<span class="kw">await</span><span class="question-mark">?</span>;
-<a href=#899 id=899 data-nosnippet>899</a>        <span class="kw">for </span>migration <span class="kw">in </span><span class="self">self</span>.generate_migration_plan(connection, <span class="prelude-val">Some</span>(plan)).<span class="kw">await</span><span class="question-mark">? </span>{
-<a href=#900 id=900 data-nosnippet>900</a>            <span class="kw">match </span>plan.plan_type {
-<a href=#901 id=901 data-nosnippet>901</a>                PlanType::Apply =&gt; {
-<a href=#902 id=902 data-nosnippet>902</a>                    <span class="macro">tracing::debug!</span>(<span class="string">"applying {} : {}"</span>, migration.app(), migration.name());
-<a href=#903 id=903 data-nosnippet>903</a>                    <span class="kw">let </span>operations = migration.operations();
-<a href=#904 id=904 data-nosnippet>904</a>                    <span class="kw">if </span>migration.is_atomic() {
-<a href=#905 id=905 data-nosnippet>905</a>                        <span class="kw">let </span><span class="kw-2">mut </span>transaction = connection.begin().<span class="kw">await</span><span class="question-mark">?</span>;
-<a href=#906 id=906 data-nosnippet>906</a>                        <span class="kw">if </span>!plan.fake {
-<a href=#907 id=907 data-nosnippet>907</a>                            <span class="kw">for </span>operation <span class="kw">in </span>operations {
-<a href=#908 id=908 data-nosnippet>908</a>                                operation.up(<span class="kw-2">&amp;mut </span>transaction).<span class="kw">await</span><span class="question-mark">?</span>;
-<a href=#909 id=909 data-nosnippet>909</a>                            }
-<a href=#910 id=910 data-nosnippet>910</a>                        }
-<a href=#911 id=911 data-nosnippet>911</a>                        <span class="self">self</span>.add_migration_to_db_table(<span class="kw-2">&amp;mut </span>transaction, migration)
-<a href=#912 id=912 data-nosnippet>912</a>                            .<span class="kw">await</span><span class="question-mark">?</span>;
-<a href=#913 id=913 data-nosnippet>913</a>                        transaction.commit().<span class="kw">await</span><span class="question-mark">?</span>;
-<a href=#914 id=914 data-nosnippet>914</a>                    } <span class="kw">else </span>{
-<a href=#915 id=915 data-nosnippet>915</a>                        <span class="kw">if </span>!plan.fake {
-<a href=#916 id=916 data-nosnippet>916</a>                            <span class="kw">for </span>operation <span class="kw">in </span>operations {
-<a href=#917 id=917 data-nosnippet>917</a>                                operation.up(connection).<span class="kw">await</span><span class="question-mark">?</span>;
-<a href=#918 id=918 data-nosnippet>918</a>                            }
-<a href=#919 id=919 data-nosnippet>919</a>                        }
-<a href=#920 id=920 data-nosnippet>920</a>                        <span class="self">self</span>.add_migration_to_db_table(connection, migration)
-<a href=#921 id=921 data-nosnippet>921</a>                            .<span class="kw">await</span><span class="question-mark">?</span>;
-<a href=#922 id=922 data-nosnippet>922</a>                    }
-<a href=#923 id=923 data-nosnippet>923</a>                }
-<a href=#924 id=924 data-nosnippet>924</a>                PlanType::Revert =&gt; {
-<a href=#925 id=925 data-nosnippet>925</a>                    <span class="macro">tracing::debug!</span>(<span class="string">"reverting {} : {}"</span>, migration.app(), migration.name());
-<a href=#926 id=926 data-nosnippet>926</a>
-<a href=#927 id=927 data-nosnippet>927</a>                    <span class="comment">// Reverse operation since last applied operation need to be reverted first
-<a href=#928 id=928 data-nosnippet>928</a>                    </span><span class="kw">let </span><span class="kw-2">mut </span>operations = migration.operations();
-<a href=#929 id=929 data-nosnippet>929</a>                    operations.reverse();
-<a href=#930 id=930 data-nosnippet>930</a>
-<a href=#931 id=931 data-nosnippet>931</a>                    <span class="kw">if </span>migration.is_atomic() {
-<a href=#932 id=932 data-nosnippet>932</a>                        <span class="kw">let </span><span class="kw-2">mut </span>transaction = connection.begin().<span class="kw">await</span><span class="question-mark">?</span>;
-<a href=#933 id=933 data-nosnippet>933</a>                        <span class="kw">if </span>!plan.fake {
-<a href=#934 id=934 data-nosnippet>934</a>                            <span class="kw">for </span>operation <span class="kw">in </span>operations {
-<a href=#935 id=935 data-nosnippet>935</a>                                operation.down(<span class="kw-2">&amp;mut </span>transaction).<span class="kw">await</span><span class="question-mark">?</span>;
-<a href=#936 id=936 data-nosnippet>936</a>                            }
-<a href=#937 id=937 data-nosnippet>937</a>                        }
-<a href=#938 id=938 data-nosnippet>938</a>                        <span class="self">self</span>.delete_migration_from_db_table(<span class="kw-2">&amp;mut </span>transaction, migration)
-<a href=#939 id=939 data-nosnippet>939</a>                            .<span class="kw">await</span><span class="question-mark">?</span>;
-<a href=#940 id=940 data-nosnippet>940</a>                        transaction.commit().<span class="kw">await</span><span class="question-mark">?</span>;
-<a href=#941 id=941 data-nosnippet>941</a>                    } <span class="kw">else </span>{
-<a href=#942 id=942 data-nosnippet>942</a>                        <span class="kw">if </span>!plan.fake {
-<a href=#943 id=943 data-nosnippet>943</a>                            <span class="kw">for </span>operation <span class="kw">in </span>operations {
-<a href=#944 id=944 data-nosnippet>944</a>                                operation.down(connection).<span class="kw">await</span><span class="question-mark">?</span>;
-<a href=#945 id=945 data-nosnippet>945</a>                            }
-<a href=#946 id=946 data-nosnippet>946</a>                        }
-<a href=#947 id=947 data-nosnippet>947</a>                        <span class="self">self</span>.delete_migration_from_db_table(connection, migration)
-<a href=#948 id=948 data-nosnippet>948</a>                            .<span class="kw">await</span><span class="question-mark">?</span>;
-<a href=#949 id=949 data-nosnippet>949</a>                    }
-<a href=#950 id=950 data-nosnippet>950</a>                }
-<a href=#951 id=951 data-nosnippet>951</a>            }
-<a href=#952 id=952 data-nosnippet>952</a>        }
-<a href=#953 id=953 data-nosnippet>953</a>        <span class="self">self</span>.unlock(connection).<span class="kw">await</span><span class="question-mark">?</span>;
-<a href=#954 id=954 data-nosnippet>954</a>        <span class="prelude-val">Ok</span>(())
-<a href=#955 id=955 data-nosnippet>955</a>    }
-<a href=#956 id=956 data-nosnippet>956</a>}
-<a href=#957 id=957 data-nosnippet>957</a>
-<a href=#958 id=958 data-nosnippet>958</a><span class="kw">const </span>DEFAULT_TABLE_NAME: <span class="kw-2">&amp;</span>str = <span class="string">"_sqlx_migrator_migrations"</span>;
-<a href=#959 id=959 data-nosnippet>959</a>
-<a href=#960 id=960 data-nosnippet>960</a><span class="doccomment">/// Migrator struct which store migrations graph and information related to
-<a href=#961 id=961 data-nosnippet>961</a>/// different library supported migrations
-<a href=#962 id=962 data-nosnippet>962</a></span><span class="kw">pub struct </span>Migrator&lt;DB&gt; {
-<a href=#963 id=963 data-nosnippet>963</a>    migrations: Vec&lt;BoxMigration&lt;DB&gt;&gt;,
-<a href=#964 id=964 data-nosnippet>964</a>    table_name: String,
-<a href=#965 id=965 data-nosnippet>965</a>}
+<a href=#899 id=899 data-nosnippet>899</a>        <span class="comment">// do not return result of migrations early from run function hold it till lock
+<a href=#900 id=900 data-nosnippet>900</a>        // is unlocked
+<a href=#901 id=901 data-nosnippet>901</a>        </span><span class="kw">let </span>result = <span class="kw">async </span>{
+<a href=#902 id=902 data-nosnippet>902</a>            <span class="kw">for </span>migration <span class="kw">in </span><span class="self">self</span>.generate_migration_plan(connection, <span class="prelude-val">Some</span>(plan)).<span class="kw">await</span><span class="question-mark">? </span>{
+<a href=#903 id=903 data-nosnippet>903</a>                <span class="kw">match </span>plan.plan_type {
+<a href=#904 id=904 data-nosnippet>904</a>                    PlanType::Apply =&gt; {
+<a href=#905 id=905 data-nosnippet>905</a>                        <span class="macro">tracing::debug!</span>(<span class="string">"applying {} : {}"</span>, migration.app(), migration.name());
+<a href=#906 id=906 data-nosnippet>906</a>                        <span class="kw">let </span>operations = migration.operations();
+<a href=#907 id=907 data-nosnippet>907</a>                        <span class="kw">if </span>migration.is_atomic() {
+<a href=#908 id=908 data-nosnippet>908</a>                            <span class="kw">let </span><span class="kw-2">mut </span>transaction = connection.begin().<span class="kw">await</span><span class="question-mark">?</span>;
+<a href=#909 id=909 data-nosnippet>909</a>                            <span class="kw">if </span>!plan.fake {
+<a href=#910 id=910 data-nosnippet>910</a>                                <span class="kw">for </span>operation <span class="kw">in </span>operations {
+<a href=#911 id=911 data-nosnippet>911</a>                                    operation.up(<span class="kw-2">&amp;mut </span>transaction).<span class="kw">await</span><span class="question-mark">?</span>;
+<a href=#912 id=912 data-nosnippet>912</a>                                }
+<a href=#913 id=913 data-nosnippet>913</a>                            }
+<a href=#914 id=914 data-nosnippet>914</a>                            <span class="self">self</span>.add_migration_to_db_table(<span class="kw-2">&amp;mut </span>transaction, migration)
+<a href=#915 id=915 data-nosnippet>915</a>                                .<span class="kw">await</span><span class="question-mark">?</span>;
+<a href=#916 id=916 data-nosnippet>916</a>                            transaction.commit().<span class="kw">await</span><span class="question-mark">?</span>;
+<a href=#917 id=917 data-nosnippet>917</a>                        } <span class="kw">else </span>{
+<a href=#918 id=918 data-nosnippet>918</a>                            <span class="kw">if </span>!plan.fake {
+<a href=#919 id=919 data-nosnippet>919</a>                                <span class="kw">for </span>operation <span class="kw">in </span>operations {
+<a href=#920 id=920 data-nosnippet>920</a>                                    operation.up(connection).<span class="kw">await</span><span class="question-mark">?</span>;
+<a href=#921 id=921 data-nosnippet>921</a>                                }
+<a href=#922 id=922 data-nosnippet>922</a>                            }
+<a href=#923 id=923 data-nosnippet>923</a>                            <span class="self">self</span>.add_migration_to_db_table(connection, migration)
+<a href=#924 id=924 data-nosnippet>924</a>                                .<span class="kw">await</span><span class="question-mark">?</span>;
+<a href=#925 id=925 data-nosnippet>925</a>                        }
+<a href=#926 id=926 data-nosnippet>926</a>                    }
+<a href=#927 id=927 data-nosnippet>927</a>                    PlanType::Revert =&gt; {
+<a href=#928 id=928 data-nosnippet>928</a>                        <span class="macro">tracing::debug!</span>(<span class="string">"reverting {} : {}"</span>, migration.app(), migration.name());
+<a href=#929 id=929 data-nosnippet>929</a>
+<a href=#930 id=930 data-nosnippet>930</a>                        <span class="comment">// Reverse operation since last applied operation need to be reverted first
+<a href=#931 id=931 data-nosnippet>931</a>                        </span><span class="kw">let </span><span class="kw-2">mut </span>operations = migration.operations();
+<a href=#932 id=932 data-nosnippet>932</a>                        operations.reverse();
+<a href=#933 id=933 data-nosnippet>933</a>
+<a href=#934 id=934 data-nosnippet>934</a>                        <span class="kw">if </span>migration.is_atomic() {
+<a href=#935 id=935 data-nosnippet>935</a>                            <span class="kw">let </span><span class="kw-2">mut </span>transaction = connection.begin().<span class="kw">await</span><span class="question-mark">?</span>;
+<a href=#936 id=936 data-nosnippet>936</a>                            <span class="kw">if </span>!plan.fake {
+<a href=#937 id=937 data-nosnippet>937</a>                                <span class="kw">for </span>operation <span class="kw">in </span>operations {
+<a href=#938 id=938 data-nosnippet>938</a>                                    operation.down(<span class="kw-2">&amp;mut </span>transaction).<span class="kw">await</span><span class="question-mark">?</span>;
+<a href=#939 id=939 data-nosnippet>939</a>                                }
+<a href=#940 id=940 data-nosnippet>940</a>                            }
+<a href=#941 id=941 data-nosnippet>941</a>                            <span class="self">self</span>.delete_migration_from_db_table(<span class="kw-2">&amp;mut </span>transaction, migration)
+<a href=#942 id=942 data-nosnippet>942</a>                                .<span class="kw">await</span><span class="question-mark">?</span>;
+<a href=#943 id=943 data-nosnippet>943</a>                            transaction.commit().<span class="kw">await</span><span class="question-mark">?</span>;
+<a href=#944 id=944 data-nosnippet>944</a>                        } <span class="kw">else </span>{
+<a href=#945 id=945 data-nosnippet>945</a>                            <span class="kw">if </span>!plan.fake {
+<a href=#946 id=946 data-nosnippet>946</a>                                <span class="kw">for </span>operation <span class="kw">in </span>operations {
+<a href=#947 id=947 data-nosnippet>947</a>                                    operation.down(connection).<span class="kw">await</span><span class="question-mark">?</span>;
+<a href=#948 id=948 data-nosnippet>948</a>                                }
+<a href=#949 id=949 data-nosnippet>949</a>                            }
+<a href=#950 id=950 data-nosnippet>950</a>                            <span class="self">self</span>.delete_migration_from_db_table(connection, migration)
+<a href=#951 id=951 data-nosnippet>951</a>                                .<span class="kw">await</span><span class="question-mark">?</span>;
+<a href=#952 id=952 data-nosnippet>952</a>                        }
+<a href=#953 id=953 data-nosnippet>953</a>                    }
+<a href=#954 id=954 data-nosnippet>954</a>                }
+<a href=#955 id=955 data-nosnippet>955</a>            }
+<a href=#956 id=956 data-nosnippet>956</a>            <span class="prelude-val">Ok</span>(())
+<a href=#957 id=957 data-nosnippet>957</a>        }
+<a href=#958 id=958 data-nosnippet>958</a>        .<span class="kw">await</span>;
+<a href=#959 id=959 data-nosnippet>959</a>        <span class="comment">// unlock lock before returning result of applying migration
+<a href=#960 id=960 data-nosnippet>960</a>        </span><span class="self">self</span>.unlock(connection).<span class="kw">await</span><span class="question-mark">?</span>;
+<a href=#961 id=961 data-nosnippet>961</a>        result
+<a href=#962 id=962 data-nosnippet>962</a>    }
+<a href=#963 id=963 data-nosnippet>963</a>}
+<a href=#964 id=964 data-nosnippet>964</a>
+<a href=#965 id=965 data-nosnippet>965</a><span class="kw">const </span>DEFAULT_TABLE_NAME: <span class="kw-2">&amp;</span>str = <span class="string">"_sqlx_migrator_migrations"</span>;
 <a href=#966 id=966 data-nosnippet>966</a>
-<a href=#967 id=967 data-nosnippet>967</a><span class="kw">impl</span>&lt;DB&gt; Migrator&lt;DB&gt; {
-<a href=#968 id=968 data-nosnippet>968</a>    <span class="doccomment">/// Create new migrator
-<a href=#969 id=969 data-nosnippet>969</a>    </span><span class="attr">#[must_use]
-<a href=#970 id=970 data-nosnippet>970</a>    </span><span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
-<a href=#971 id=971 data-nosnippet>971</a>        <span class="self">Self </span>{
-<a href=#972 id=972 data-nosnippet>972</a>            migrations: Vec::default(),
-<a href=#973 id=973 data-nosnippet>973</a>            table_name: DEFAULT_TABLE_NAME.to_string(),
-<a href=#974 id=974 data-nosnippet>974</a>        }
-<a href=#975 id=975 data-nosnippet>975</a>    }
-<a href=#976 id=976 data-nosnippet>976</a>
-<a href=#977 id=977 data-nosnippet>977</a>    <span class="doccomment">/// Use prefix for migrator table name only ascii alpha numeric and
-<a href=#978 id=978 data-nosnippet>978</a>    /// underscore characters are supported for table name. prefix will set
-<a href=#979 id=979 data-nosnippet>979</a>    /// table name as `_{prefix}{default_table_name}` where default table
-<a href=#980 id=980 data-nosnippet>980</a>    /// name is `_sqlx_migrator_migrations`
-<a href=#981 id=981 data-nosnippet>981</a>    ///
-<a href=#982 id=982 data-nosnippet>982</a>    /// # Errors
-<a href=#983 id=983 data-nosnippet>983</a>    /// When passed prefix is not ascii alpha numeric or underscore character
-<a href=#984 id=984 data-nosnippet>984</a>    </span><span class="kw">pub fn </span>with_prefix(<span class="kw-2">mut </span><span class="self">self</span>, prefix: <span class="kw">impl </span>Into&lt;String&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, Error&gt; {
-<a href=#985 id=985 data-nosnippet>985</a>        <span class="kw">let </span>prefix_str = prefix.into();
-<a href=#986 id=986 data-nosnippet>986</a>        <span class="kw">if </span>!prefix_str
-<a href=#987 id=987 data-nosnippet>987</a>            .chars()
-<a href=#988 id=988 data-nosnippet>988</a>            .all(|c| char::is_ascii_alphanumeric(<span class="kw-2">&amp;</span>c) || c == <span class="string">'_'</span>)
-<a href=#989 id=989 data-nosnippet>989</a>        {
-<a href=#990 id=990 data-nosnippet>990</a>            <span class="kw">return </span><span class="prelude-val">Err</span>(Error::NonAsciiAlphaNumeric);
-<a href=#991 id=991 data-nosnippet>991</a>        }
-<a href=#992 id=992 data-nosnippet>992</a>        <span class="self">self</span>.table_name = <span class="macro">format!</span>(<span class="string">"_{prefix_str}{DEFAULT_TABLE_NAME}"</span>);
-<a href=#993 id=993 data-nosnippet>993</a>        <span class="prelude-val">Ok</span>(<span class="self">self</span>)
-<a href=#994 id=994 data-nosnippet>994</a>    }
-<a href=#995 id=995 data-nosnippet>995</a>
-<a href=#996 id=996 data-nosnippet>996</a>    <span class="doccomment">/// Get name of table which is used for storing migrations related
-<a href=#997 id=997 data-nosnippet>997</a>    /// information in database
-<a href=#998 id=998 data-nosnippet>998</a>    </span><span class="attr">#[must_use]
-<a href=#999 id=999 data-nosnippet>999</a>    </span><span class="kw">pub fn </span>table_name(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>str {
-<a href=#1000 id=1000 data-nosnippet>1000</a>        <span class="kw-2">&amp;</span><span class="self">self</span>.table_name
+<a href=#967 id=967 data-nosnippet>967</a><span class="doccomment">/// Migrator struct which store migrations graph and information related to
+<a href=#968 id=968 data-nosnippet>968</a>/// different library supported migrations
+<a href=#969 id=969 data-nosnippet>969</a></span><span class="kw">pub struct </span>Migrator&lt;DB&gt; {
+<a href=#970 id=970 data-nosnippet>970</a>    migrations: Vec&lt;BoxMigration&lt;DB&gt;&gt;,
+<a href=#971 id=971 data-nosnippet>971</a>    table_name: String,
+<a href=#972 id=972 data-nosnippet>972</a>}
+<a href=#973 id=973 data-nosnippet>973</a>
+<a href=#974 id=974 data-nosnippet>974</a><span class="kw">impl</span>&lt;DB&gt; Migrator&lt;DB&gt; {
+<a href=#975 id=975 data-nosnippet>975</a>    <span class="doccomment">/// Create new migrator
+<a href=#976 id=976 data-nosnippet>976</a>    </span><span class="attr">#[must_use]
+<a href=#977 id=977 data-nosnippet>977</a>    </span><span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
+<a href=#978 id=978 data-nosnippet>978</a>        <span class="self">Self </span>{
+<a href=#979 id=979 data-nosnippet>979</a>            migrations: Vec::default(),
+<a href=#980 id=980 data-nosnippet>980</a>            table_name: DEFAULT_TABLE_NAME.to_string(),
+<a href=#981 id=981 data-nosnippet>981</a>        }
+<a href=#982 id=982 data-nosnippet>982</a>    }
+<a href=#983 id=983 data-nosnippet>983</a>
+<a href=#984 id=984 data-nosnippet>984</a>    <span class="doccomment">/// Use prefix for migrator table name only ascii alpha numeric and
+<a href=#985 id=985 data-nosnippet>985</a>    /// underscore characters are supported for table name. prefix will set
+<a href=#986 id=986 data-nosnippet>986</a>    /// table name as `_{prefix}{default_table_name}` where default table
+<a href=#987 id=987 data-nosnippet>987</a>    /// name is `_sqlx_migrator_migrations`
+<a href=#988 id=988 data-nosnippet>988</a>    ///
+<a href=#989 id=989 data-nosnippet>989</a>    /// # Errors
+<a href=#990 id=990 data-nosnippet>990</a>    /// When passed prefix is not ascii alpha numeric or underscore character
+<a href=#991 id=991 data-nosnippet>991</a>    </span><span class="kw">pub fn </span>with_prefix(<span class="kw-2">mut </span><span class="self">self</span>, prefix: <span class="kw">impl </span>Into&lt;String&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, Error&gt; {
+<a href=#992 id=992 data-nosnippet>992</a>        <span class="kw">let </span>prefix_str = prefix.into();
+<a href=#993 id=993 data-nosnippet>993</a>        <span class="kw">if </span>!prefix_str
+<a href=#994 id=994 data-nosnippet>994</a>            .chars()
+<a href=#995 id=995 data-nosnippet>995</a>            .all(|c| char::is_ascii_alphanumeric(<span class="kw-2">&amp;</span>c) || c == <span class="string">'_'</span>)
+<a href=#996 id=996 data-nosnippet>996</a>        {
+<a href=#997 id=997 data-nosnippet>997</a>            <span class="kw">return </span><span class="prelude-val">Err</span>(Error::NonAsciiAlphaNumeric);
+<a href=#998 id=998 data-nosnippet>998</a>        }
+<a href=#999 id=999 data-nosnippet>999</a>        <span class="self">self</span>.table_name = <span class="macro">format!</span>(<span class="string">"_{prefix_str}{DEFAULT_TABLE_NAME}"</span>);
+<a href=#1000 id=1000 data-nosnippet>1000</a>        <span class="prelude-val">Ok</span>(<span class="self">self</span>)
 <a href=#1001 id=1001 data-nosnippet>1001</a>    }
-<a href=#1002 id=1002 data-nosnippet>1002</a>}
-<a href=#1003 id=1003 data-nosnippet>1003</a>
-<a href=#1004 id=1004 data-nosnippet>1004</a><span class="kw">impl</span>&lt;DB&gt; Default <span class="kw">for </span>Migrator&lt;DB&gt; {
-<a href=#1005 id=1005 data-nosnippet>1005</a>    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
-<a href=#1006 id=1006 data-nosnippet>1006</a>        <span class="self">Self</span>::new()
-<a href=#1007 id=1007 data-nosnippet>1007</a>    }
-<a href=#1008 id=1008 data-nosnippet>1008</a>}
-<a href=#1009 id=1009 data-nosnippet>1009</a>
-<a href=#1010 id=1010 data-nosnippet>1010</a><span class="kw">impl</span>&lt;DB&gt; Info&lt;DB&gt; <span class="kw">for </span>Migrator&lt;DB&gt; {
-<a href=#1011 id=1011 data-nosnippet>1011</a>    <span class="kw">fn </span>migrations(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Vec&lt;BoxMigration&lt;DB&gt;&gt; {
-<a href=#1012 id=1012 data-nosnippet>1012</a>        <span class="kw-2">&amp;</span><span class="self">self</span>.migrations
-<a href=#1013 id=1013 data-nosnippet>1013</a>    }
-<a href=#1014 id=1014 data-nosnippet>1014</a>
-<a href=#1015 id=1015 data-nosnippet>1015</a>    <span class="kw">fn </span>migrations_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>Vec&lt;BoxMigration&lt;DB&gt;&gt; {
-<a href=#1016 id=1016 data-nosnippet>1016</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>.migrations
-<a href=#1017 id=1017 data-nosnippet>1017</a>    }
-<a href=#1018 id=1018 data-nosnippet>1018</a>}
-<a href=#1019 id=1019 data-nosnippet>1019</a>
-<a href=#1020 id=1020 data-nosnippet>1020</a><span class="kw">impl</span>&lt;DB&gt; Migrate&lt;DB&gt; <span class="kw">for </span>Migrator&lt;DB&gt;
-<a href=#1021 id=1021 data-nosnippet>1021</a><span class="kw">where
-<a href=#1022 id=1022 data-nosnippet>1022</a>    </span>DB: Database,
-<a href=#1023 id=1023 data-nosnippet>1023</a>    <span class="self">Self</span>: DatabaseOperation&lt;DB&gt;,
-<a href=#1024 id=1024 data-nosnippet>1024</a>{
-<a href=#1025 id=1025 data-nosnippet>1025</a>}</code></pre></div></section></main></body></html>
+<a href=#1002 id=1002 data-nosnippet>1002</a>
+<a href=#1003 id=1003 data-nosnippet>1003</a>    <span class="doccomment">/// Get name of table which is used for storing migrations related
+<a href=#1004 id=1004 data-nosnippet>1004</a>    /// information in database
+<a href=#1005 id=1005 data-nosnippet>1005</a>    </span><span class="attr">#[must_use]
+<a href=#1006 id=1006 data-nosnippet>1006</a>    </span><span class="kw">pub fn </span>table_name(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>str {
+<a href=#1007 id=1007 data-nosnippet>1007</a>        <span class="kw-2">&amp;</span><span class="self">self</span>.table_name
+<a href=#1008 id=1008 data-nosnippet>1008</a>    }
+<a href=#1009 id=1009 data-nosnippet>1009</a>}
+<a href=#1010 id=1010 data-nosnippet>1010</a>
+<a href=#1011 id=1011 data-nosnippet>1011</a><span class="kw">impl</span>&lt;DB&gt; Default <span class="kw">for </span>Migrator&lt;DB&gt; {
+<a href=#1012 id=1012 data-nosnippet>1012</a>    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+<a href=#1013 id=1013 data-nosnippet>1013</a>        <span class="self">Self</span>::new()
+<a href=#1014 id=1014 data-nosnippet>1014</a>    }
+<a href=#1015 id=1015 data-nosnippet>1015</a>}
+<a href=#1016 id=1016 data-nosnippet>1016</a>
+<a href=#1017 id=1017 data-nosnippet>1017</a><span class="kw">impl</span>&lt;DB&gt; Info&lt;DB&gt; <span class="kw">for </span>Migrator&lt;DB&gt; {
+<a href=#1018 id=1018 data-nosnippet>1018</a>    <span class="kw">fn </span>migrations(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Vec&lt;BoxMigration&lt;DB&gt;&gt; {
+<a href=#1019 id=1019 data-nosnippet>1019</a>        <span class="kw-2">&amp;</span><span class="self">self</span>.migrations
+<a href=#1020 id=1020 data-nosnippet>1020</a>    }
+<a href=#1021 id=1021 data-nosnippet>1021</a>
+<a href=#1022 id=1022 data-nosnippet>1022</a>    <span class="kw">fn </span>migrations_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>Vec&lt;BoxMigration&lt;DB&gt;&gt; {
+<a href=#1023 id=1023 data-nosnippet>1023</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>.migrations
+<a href=#1024 id=1024 data-nosnippet>1024</a>    }
+<a href=#1025 id=1025 data-nosnippet>1025</a>}
+<a href=#1026 id=1026 data-nosnippet>1026</a>
+<a href=#1027 id=1027 data-nosnippet>1027</a><span class="kw">impl</span>&lt;DB&gt; Migrate&lt;DB&gt; <span class="kw">for </span>Migrator&lt;DB&gt;
+<a href=#1028 id=1028 data-nosnippet>1028</a><span class="kw">where
+<a href=#1029 id=1029 data-nosnippet>1029</a>    </span>DB: Database,
+<a href=#1030 id=1030 data-nosnippet>1030</a>    <span class="self">Self</span>: DatabaseOperation&lt;DB&gt;,
+<a href=#1031 id=1031 data-nosnippet>1031</a>{
+<a href=#1032 id=1032 data-nosnippet>1032</a>}</code></pre></div></section></main></body></html>
