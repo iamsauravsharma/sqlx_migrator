@@ -296,31 +296,37 @@ pub trait Info<DB> {
     /// same number of operation
     fn add_migration(&mut self, migration: BoxMigration<DB>) -> Result<(), Error> {
         // only check old value if provided migration for adding is not virtual
-        if !migration.is_virtual() {
-            if let Some((migration_index, found_migration)) = self
-                .migrations()
-                .iter()
-                .enumerate()
-                .find(|(_, elem)| elem == &&migration)
+        if migration.is_virtual() {
+            if !migration.parents().is_empty()
+                || !migration.operations().is_empty()
+                || !migration.replaces().is_empty()
+                || !migration.run_before().is_empty()
             {
-                // if virtual migration is present in list with same app and name than remove
-                // virtual migration from list first
-                if found_migration.is_virtual() {
-                    self.migrations_mut().remove(migration_index);
-                }
-                // if found migrations value are not consistent to current provided migration then
-                // raise error only raise error when found migration is not virtual
-                else if found_migration.parents() != migration.parents()
-                    || found_migration.operations().len() != migration.operations().len()
-                    || found_migration.replaces() != migration.replaces()
-                    || found_migration.run_before() != migration.run_before()
-                    || found_migration.is_atomic() != migration.is_atomic()
-                {
-                    return Err(Error::InconsistentMigration {
-                        app: migration.app().to_string(),
-                        name: migration.name().to_string(),
-                    });
-                }
+                return Err(Error::InvalidVirtualMigration);
+            }
+        } else if let Some((migration_index, found_migration)) = self
+            .migrations()
+            .iter()
+            .enumerate()
+            .find(|(_, elem)| elem == &&migration)
+        {
+            // if virtual migration is present in list with same app and name than remove
+            // virtual migration from list first
+            if found_migration.is_virtual() {
+                self.migrations_mut().remove(migration_index);
+            }
+            // if found migrations value are not consistent to current provided migration then
+            // raise error only raise error when found migration is not virtual
+            else if found_migration.parents() != migration.parents()
+                || found_migration.operations().len() != migration.operations().len()
+                || found_migration.replaces() != migration.replaces()
+                || found_migration.run_before() != migration.run_before()
+                || found_migration.is_atomic() != migration.is_atomic()
+            {
+                return Err(Error::InconsistentMigration {
+                    app: migration.app().to_string(),
+                    name: migration.name().to_string(),
+                });
             }
         }
 
