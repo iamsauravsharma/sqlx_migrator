@@ -896,62 +896,69 @@ where
     ) -> Result<(), Error> {
         tracing::debug!("running plan {:?}", plan);
         self.lock(connection).await?;
-        for migration in self.generate_migration_plan(connection, Some(plan)).await? {
-            match plan.plan_type {
-                PlanType::Apply => {
-                    tracing::debug!("applying {} : {}", migration.app(), migration.name());
-                    let operations = migration.operations();
-                    if migration.is_atomic() {
-                        let mut transaction = connection.begin().await?;
-                        if !plan.fake {
-                            for operation in operations {
-                                operation.up(&mut transaction).await?;
+        // do not return result of migrations early from run function hold it till lock
+        // is unlocked
+        let result = async {
+            for migration in self.generate_migration_plan(connection, Some(plan)).await? {
+                match plan.plan_type {
+                    PlanType::Apply => {
+                        tracing::debug!("applying {} : {}", migration.app(), migration.name());
+                        let operations = migration.operations();
+                        if migration.is_atomic() {
+                            let mut transaction = connection.begin().await?;
+                            if !plan.fake {
+                                for operation in operations {
+                                    operation.up(&mut transaction).await?;
+                                }
                             }
-                        }
-                        self.add_migration_to_db_table(&mut transaction, migration)
-                            .await?;
-                        transaction.commit().await?;
-                    } else {
-                        if !plan.fake {
-                            for operation in operations {
-                                operation.up(connection).await?;
+                            self.add_migration_to_db_table(&mut transaction, migration)
+                                .await?;
+                            transaction.commit().await?;
+                        } else {
+                            if !plan.fake {
+                                for operation in operations {
+                                    operation.up(connection).await?;
+                                }
                             }
+                            self.add_migration_to_db_table(connection, migration)
+                                .await?;
                         }
-                        self.add_migration_to_db_table(connection, migration)
-                            .await?;
                     }
-                }
-                PlanType::Revert => {
-                    tracing::debug!("reverting {} : {}", migration.app(), migration.name());
+                    PlanType::Revert => {
+                        tracing::debug!("reverting {} : {}", migration.app(), migration.name());
 
-                    // Reverse operation since last applied operation need to be reverted first
-                    let mut operations = migration.operations();
-                    operations.reverse();
+                        // Reverse operation since last applied operation need to be reverted first
+                        let mut operations = migration.operations();
+                        operations.reverse();
 
-                    if migration.is_atomic() {
-                        let mut transaction = connection.begin().await?;
-                        if !plan.fake {
-                            for operation in operations {
-                                operation.down(&mut transaction).await?;
+                        if migration.is_atomic() {
+                            let mut transaction = connection.begin().await?;
+                            if !plan.fake {
+                                for operation in operations {
+                                    operation.down(&mut transaction).await?;
+                                }
                             }
-                        }
-                        self.delete_migration_from_db_table(&mut transaction, migration)
-                            .await?;
-                        transaction.commit().await?;
-                    } else {
-                        if !plan.fake {
-                            for operation in operations {
-                                operation.down(connection).await?;
+                            self.delete_migration_from_db_table(&mut transaction, migration)
+                                .await?;
+                            transaction.commit().await?;
+                        } else {
+                            if !plan.fake {
+                                for operation in operations {
+                                    operation.down(connection).await?;
+                                }
                             }
+                            self.delete_migration_from_db_table(connection, migration)
+                                .await?;
                         }
-                        self.delete_migration_from_db_table(connection, migration)
-                            .await?;
                     }
                 }
             }
+            Ok(())
         }
+        .await;
+        // unlock lock before returning result of applying migration
         self.unlock(connection).await?;
-        Ok(())
+        result
     }
 }
 
