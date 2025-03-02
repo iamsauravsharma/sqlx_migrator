@@ -979,6 +979,18 @@ pub struct Migrator<DB> {
 
 impl<DB> Migrator<DB> {
     /// Create new migrator
+    ///
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature="sqlite")]
+    /// # fn main() {
+    /// let migrator = sqlx_migrator::Migrator::<sqlx::Sqlite>::new();
+    /// assert_eq!(migrator.table_name(), "_sqlx_migrator_migrations")
+    /// # }
+    /// # #[cfg(not(feature="sqlite"))]
+    /// # fn main() {
+    /// # }
+    /// ```
     #[must_use]
     pub fn new() -> Self {
         Self {
@@ -992,6 +1004,22 @@ impl<DB> Migrator<DB> {
     /// table name as `_{prefix}{default_table_name}` where default table
     /// name is `_sqlx_migrator_migrations`
     ///
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature="sqlite")]
+    /// # fn main() {
+    /// let migrator = sqlx_migrator::Migrator::<sqlx::Sqlite>::new()
+    ///     .with_prefix("prefix_value")
+    ///     .unwrap();
+    /// assert_eq!(
+    ///     migrator.table_name(),
+    ///     "_prefix_value_sqlx_migrator_migrations"
+    /// )
+    /// # }
+    /// # #[cfg(not(feature="sqlite"))]
+    /// # fn main() {
+    /// # }
+    /// ```
     /// # Errors
     /// When passed prefix is not ascii alpha numeric or underscore character
     pub fn with_prefix(mut self, prefix: impl Into<String>) -> Result<Self, Error> {
