@@ -171,10 +171,7 @@ where
             id = sqlx_migration.id().to_string();
             status = "\u{2713}";
             applied_time = sqlx_migration.applied_time().to_string();
-        } else if !apply_plan
-            .iter()
-            .any(|&plan_migration| plan_migration == migration)
-        {
+        } else if !apply_plan.contains(&migration) {
             status = "\u{2194}";
         }
 
