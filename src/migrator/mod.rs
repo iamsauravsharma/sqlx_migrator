@@ -182,6 +182,10 @@ enum PlanType {
 /// all migrations, specific migrations, or a limited number of migrations.
 #[derive(Debug)]
 pub struct Plan {
+    #[expect(
+        clippy::struct_field_names,
+        reason = "type is a keyword so it cannot be used"
+    )]
     plan_type: PlanType,
     app_migration: Option<(String, Option<String>)>,
     count: Option<usize>,
@@ -970,15 +974,15 @@ where
 
 const DEFAULT_TABLE_NAME: &str = "_sqlx_migrator_migrations";
 
-/// Migrator struct which store migrations graph and information related to
-/// different library supported migrations
+/// A struct that stores migration-related metadata, including the list of
+/// migrations and configuration such as table and schema names
 pub struct Migrator<DB> {
     migrations: Vec<BoxMigration<DB>>,
     table_name: String,
 }
 
 impl<DB> Migrator<DB> {
-    /// Create new migrator
+    /// Creates a new migrator
     ///
     /// # Example
     /// ```rust
@@ -999,10 +1003,11 @@ impl<DB> Migrator<DB> {
         }
     }
 
-    /// Use prefix for migrator table name only ascii alpha numeric and
-    /// underscore characters are supported for table name. prefix will set
-    /// table name as `_{prefix}{default_table_name}` where default table
-    /// name is `_sqlx_migrator_migrations`
+    /// Configures a prefix for the migrator table name.
+    ///
+    /// The table name will be formatted as
+    /// `_{prefix}_sqlx_migrator_migrations`. Only ASCII alphanumeric characters
+    /// and underscores are allowed in the prefix.
     ///
     /// # Example
     /// ```rust
@@ -1020,8 +1025,9 @@ impl<DB> Migrator<DB> {
     /// # fn main() {
     /// # }
     /// ```
+    ///
     /// # Errors
-    /// When passed prefix is not ascii alpha numeric or underscore character
+    /// When passed prefix name contains invalid characters
     pub fn with_prefix(mut self, prefix: impl Into<String>) -> Result<Self, Error> {
         let prefix_str = prefix.into();
         if !prefix_str

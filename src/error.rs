@@ -35,7 +35,7 @@ pub enum Error {
     #[error("database not supported")]
     UnsupportedDatabase,
     /// Error when passed prefix is not alpha numeric
-    #[error("prefix can only be ascii alphanumeric and underscore character")]
+    #[error("table name can only contain ascii alphanumeric and underscore character")]
     NonAsciiAlphaNumeric,
     /// Error raised when two migration with same name are added and there value
     /// is not consistent
