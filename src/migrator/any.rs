@@ -1,10 +1,10 @@
-use sqlx::any::AnyArguments;
 #[cfg(feature = "mysql")]
 use sqlx::MySql;
 #[cfg(feature = "postgres")]
 use sqlx::Postgres;
 #[cfg(feature = "sqlite")]
 use sqlx::Sqlite;
+use sqlx::any::AnyArguments;
 use sqlx::{Any, Arguments, Database};
 
 #[cfg(feature = "mysql")]
