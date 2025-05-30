@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/migrator/any.rs`."><title>any.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-0ce1a80b.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="sqlx_migrator" data-themes="" data-resource-suffix="" data-rustdoc-version="1.89.0-nightly (414482f6a 2025-05-13)" data-channel="nightly" data-search-js="search-f7877310.js" data-settings-js="settings-5514c975.js" ><script src="../../../static.files/storage-4e99c027.js"></script><script defer src="../../../static.files/src-script-63605ae7.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-7ef8a74a.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-32bb7600.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">sqlx_migrator/migrator/</div>any.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="attr">#[cfg(feature = <span class="string">"mysql"</span>)]
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/migrator/any.rs`."><title>any.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-84e720fa.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="sqlx_migrator" data-themes="" data-resource-suffix="" data-rustdoc-version="1.89.0-nightly (1bbd62e54 2025-05-29)" data-channel="nightly" data-search-js="search-f7877310.js" data-settings-js="settings-5514c975.js" ><script src="../../../static.files/storage-4e99c027.js"></script><script defer src="../../../static.files/src-script-63605ae7.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-fd3af306.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-32bb7600.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">sqlx_migrator/migrator/</div>any.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="attr">#[cfg(feature = <span class="string">"mysql"</span>)]
 <a href=#2 id=2 data-nosnippet>2</a></span><span class="kw">use </span>sqlx::MySql;
 <a href=#3 id=3 data-nosnippet>3</a><span class="attr">#[cfg(feature = <span class="string">"postgres"</span>)]
 <a href=#4 id=4 data-nosnippet>4</a></span><span class="kw">use </span>sqlx::Postgres;
@@ -49,12 +49,12 @@
 <a href=#49 id=49 data-nosnippet>49</a>        <span class="kw">let </span>sql_query = <span class="kw">match </span>connection.backend_name() {
 <a href=#50 id=50 data-nosnippet>50</a>            <span class="attr">#[cfg(feature = <span class="string">"postgres"</span>)]
 <a href=#51 id=51 data-nosnippet>51</a>            </span>&lt;Postgres <span class="kw">as </span>Database&gt;::NAME =&gt; {
-<a href=#52 id=52 data-nosnippet>52</a>                postgres::create_migrator_table_query(<span class="self">self</span>.table_name())
+<a href=#52 id=52 data-nosnippet>52</a>                postgres::create_migrator_table_query(<span class="kw-2">&amp;</span><span class="self">self</span>.table_name())
 <a href=#53 id=53 data-nosnippet>53</a>            }
 <a href=#54 id=54 data-nosnippet>54</a>            <span class="attr">#[cfg(feature = <span class="string">"sqlite"</span>)]
-<a href=#55 id=55 data-nosnippet>55</a>            </span>&lt;Sqlite <span class="kw">as </span>Database&gt;::NAME =&gt; sqlite::create_migrator_table_query(<span class="self">self</span>.table_name()),
+<a href=#55 id=55 data-nosnippet>55</a>            </span>&lt;Sqlite <span class="kw">as </span>Database&gt;::NAME =&gt; sqlite::create_migrator_table_query(<span class="kw-2">&amp;</span><span class="self">self</span>.table_name()),
 <a href=#56 id=56 data-nosnippet>56</a>            <span class="attr">#[cfg(feature = <span class="string">"mysql"</span>)]
-<a href=#57 id=57 data-nosnippet>57</a>            </span>&lt;MySql <span class="kw">as </span>Database&gt;::NAME =&gt; mysql::create_migrator_table_query(<span class="self">self</span>.table_name()),
+<a href=#57 id=57 data-nosnippet>57</a>            </span>&lt;MySql <span class="kw">as </span>Database&gt;::NAME =&gt; mysql::create_migrator_table_query(<span class="kw-2">&amp;</span><span class="self">self</span>.table_name()),
 <a href=#58 id=58 data-nosnippet>58</a>            <span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(Error::UnsupportedDatabase),
 <a href=#59 id=59 data-nosnippet>59</a>        };
 <a href=#60 id=60 data-nosnippet>60</a>        sqlx::query(<span class="kw-2">&amp;</span>sql_query).execute(connection).<span class="kw">await</span><span class="question-mark">?</span>;
@@ -67,11 +67,11 @@
 <a href=#67 id=67 data-nosnippet>67</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
 <a href=#68 id=68 data-nosnippet>68</a>        <span class="kw">let </span>sql_query = <span class="kw">match </span>connection.backend_name() {
 <a href=#69 id=69 data-nosnippet>69</a>            <span class="attr">#[cfg(feature = <span class="string">"postgres"</span>)]
-<a href=#70 id=70 data-nosnippet>70</a>            </span>&lt;Postgres <span class="kw">as </span>Database&gt;::NAME =&gt; postgres::drop_table_query(<span class="self">self</span>.table_name()),
+<a href=#70 id=70 data-nosnippet>70</a>            </span>&lt;Postgres <span class="kw">as </span>Database&gt;::NAME =&gt; postgres::drop_table_query(<span class="kw-2">&amp;</span><span class="self">self</span>.table_name()),
 <a href=#71 id=71 data-nosnippet>71</a>            <span class="attr">#[cfg(feature = <span class="string">"sqlite"</span>)]
-<a href=#72 id=72 data-nosnippet>72</a>            </span>&lt;Sqlite <span class="kw">as </span>Database&gt;::NAME =&gt; sqlite::drop_table_query(<span class="self">self</span>.table_name()),
+<a href=#72 id=72 data-nosnippet>72</a>            </span>&lt;Sqlite <span class="kw">as </span>Database&gt;::NAME =&gt; sqlite::drop_table_query(<span class="kw-2">&amp;</span><span class="self">self</span>.table_name()),
 <a href=#73 id=73 data-nosnippet>73</a>            <span class="attr">#[cfg(feature = <span class="string">"mysql"</span>)]
-<a href=#74 id=74 data-nosnippet>74</a>            </span>&lt;MySql <span class="kw">as </span>Database&gt;::NAME =&gt; mysql::drop_table_query(<span class="self">self</span>.table_name()),
+<a href=#74 id=74 data-nosnippet>74</a>            </span>&lt;MySql <span class="kw">as </span>Database&gt;::NAME =&gt; mysql::drop_table_query(<span class="kw-2">&amp;</span><span class="self">self</span>.table_name()),
 <a href=#75 id=75 data-nosnippet>75</a>            <span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(Error::UnsupportedDatabase),
 <a href=#76 id=76 data-nosnippet>76</a>        };
 <a href=#77 id=77 data-nosnippet>77</a>        sqlx::query(<span class="kw-2">&amp;</span>sql_query).execute(connection).<span class="kw">await</span><span class="question-mark">?</span>;
@@ -85,11 +85,11 @@
 <a href=#85 id=85 data-nosnippet>85</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
 <a href=#86 id=86 data-nosnippet>86</a>        <span class="kw">let </span>sql_query = <span class="kw">match </span>connection.backend_name() {
 <a href=#87 id=87 data-nosnippet>87</a>            <span class="attr">#[cfg(feature = <span class="string">"postgres"</span>)]
-<a href=#88 id=88 data-nosnippet>88</a>            </span>&lt;Postgres <span class="kw">as </span>Database&gt;::NAME =&gt; postgres::add_migration_query(<span class="self">self</span>.table_name()),
+<a href=#88 id=88 data-nosnippet>88</a>            </span>&lt;Postgres <span class="kw">as </span>Database&gt;::NAME =&gt; postgres::add_migration_query(<span class="kw-2">&amp;</span><span class="self">self</span>.table_name()),
 <a href=#89 id=89 data-nosnippet>89</a>            <span class="attr">#[cfg(feature = <span class="string">"sqlite"</span>)]
-<a href=#90 id=90 data-nosnippet>90</a>            </span>&lt;Sqlite <span class="kw">as </span>Database&gt;::NAME =&gt; sqlite::add_migration_query(<span class="self">self</span>.table_name()),
+<a href=#90 id=90 data-nosnippet>90</a>            </span>&lt;Sqlite <span class="kw">as </span>Database&gt;::NAME =&gt; sqlite::add_migration_query(<span class="kw-2">&amp;</span><span class="self">self</span>.table_name()),
 <a href=#91 id=91 data-nosnippet>91</a>            <span class="attr">#[cfg(feature = <span class="string">"mysql"</span>)]
-<a href=#92 id=92 data-nosnippet>92</a>            </span>&lt;MySql <span class="kw">as </span>Database&gt;::NAME =&gt; mysql::add_migration_query(<span class="self">self</span>.table_name()),
+<a href=#92 id=92 data-nosnippet>92</a>            </span>&lt;MySql <span class="kw">as </span>Database&gt;::NAME =&gt; mysql::add_migration_query(<span class="kw-2">&amp;</span><span class="self">self</span>.table_name()),
 <a href=#93 id=93 data-nosnippet>93</a>            <span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(Error::UnsupportedDatabase),
 <a href=#94 id=94 data-nosnippet>94</a>        };
 <a href=#95 id=95 data-nosnippet>95</a>        sqlx::query(<span class="kw-2">&amp;</span>sql_query)
@@ -107,11 +107,11 @@
 <a href=#107 id=107 data-nosnippet>107</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
 <a href=#108 id=108 data-nosnippet>108</a>        <span class="kw">let </span>sql_query = <span class="kw">match </span>connection.backend_name() {
 <a href=#109 id=109 data-nosnippet>109</a>            <span class="attr">#[cfg(feature = <span class="string">"postgres"</span>)]
-<a href=#110 id=110 data-nosnippet>110</a>            </span>&lt;Postgres <span class="kw">as </span>Database&gt;::NAME =&gt; postgres::delete_migration_query(<span class="self">self</span>.table_name()),
+<a href=#110 id=110 data-nosnippet>110</a>            </span>&lt;Postgres <span class="kw">as </span>Database&gt;::NAME =&gt; postgres::delete_migration_query(<span class="kw-2">&amp;</span><span class="self">self</span>.table_name()),
 <a href=#111 id=111 data-nosnippet>111</a>            <span class="attr">#[cfg(feature = <span class="string">"sqlite"</span>)]
-<a href=#112 id=112 data-nosnippet>112</a>            </span>&lt;Sqlite <span class="kw">as </span>Database&gt;::NAME =&gt; sqlite::delete_migration_query(<span class="self">self</span>.table_name()),
+<a href=#112 id=112 data-nosnippet>112</a>            </span>&lt;Sqlite <span class="kw">as </span>Database&gt;::NAME =&gt; sqlite::delete_migration_query(<span class="kw-2">&amp;</span><span class="self">self</span>.table_name()),
 <a href=#113 id=113 data-nosnippet>113</a>            <span class="attr">#[cfg(feature = <span class="string">"mysql"</span>)]
-<a href=#114 id=114 data-nosnippet>114</a>            </span>&lt;MySql <span class="kw">as </span>Database&gt;::NAME =&gt; mysql::delete_migration_query(<span class="self">self</span>.table_name()),
+<a href=#114 id=114 data-nosnippet>114</a>            </span>&lt;MySql <span class="kw">as </span>Database&gt;::NAME =&gt; mysql::delete_migration_query(<span class="kw-2">&amp;</span><span class="self">self</span>.table_name()),
 <a href=#115 id=115 data-nosnippet>115</a>            <span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(Error::UnsupportedDatabase),
 <a href=#116 id=116 data-nosnippet>116</a>        };
 <a href=#117 id=117 data-nosnippet>117</a>        sqlx::query(<span class="kw-2">&amp;</span>sql_query)
@@ -129,11 +129,11 @@
 <a href=#129 id=129 data-nosnippet>129</a>        <span class="kw">let </span>backend_name = connection.backend_name();
 <a href=#130 id=130 data-nosnippet>130</a>        <span class="kw">let </span>query = <span class="kw">match </span>backend_name {
 <a href=#131 id=131 data-nosnippet>131</a>            <span class="attr">#[cfg(feature = <span class="string">"postgres"</span>)]
-<a href=#132 id=132 data-nosnippet>132</a>            </span>&lt;Postgres <span class="kw">as </span>Database&gt;::NAME =&gt; postgres::fetch_rows_query(<span class="self">self</span>.table_name()),
+<a href=#132 id=132 data-nosnippet>132</a>            </span>&lt;Postgres <span class="kw">as </span>Database&gt;::NAME =&gt; postgres::fetch_rows_query(<span class="kw-2">&amp;</span><span class="self">self</span>.table_name()),
 <a href=#133 id=133 data-nosnippet>133</a>            <span class="attr">#[cfg(feature = <span class="string">"sqlite"</span>)]
-<a href=#134 id=134 data-nosnippet>134</a>            </span>&lt;Sqlite <span class="kw">as </span>Database&gt;::NAME =&gt; sqlite::fetch_rows_query(<span class="self">self</span>.table_name()),
+<a href=#134 id=134 data-nosnippet>134</a>            </span>&lt;Sqlite <span class="kw">as </span>Database&gt;::NAME =&gt; sqlite::fetch_rows_query(<span class="kw-2">&amp;</span><span class="self">self</span>.table_name()),
 <a href=#135 id=135 data-nosnippet>135</a>            <span class="attr">#[cfg(feature = <span class="string">"mysql"</span>)]
-<a href=#136 id=136 data-nosnippet>136</a>            </span>&lt;MySql <span class="kw">as </span>Database&gt;::NAME =&gt; mysql::fetch_rows_query(<span class="self">self</span>.table_name()),
+<a href=#136 id=136 data-nosnippet>136</a>            </span>&lt;MySql <span class="kw">as </span>Database&gt;::NAME =&gt; mysql::fetch_rows_query(<span class="kw-2">&amp;</span><span class="self">self</span>.table_name()),
 <a href=#137 id=137 data-nosnippet>137</a>            <span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(Error::UnsupportedDatabase),
 <a href=#138 id=138 data-nosnippet>138</a>        };
 <a href=#139 id=139 data-nosnippet>139</a>        <span class="prelude-val">Ok</span>(sqlx::query_as::&lt;<span class="kw">_</span>, AppliedMigrationSqlRow&gt;(<span class="kw-2">&amp;</span>query)
@@ -148,14 +148,14 @@
 <a href=#148 id=148 data-nosnippet>148</a>            <span class="kw">let </span>query = <span class="kw">match </span>connection.backend_name() {
 <a href=#149 id=149 data-nosnippet>149</a>                <span class="attr">#[cfg(feature = <span class="string">"postgres"</span>)]
 <a href=#150 id=150 data-nosnippet>150</a>                </span>&lt;Postgres <span class="kw">as </span>Database&gt;::NAME =&gt; {
-<a href=#151 id=151 data-nosnippet>151</a>                    arguments.add(postgres::get_lock_id(<span class="kw-2">&amp;</span>name, <span class="self">self</span>.table_name()))<span class="question-mark">?</span>;
+<a href=#151 id=151 data-nosnippet>151</a>                    arguments.add(postgres::get_lock_id(<span class="kw-2">&amp;</span>name, <span class="kw-2">&amp;</span><span class="self">self</span>.table_name()))<span class="question-mark">?</span>;
 <a href=#152 id=152 data-nosnippet>152</a>                    postgres::lock_database_query()
 <a href=#153 id=153 data-nosnippet>153</a>                }
 <a href=#154 id=154 data-nosnippet>154</a>                <span class="attr">#[cfg(feature = <span class="string">"sqlite"</span>)]
 <a href=#155 id=155 data-nosnippet>155</a>                </span>&lt;Sqlite <span class="kw">as </span>Database&gt;::NAME =&gt; <span class="kw">return </span><span class="prelude-val">Ok</span>(()),
 <a href=#156 id=156 data-nosnippet>156</a>                <span class="attr">#[cfg(feature = <span class="string">"mysql"</span>)]
 <a href=#157 id=157 data-nosnippet>157</a>                </span>&lt;MySql <span class="kw">as </span>Database&gt;::NAME =&gt; {
-<a href=#158 id=158 data-nosnippet>158</a>                    arguments.add(mysql::get_lock_id(<span class="kw-2">&amp;</span>name, <span class="self">self</span>.table_name()))<span class="question-mark">?</span>;
+<a href=#158 id=158 data-nosnippet>158</a>                    arguments.add(mysql::get_lock_id(<span class="kw-2">&amp;</span>name, <span class="kw-2">&amp;</span><span class="self">self</span>.table_name()))<span class="question-mark">?</span>;
 <a href=#159 id=159 data-nosnippet>159</a>                    mysql::lock_database_query()
 <a href=#160 id=160 data-nosnippet>160</a>                }
 <a href=#161 id=161 data-nosnippet>161</a>                <span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(Error::UnsupportedDatabase),
@@ -174,14 +174,14 @@
 <a href=#174 id=174 data-nosnippet>174</a>            <span class="kw">let </span>query = <span class="kw">match </span>connection.backend_name() {
 <a href=#175 id=175 data-nosnippet>175</a>                <span class="attr">#[cfg(feature = <span class="string">"postgres"</span>)]
 <a href=#176 id=176 data-nosnippet>176</a>                </span>&lt;Postgres <span class="kw">as </span>Database&gt;::NAME =&gt; {
-<a href=#177 id=177 data-nosnippet>177</a>                    arguments.add(postgres::get_lock_id(<span class="kw-2">&amp;</span>name, <span class="self">self</span>.table_name()))<span class="question-mark">?</span>;
+<a href=#177 id=177 data-nosnippet>177</a>                    arguments.add(postgres::get_lock_id(<span class="kw-2">&amp;</span>name, <span class="kw-2">&amp;</span><span class="self">self</span>.table_name()))<span class="question-mark">?</span>;
 <a href=#178 id=178 data-nosnippet>178</a>                    postgres::unlock_database_query()
 <a href=#179 id=179 data-nosnippet>179</a>                }
 <a href=#180 id=180 data-nosnippet>180</a>                <span class="attr">#[cfg(feature = <span class="string">"sqlite"</span>)]
 <a href=#181 id=181 data-nosnippet>181</a>                </span>&lt;Sqlite <span class="kw">as </span>Database&gt;::NAME =&gt; <span class="kw">return </span><span class="prelude-val">Ok</span>(()),
 <a href=#182 id=182 data-nosnippet>182</a>                <span class="attr">#[cfg(feature = <span class="string">"mysql"</span>)]
 <a href=#183 id=183 data-nosnippet>183</a>                </span>&lt;MySql <span class="kw">as </span>Database&gt;::NAME =&gt; {
-<a href=#184 id=184 data-nosnippet>184</a>                    arguments.add(mysql::get_lock_id(<span class="kw-2">&amp;</span>name, <span class="self">self</span>.table_name()))<span class="question-mark">?</span>;
+<a href=#184 id=184 data-nosnippet>184</a>                    arguments.add(mysql::get_lock_id(<span class="kw-2">&amp;</span>name, <span class="kw-2">&amp;</span><span class="self">self</span>.table_name()))<span class="question-mark">?</span>;
 <a href=#185 id=185 data-nosnippet>185</a>                    mysql::unlock_database_query()
 <a href=#186 id=186 data-nosnippet>186</a>                }
 <a href=#187 id=187 data-nosnippet>187</a>                <span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(Error::UnsupportedDatabase),
