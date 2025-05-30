@@ -68,7 +68,7 @@ impl DatabaseOperation<Postgres> for Migrator<Postgres> {
         &self,
         connection: &mut <Postgres as Database>::Connection,
     ) -> Result<(), Error> {
-        sqlx::query(&create_migrator_table_query(self.table_name()))
+        sqlx::query(&create_migrator_table_query(&self.table_name()))
             .execute(connection)
             .await?;
         Ok(())
@@ -78,7 +78,7 @@ impl DatabaseOperation<Postgres> for Migrator<Postgres> {
         &self,
         connection: &mut <Postgres as Database>::Connection,
     ) -> Result<(), Error> {
-        sqlx::query(&drop_table_query(self.table_name()))
+        sqlx::query(&drop_table_query(&self.table_name()))
             .execute(connection)
             .await?;
         Ok(())
@@ -89,7 +89,7 @@ impl DatabaseOperation<Postgres> for Migrator<Postgres> {
         connection: &mut <Postgres as Database>::Connection,
         migration: &Box<dyn Migration<Postgres>>,
     ) -> Result<(), Error> {
-        sqlx::query(&add_migration_query(self.table_name()))
+        sqlx::query(&add_migration_query(&self.table_name()))
             .bind(migration.app())
             .bind(migration.name())
             .execute(connection)
@@ -102,7 +102,7 @@ impl DatabaseOperation<Postgres> for Migrator<Postgres> {
         connection: &mut <Postgres as Database>::Connection,
         migration: &Box<dyn Migration<Postgres>>,
     ) -> Result<(), Error> {
-        sqlx::query(&delete_migration_query(self.table_name()))
+        sqlx::query(&delete_migration_query(&self.table_name()))
             .bind(migration.app())
             .bind(migration.name())
             .execute(connection)
@@ -115,7 +115,7 @@ impl DatabaseOperation<Postgres> for Migrator<Postgres> {
         connection: &mut <Postgres as Database>::Connection,
     ) -> Result<Vec<AppliedMigrationSqlRow>, Error> {
         Ok(
-            sqlx::query_as::<_, AppliedMigrationSqlRow>(&fetch_rows_query(self.table_name()))
+            sqlx::query_as::<_, AppliedMigrationSqlRow>(&fetch_rows_query(&self.table_name()))
                 .fetch_all(connection)
                 .await?,
         )
@@ -125,7 +125,7 @@ impl DatabaseOperation<Postgres> for Migrator<Postgres> {
         let (database_name,): (String,) = sqlx::query_as(current_database_query())
             .fetch_one(&mut *connection)
             .await?;
-        let lock_id = get_lock_id(&database_name, self.table_name());
+        let lock_id = get_lock_id(&database_name, &self.table_name());
         sqlx::query(lock_database_query())
             .bind(lock_id)
             .execute(connection)
@@ -140,7 +140,7 @@ impl DatabaseOperation<Postgres> for Migrator<Postgres> {
         let (database_name,): (String,) = sqlx::query_as(current_database_query())
             .fetch_one(&mut *connection)
             .await?;
-        let lock_id = get_lock_id(&database_name, self.table_name());
+        let lock_id = get_lock_id(&database_name, &self.table_name());
         sqlx::query(unlock_database_query())
             .bind(lock_id)
             .execute(connection)

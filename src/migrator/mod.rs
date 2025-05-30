@@ -975,10 +975,11 @@ where
 const DEFAULT_TABLE_NAME: &str = "_sqlx_migrator_migrations";
 
 /// A struct that stores migration-related metadata, including the list of
-/// migrations and configuration such as table and schema names
+/// migrations and configuration such as table and schema name
 pub struct Migrator<DB> {
     migrations: Vec<BoxMigration<DB>>,
-    table_name: String,
+    table_prefix: Option<String>,
+    schema: Option<String>,
 }
 
 impl<DB> Migrator<DB> {
@@ -989,7 +990,7 @@ impl<DB> Migrator<DB> {
     /// # #[cfg(feature="sqlite")]
     /// # fn main() {
     /// let migrator = sqlx_migrator::Migrator::<sqlx::Sqlite>::new();
-    /// assert_eq!(migrator.table_name(), "_sqlx_migrator_migrations")
+    /// assert_eq!(&migrator.table_name(), "_sqlx_migrator_migrations")
     /// # }
     /// # #[cfg(not(feature="sqlite"))]
     /// # fn main() {
@@ -999,25 +1000,26 @@ impl<DB> Migrator<DB> {
     pub fn new() -> Self {
         Self {
             migrations: Vec::default(),
-            table_name: DEFAULT_TABLE_NAME.to_string(),
+            table_prefix: None,
+            schema: None,
         }
     }
 
     /// Configures a prefix for the migrator table name.
     ///
     /// The table name will be formatted as
-    /// `_{prefix}_sqlx_migrator_migrations`. Only ASCII alphanumeric characters
-    /// and underscores are allowed in the prefix.
+    /// `_{prefix}_sqlx_migrator_migrations`. Only ASCII lowercase, numeric
+    /// characters and underscores are allowed in the prefix.
     ///
     /// # Example
     /// ```rust
     /// # #[cfg(feature="sqlite")]
     /// # fn main() {
     /// let migrator = sqlx_migrator::Migrator::<sqlx::Sqlite>::new()
-    ///     .with_prefix("prefix_value")
+    ///     .set_table_prefix("prefix_value")
     ///     .unwrap();
     /// assert_eq!(
-    ///     migrator.table_name(),
+    ///     &migrator.table_name(),
     ///     "_prefix_value_sqlx_migrator_migrations"
     /// )
     /// # }
@@ -1027,24 +1029,93 @@ impl<DB> Migrator<DB> {
     /// ```
     ///
     /// # Errors
-    /// When passed prefix name contains invalid characters
-    pub fn with_prefix(mut self, prefix: impl Into<String>) -> Result<Self, Error> {
+    /// When passed table prefix name contains invalid characters
+    pub fn set_table_prefix(mut self, prefix: impl Into<String>) -> Result<Self, Error> {
         let prefix_str = prefix.into();
-        if !prefix_str
-            .chars()
-            .all(|c| char::is_ascii_alphanumeric(&c) || c == '_')
+        if prefix_str.is_empty()
+            || !prefix_str
+                .chars()
+                .all(|c| char::is_ascii_lowercase(&c) || char::is_numeric(c) || c == '_')
         {
-            return Err(Error::NonAsciiAlphaNumeric);
+            return Err(Error::InvalidTablePrefix);
         }
-        self.table_name = format!("_{prefix_str}{DEFAULT_TABLE_NAME}");
+        self.table_prefix = Some(prefix_str);
+        Ok(self)
+    }
+
+    /// Configures a schema for the migrator table.
+    ///
+    /// When set, the table name will be formatted as `{schema}.{table_name}`.
+    /// Schema name can only contain [a-z0-9_] and begin with [a-z_]
+    ///
+    /// # Examples
+    /// ```rust
+    /// # #[cfg(feature="sqlite")]
+    /// # fn main() {
+    /// let migrator = sqlx_migrator::Migrator::<sqlx::Sqlite>::new()
+    ///     .set_schema("migrations")
+    ///     .unwrap();
+    /// assert_eq!(
+    ///     &migrator.table_name(),
+    ///     "migrations._sqlx_migrator_migrations"
+    /// );
+    /// # }
+    /// # #[cfg(not(feature="sqlite"))]
+    /// # fn main() {}
+    /// ```
+    ///
+    /// # Errors
+    /// When passed schema name contains invalid characters
+    pub fn set_schema(mut self, schema: impl Into<String>) -> Result<Self, Error> {
+        let schema_str = schema.into();
+        if schema_str.is_empty()
+            || schema_str.chars().next().is_none()
+            || !schema_str
+                .chars()
+                .all(|c| char::is_ascii_lowercase(&c) || char::is_numeric(c) || c == '_')
+        {
+            return Err(Error::InvalidSchema);
+        }
+        self.schema = Some(schema_str);
         Ok(self)
     }
 
     /// Get name of table which is used for storing migrations related
     /// information in database
+    ///
+    /// Format depends on configuration:
+    /// - With schema: `{schema}._sqlx_migrator_migrations`
+    /// - With prefix: `_{prefix}_sqlx_migrator_migrations`
+    /// - With both: `{schema}._{prefix}_sqlx_migrator_migrations`
+    /// - Default: `_sqlx_migrator_migrations`
+    ///
+    /// # Examples
+    /// ```rust
+    /// # #[cfg(feature="sqlite")]
+    /// # fn main() {
+    /// let migrator = sqlx_migrator::Migrator::<sqlx::Sqlite>::new()
+    ///     .set_schema("app_schema")
+    ///     .unwrap()
+    ///     .set_table_prefix("v1")
+    ///     .unwrap();
+    /// assert_eq!(
+    ///     &migrator.table_name(),
+    ///     "app_schema._v1_sqlx_migrator_migrations"
+    /// );
+    /// # }
+    /// # #[cfg(not(feature="sqlite"))]
+    /// # fn main() {}
+    /// ```
     #[must_use]
-    pub fn table_name(&self) -> &str {
-        &self.table_name
+    pub fn table_name(&self) -> String {
+        let mut table_name = DEFAULT_TABLE_NAME.to_string();
+        if let Some(prefix) = &self.table_prefix {
+            table_name = format!("_{prefix}{table_name}");
+        }
+        if let Some(schema) = &self.schema {
+            table_name = format!("{schema}.{table_name}");
+        }
+        table_name
     }
 }
 

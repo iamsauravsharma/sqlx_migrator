@@ -34,9 +34,12 @@ pub enum Error {
     /// Error when unsupported database is used as any database
     #[error("database not supported")]
     UnsupportedDatabase,
-    /// Error when passed prefix is not alpha numeric
-    #[error("table name can only contain ascii alphanumeric and underscore character")]
-    NonAsciiAlphaNumeric,
+    /// Error when table prefix is invalid
+    #[error("table prefix name can only contain [a-z0-9_]")]
+    InvalidTablePrefix,
+    /// Error when passed schema name is invalid
+    #[error("schema name can only contain [a-z0-9_] and begin with [a-z_]")]
+    InvalidSchema,
     /// Error raised when two migration with same name are added and there value
     /// is not consistent
     #[error("migration for app: {app} with name: {name} consists of inconsistent values")]

@@ -75,7 +75,7 @@ impl DatabaseOperation<MySql> for Migrator<MySql> {
         &self,
         connection: &mut <MySql as Database>::Connection,
     ) -> Result<(), Error> {
-        sqlx::query(&create_migrator_table_query(self.table_name()))
+        sqlx::query(&create_migrator_table_query(&self.table_name()))
             .execute(connection)
             .await?;
         Ok(())
@@ -85,7 +85,7 @@ impl DatabaseOperation<MySql> for Migrator<MySql> {
         &self,
         connection: &mut <MySql as Database>::Connection,
     ) -> Result<(), Error> {
-        sqlx::query(&drop_table_query(self.table_name()))
+        sqlx::query(&drop_table_query(&self.table_name()))
             .execute(connection)
             .await?;
         Ok(())
@@ -96,7 +96,7 @@ impl DatabaseOperation<MySql> for Migrator<MySql> {
         connection: &mut <MySql as Database>::Connection,
         migration: &Box<dyn Migration<MySql>>,
     ) -> Result<(), Error> {
-        sqlx::query(&add_migration_query(self.table_name()))
+        sqlx::query(&add_migration_query(&self.table_name()))
             .bind(migration.app())
             .bind(migration.name())
             .execute(connection)
@@ -109,7 +109,7 @@ impl DatabaseOperation<MySql> for Migrator<MySql> {
         connection: &mut <MySql as Database>::Connection,
         migration: &Box<dyn Migration<MySql>>,
     ) -> Result<(), Error> {
-        sqlx::query(&delete_migration_query(self.table_name()))
+        sqlx::query(&delete_migration_query(&self.table_name()))
             .bind(migration.app())
             .bind(migration.name())
             .execute(connection)
@@ -122,7 +122,7 @@ impl DatabaseOperation<MySql> for Migrator<MySql> {
         connection: &mut <MySql as Database>::Connection,
     ) -> Result<Vec<AppliedMigrationSqlRow>, Error> {
         Ok(
-            sqlx::query_as::<_, AppliedMigrationSqlRow>(&fetch_rows_query(self.table_name()))
+            sqlx::query_as::<_, AppliedMigrationSqlRow>(&fetch_rows_query(&self.table_name()))
                 .fetch_all(connection)
                 .await?,
         )
@@ -132,7 +132,7 @@ impl DatabaseOperation<MySql> for Migrator<MySql> {
         let (database_name,): (String,) = sqlx::query_as(current_database_query())
             .fetch_one(&mut *connection)
             .await?;
-        let lock_id = get_lock_id(&database_name, self.table_name());
+        let lock_id = get_lock_id(&database_name, &self.table_name());
         sqlx::query(lock_database_query())
             .bind(lock_id)
             .execute(connection)
@@ -144,7 +144,7 @@ impl DatabaseOperation<MySql> for Migrator<MySql> {
         let (database_name,): (String,) = sqlx::query_as(current_database_query())
             .fetch_one(&mut *connection)
             .await?;
-        let lock_id = get_lock_id(&database_name, self.table_name());
+        let lock_id = get_lock_id(&database_name, &self.table_name());
         sqlx::query(unlock_database_query())
             .bind(lock_id)
             .execute(connection)
