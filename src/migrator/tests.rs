@@ -6,6 +6,38 @@ use crate::migration::{AppliedMigrationSqlRow, Migration};
 use crate::migrator::Plan;
 use crate::vec_box;
 
+#[test]
+fn table_name() {
+    assert!(Migrator::<Sqlite>::new().set_table_prefix("abc").is_ok());
+    assert!(Migrator::<Sqlite>::new().set_table_prefix("aBc").is_err());
+    assert!(Migrator::<Sqlite>::new().set_table_prefix("ab1").is_ok());
+    assert!(
+        Migrator::<Sqlite>::new()
+            .set_table_prefix("abc___123")
+            .is_ok()
+    );
+    assert!(Migrator::<Sqlite>::new().set_table_prefix("_123").is_ok());
+    assert!(
+        Migrator::<Sqlite>::new()
+            .set_table_prefix("1@_2_3")
+            .is_err()
+    );
+    assert!(Migrator::<Sqlite>::new().set_table_prefix("").is_err());
+}
+
+#[test]
+fn schema_name() {
+    assert!(Migrator::<Sqlite>::new().set_schema("abc").is_ok());
+    assert!(Migrator::<Sqlite>::new().set_schema("aBc").is_err());
+    assert!(Migrator::<Sqlite>::new().set_schema("1abc").is_err());
+    assert!(Migrator::<Sqlite>::new().set_schema("ab1").is_ok());
+    assert!(Migrator::<Sqlite>::new().set_schema("abc___123").is_ok());
+    assert!(Migrator::<Sqlite>::new().set_schema("_123").is_ok());
+    assert!(Migrator::<Sqlite>::new().set_schema("1@_2_3").is_err());
+    assert!(Migrator::<Sqlite>::new().set_schema("").is_err());
+    assert!(Migrator::<Sqlite>::new().set_schema("!").is_err());
+}
+
 #[derive(Default)]
 struct CustomMigrator {
     internal_migrator: Migrator<Sqlite>,

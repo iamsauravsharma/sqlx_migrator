@@ -1069,7 +1069,10 @@ impl<DB> Migrator<DB> {
     pub fn set_schema(mut self, schema: impl Into<String>) -> Result<Self, Error> {
         let schema_str = schema.into();
         if schema_str.is_empty()
-            || schema_str.chars().next().is_none()
+            || !schema_str
+                .chars()
+                .next()
+                .is_some_and(|c| char::is_ascii_lowercase(&c) || c == '_')
             || !schema_str
                 .chars()
                 .all(|c| char::is_ascii_lowercase(&c) || char::is_numeric(c) || c == '_')
