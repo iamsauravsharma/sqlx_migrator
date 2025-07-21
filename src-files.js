@@ -1,3 +1,2 @@
-var srcIndex = new Map(JSON.parse('[["sqlx_migrator",["",[["migrator",[],["any.rs","mod.rs","mysql.rs","postgres.rs","sqlite.rs"]]],["cli.rs","error.rs","lib.rs","macros.rs","migration.rs","operation.rs"]]]]'));
-createSrcSidebar();
-//{"start":36,"fragment_lengths":[170]}
+createSrcSidebar('[["sqlx_migrator",["",[["migrator",[],["any.rs","mod.rs","mysql.rs","postgres.rs","sqlite.rs"]]],["cli.rs","error.rs","lib.rs","macros.rs","migration.rs","operation.rs"]]]]');
+//{"start":19,"fragment_lengths":[170]}
