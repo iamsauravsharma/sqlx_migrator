@@ -223,11 +223,10 @@ impl Cli {
 
 To migrate from sqlx sql based migration to rust migration the recommended approach
 is to rewrite your SQL migrations as Rust operations and migrations as explained above.
-After rewriting your SQL migrations, you need to mark them as applied without re-executing them.
-This step ensures that the migration state aligns with the existing database.
-There are two ways to perform a fake apply:
+After rewriting your SQL migrations, need to ensure your existing migrations are properly recognized without being re-executed. This ensures that the migration state aligns with the existing database.
+This guide explains three methods to achieve this "fake apply" process.
 
-#### Programmatic Fake Apply
+### 1. Programmatic Fake Apply
 
 Use the fake option with the `Plan::apply_all()` function:
 ```rust
@@ -236,14 +235,28 @@ use sqlx_migrator::migrator::Plan;
 migrator.run(&mut *conn, Plan::apply_all().fake(true)).await.unwrap();
 ```
 
-#### CLI-Based Fake Apply
-If you're using a CLI, use the --fake flag with the apply command: `<migrator_cli_command> apply --fake`
+#### Important notes
+- Run this exactly once during your migration process
+- Remove the `fake(true)` option after the initial migration
+- Ensure no other migrations are pending when you execute this
 
-### Note: Before writing any other migrations
+### 2. CLI-Based Fake Apply
+If you're using a CLI, use the` --fake` flag with the apply command: `<migrator_cli_command> apply --fake`
 
-Before adding new migrations for future updates, ensure you complete the above steps to mark existing migrations as applied. Run the fake apply only once to align the migration state. After this, remove the `fake(true)` option or the `--fake` flag to allow new migrations to execute normally.
+#### Important notes
+- Run with `--fake` flag once to mark existing migrations
+- Best suited for environments where you have direct CLI access
 
-By following these steps, you can seamlessly transition from SQLX SQL-based migrations to Rust migrations while maintaining an accurate migration state and ensuring compatibility for future updates.
+### 3. Custom Fake Apply
+
+This method involves manually mapping your SQLx migrations to sqlx-migrator entries before running migrator normally. This can be performed as explained below and can be run multiple times where as above solution cannot be run multiple times
+
+#### Implementation guide
+ - Create a mapping between old and new migration names
+ - Query existing migrations from `_sqlx_migrations`
+ - Insert corresponding records into `_sqlx_migrator_migrations`
+ - Now perform migrations normally
+ - If you prefer remove this custom code after all instances have migrated
 
 [license_badge]: https://img.shields.io/github/license/iamsauravsharma/sqlx_migrator.svg?style=for-the-badge
 [license_link]: LICENSE
