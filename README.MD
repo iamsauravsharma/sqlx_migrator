@@ -219,44 +219,54 @@ impl Cli {
 }
 ```
 
-# Migrate from sqlx default sql based migration
+# Migrate from old migrator migration to `sqlx_migrator` migration
 
-To migrate from sqlx sql based migration to rust migration the recommended approach
-is to rewrite your SQL migrations as Rust operations and migrations as explained above.
-After rewriting your SQL migrations, need to ensure your existing migrations are properly recognized without being re-executed. This ensures that the migration state aligns with the existing database.
-This guide explains three methods to achieve this "fake apply" process.
+To transition from your old migration system to `sqlx_migrator`, follow these steps:
 
-### 1. Programmatic Fake Apply
+### 1. Create Corresponding Migrations
+For each migration in your old system, create an equivalent migration in `sqlx_migrator` format. This ensures all historical migrations are properly represented in the new system.
 
-Use the fake option with the `Plan::apply_all()` function:
+### 2. Implement the OldMigrator Trait
+The `OldMigrator` trait allows you to bridge between your old migration system and `sqlx_migrator`. Here's a implementation example for sqlx sql:
+
 ```rust
-use sqlx_migrator::migrator::Plan;
+use sqlx_migrator::sync::OldMigator;
+use sqlx::Database
 
-migrator.run(&mut *conn, Plan::apply_all().fake(true)).await.unwrap();
+struct SqlxMigrator;
+
+#[async_trait::async_trait]
+impl<DB, T> OldMigrator<DB> for SqlxMigrator
+    DB: Database,
+{
+    async fn applied_migrations(
+        &self,
+        connection: &mut <DB as Database>::Connection,
+    ) -> Result<Vec<Box<dyn Migration<DB>>>, Error> {
+        let old_migrations = sqlx::query!(
+            "SELECT version, description FROM _sqlx_migrations ORDER BY version"
+        )
+        .fetch_all(connection)
+        .await?;
+        let mut migrations = vec![];
+        // your custom logic here for example for sqlx you may use a migration name as combination of both version
+        // and description or only one between them it is your choice and sqlx migrator have no preference between them
+        Ok(migrations)
+    }
+}
 ```
 
-#### Important notes
-- Run this exactly once during your migration process
-- Remove the `fake(true)` option after the initial migration
-- Ensure no other migrations are pending when you execute this
+### 3. Run sync
+Before running your main migration code, execute the sync operation
 
-### 2. CLI-Based Fake Apply
-If you're using a CLI, use the` --fake` flag with the apply command: `<migrator_cli_command> apply --fake`
+```rust
+use sqlx_migrator::Synchronize;
 
-#### Important notes
-- Run with `--fake` flag once to mark existing migrations
-- Best suited for environments where you have direct CLI access
+let sqlx_sql_migrator = SqlxMigrator;
+migrator.sync(&mut *conn, &sqlx_sql_migrator).await?;
+```
 
-### 3. Custom Fake Apply
-
-This method involves manually mapping your SQLx migrations to sqlx-migrator entries before running migrator normally. This can be performed as explained below and can be run multiple times where as above solution cannot be run multiple times
-
-#### Implementation guide
- - Create a mapping between old and new migration names
- - Query existing migrations from `_sqlx_migrations`
- - Insert corresponding records into `_sqlx_migrator_migrations`
- - Now perform migrations normally
- - If you prefer remove this custom code after all instances have migrated
+You can also implement above functionality for other migrator such as `diesel`, `seaorm` etc as well as for renaming table name of `sqlx_migrator`
 
 [license_badge]: https://img.shields.io/github/license/iamsauravsharma/sqlx_migrator.svg?style=for-the-badge
 [license_link]: LICENSE
