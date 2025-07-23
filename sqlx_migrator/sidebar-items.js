@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"macro":["any_migration","migration","mysql_migration","postgres_migration","sqlite_migration","vec_box"],"mod":["cli","error","migration","migrator","operation"]};
+window.SIDEBAR_ITEMS = {"macro":["any_migration","migration","mysql_migration","postgres_migration","sqlite_migration","vec_box"],"mod":["cli","error","migration","migrator","operation","sync"]};
