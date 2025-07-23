@@ -5,7 +5,7 @@
 //!
 //! It also provides its own struct [`Migrator`] which supports
 //! [`Any`](sqlx::Any), [`Postgres`](sqlx::Postgres), [`Sqlite`](sqlx::Sqlite)
-//! and [`MySql`](sqlx::MySql) database
+//! and [`MySql`](sqlx::MySql) database when corresponding feature is enabled
 #![cfg_attr(
     feature = "postgres",
     doc = r#"
@@ -18,6 +18,7 @@ use sqlx::{Database, Pool, Postgres};
 use sqlx_migrator::error::Error;
 use sqlx_migrator::migration::{AppliedMigrationSqlRow, Migration};
 use sqlx_migrator::migrator::{DatabaseOperation, Info, Migrate};
+use sqlx_migrator::sync::Synchronize;
 
 #[derive(Default)]
 pub struct CustomMigrator {
@@ -132,6 +133,7 @@ impl DatabaseOperation<Postgres> for CustomMigrator {
     }
 }
 impl Migrate<Postgres> for CustomMigrator {}
+impl Synchronize<Postgres> for CustomMigrator {}
 ```
 "#
 )]

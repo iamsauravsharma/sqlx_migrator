@@ -218,6 +218,18 @@ impl AppliedMigrationSqlRow {
         self.id
     }
 
+    /// Return migration app name stored inside database
+    #[must_use]
+    pub fn app(&self) -> &str {
+        &self.app
+    }
+
+    /// Return migration name stored inside database
+    #[must_use]
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
     /// Return migration applied time
     #[must_use]
     pub fn applied_time(&self) -> &str {

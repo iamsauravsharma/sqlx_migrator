@@ -11,6 +11,7 @@ pub use crate::error::Error;
 pub use crate::migration::Migration;
 pub use crate::migrator::{Info, Migrate, Migrator, Plan};
 pub use crate::operation::Operation;
+pub use crate::sync::{OldMigrator, Synchronize};
 
 #[cfg(feature = "cli")]
 pub mod cli;
@@ -19,3 +20,4 @@ mod macros;
 pub mod migration;
 pub mod migrator;
 pub mod operation;
+pub mod sync;
