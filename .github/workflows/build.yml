@@ -37,9 +37,9 @@ jobs:
           toolchain: ${{ matrix.rust-version }}
           components: rustfmt, clippy
       - name: Install cargo make
-        uses: davidB/rust-cargo-make@v1.10.0
+        uses: davidB/rust-cargo-make@v1
       - name: Create env file
-        uses: iamsauravsharma/create-dotenv@v3.0.0
+        uses: iamsauravsharma/create-dotenv@v3.2.0
         with:
           input-prefix: "MAKE_"
       - name: Run tests
