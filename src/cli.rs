@@ -21,7 +21,7 @@
 //!     Migrator(sqlx_migrator::cli::MigrationCommand),
 //! }
 //! ```
-use std::io::Write;
+use std::io::Write as _;
 
 use clap::{Parser, Subcommand};
 use sqlx::Database;

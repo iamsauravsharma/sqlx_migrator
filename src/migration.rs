@@ -209,9 +209,7 @@ impl AppliedMigrationSqlRow {
             applied_time: String::new(),
         }
     }
-}
 
-impl AppliedMigrationSqlRow {
     /// Return id value present on database
     #[must_use]
     pub fn id(&self) -> i32 {

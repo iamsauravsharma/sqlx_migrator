@@ -51,11 +51,32 @@ all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
 
 [lints.rust]
+ambiguous_negative_literals = "warn"
+elided_lifetimes_in_paths = "warn"
+meta_variable_misuse = "warn"
 missing_docs = "warn"
+redundant_imports = "warn"
 unreachable_pub = "warn"
-unused_crate_dependencies = "warn"
 unsafe_code = "deny"
+unstable_features = "deny"
+unused_lifetimes = "warn"
+unused_macro_rules = "warn"
+unused_qualifications = "warn"
+unused_crate_dependencies = "warn"
 
 [lints.clippy]
-all = "deny"
+allow_attributes = "warn"
+dbg_macro = "warn"
+exhaustive_enums = "warn"
+infinite_loop = "warn"
+multiple_inherent_impl = "warn"
+panic = "warn"
+redundant_test_prefix = "warn"
+tests_outside_test_module = "warn"
+todo = "warn"
+unimplemented = "warn"
+unreachable = "warn"
+unused_trait_names = "warn"
+use_debug = "warn"
+all = { level = "deny", priority = -1 }
 pedantic = "warn"

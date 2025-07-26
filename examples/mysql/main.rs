@@ -2,7 +2,7 @@
 //! Example crate for mysql
 use sqlx::MySql;
 use sqlx_migrator::cli::MigrationCommand;
-use sqlx_migrator::migrator::{Info, Migrator};
+use sqlx_migrator::migrator::{Info as _, Migrator};
 
 mod migrations;
 

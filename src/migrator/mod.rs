@@ -140,7 +140,7 @@ impl Synchronize<Postgres> for CustomMigrator {}
 
 use std::collections::HashMap;
 
-use sqlx::{Connection, Database};
+use sqlx::{Connection as _, Database};
 
 use crate::error::Error;
 use crate::migration::{AppliedMigrationSqlRow, Migration};
@@ -165,7 +165,8 @@ mod sqlite;
 mod postgres;
 
 /// Module for testing
-#[cfg(all(test, feature = "sqlite"))]
+#[cfg(feature = "sqlite")]
+#[cfg(test)]
 mod tests;
 
 type BoxMigration<DB> = Box<dyn Migration<DB>>;
@@ -496,7 +497,7 @@ fn get_run_before_recursive<DB>(
 // to provided plan. We should not check replaces migration since it is already
 // handled and all replaces migration are removed as required
 fn only_related_migration<DB>(
-    migration_list: &mut MigrationVec<DB>,
+    migration_list: &mut MigrationVec<'_, DB>,
     with_list: Vec<&BoxMigration<DB>>,
     plan_type: &PlanType,
     original_migration: &[BoxMigration<DB>],
@@ -542,8 +543,8 @@ fn only_related_migration<DB>(
 
 /// Process plan to provided migrations list
 fn process_plan<DB>(
-    migration_list: &mut MigrationVec<DB>,
-    applied_migrations: &MigrationVec<DB>,
+    migration_list: &mut MigrationVec<'_, DB>,
+    applied_migrations: &MigrationVec<'_, DB>,
     plan: &Plan,
     original_migration: &[BoxMigration<DB>],
 ) -> Result<(), Error>
@@ -655,7 +656,7 @@ where
         &self,
         connection: &mut <DB as Database>::Connection,
         plan: Option<&Plan>,
-    ) -> MigrationVecResult<DB> {
+    ) -> MigrationVecResult<'_, DB> {
         if self.migrations().is_empty() {
             return Err(Error::PlanError {
                 message: "no migration are added to migration list".to_string(),

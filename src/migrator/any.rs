@@ -5,7 +5,7 @@ use sqlx::Postgres;
 #[cfg(feature = "sqlite")]
 use sqlx::Sqlite;
 use sqlx::any::AnyArguments;
-use sqlx::{Any, Arguments, Database};
+use sqlx::{Any, Arguments as _, Database};
 
 #[cfg(feature = "mysql")]
 use super::mysql;
