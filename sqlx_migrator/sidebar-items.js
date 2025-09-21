@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"macro":["any_migration","migration","mysql_migration","postgres_migration","sqlite_migration","vec_box"],"mod":["cli","error","migration","migrator","operation","sync"]};
+window.SIDEBAR_ITEMS = {"enum":["Error"],"macro":["any_migration","migration","mysql_migration","postgres_migration","sqlite_migration","vec_box"],"mod":["cli","error","migration","migrator","operation","sync"],"struct":["MigrationCommand","Migrator","Plan"],"trait":["Info","Migrate","Migration","OldMigrator","Operation","Synchronize"]};
