@@ -21,6 +21,7 @@
 //!     Migrator(sqlx_migrator::cli::MigrationCommand),
 //! }
 //! ```
+#![expect(clippy::print_stdout, reason = "allow printing to stdout in cli")]
 use std::io::Write as _;
 
 use clap::{Parser, Subcommand};

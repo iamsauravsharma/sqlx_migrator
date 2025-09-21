@@ -6,11 +6,17 @@
 //! and visit [`Operation`], [`Migration`] and [`Migrator`]
 
 #[cfg(feature = "cli")]
+#[doc(inline)]
 pub use crate::cli::MigrationCommand;
+#[doc(inline)]
 pub use crate::error::Error;
+#[doc(inline)]
 pub use crate::migration::Migration;
+#[doc(inline)]
 pub use crate::migrator::{Info, Migrate, Migrator, Plan};
+#[doc(inline)]
 pub use crate::operation::Operation;
+#[doc(inline)]
 pub use crate::sync::{OldMigrator, Synchronize};
 
 #[cfg(feature = "cli")]

@@ -149,7 +149,7 @@ macro_rules! migration {
             }
 
             fn operations(&self) -> Vec<Box<dyn crate::operation::Operation<sqlx::Sqlite>>> {
-                vec![]
+                vec_box![("", "")]
             }
 
             fn replaces(&self) -> Vec<Box<dyn crate::migration::Migration<sqlx::Sqlite>>> {
