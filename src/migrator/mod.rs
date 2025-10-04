@@ -302,7 +302,7 @@ pub trait Info<DB> {
     /// its parents, run before, replaces and is atomic differ and do not have
     /// same number of operation
     fn add_migration(&mut self, migration: BoxMigration<DB>) -> Result<(), Error> {
-        // only check old value if provided migration for adding is not virtual
+        // if migration is virtual than it should not have any other field present
         if migration.is_virtual() {
             if !migration.parents().is_empty()
                 || !migration.operations().is_empty()
@@ -317,13 +317,16 @@ pub trait Info<DB> {
             .enumerate()
             .find(|(_, elem)| elem == &&migration)
         {
-            // if virtual migration is present in list with same app and name than remove
-            // virtual migration from list first
+            // if found migration is virtual than it can be replaced with current
+            // migration
             if found_migration.is_virtual() {
                 self.migrations_mut().remove(migration_index);
             }
-            // if found migrations value are not consistent to current provided migration then
-            // raise error only raise error when found migration is not virtual
+            // if migration is already present than check if its value is consistent or
+            // not. Consistent means its parents, run before, replaces and is atomic
+            // should be same and number of operations should be same since operation
+            // cannot be compared directly we only check if number of operation is same or
+            // not
             else if found_migration.parents() != migration.parents()
                 || found_migration.operations().len() != migration.operations().len()
                 || found_migration.replaces() != migration.replaces()
@@ -337,11 +340,12 @@ pub trait Info<DB> {
             }
         }
 
-        // check if migration is already added or not and only do operation if migration
-        // is not added till now
+        // only add migration if it is not already present
         if !self.migrations().contains(&migration) {
-            // ignore parents, replaces and run before for virtual migration only add
-            // migration only. If virtual migration provides those value than it is ignored
+            // if migration is not virtual than we need to add its parents, replaces
+            // and run before migration as well. For virtual migration we do not need to
+            // add its parents, replaces and run before migration since it is just a
+            // reference to another migration
             if migration.is_virtual() {
                 self.migrations_mut().push(migration);
             } else {
@@ -419,6 +423,7 @@ where
     async fn unlock(&self, connection: &mut <DB as Database>::Connection) -> Result<(), Error>;
 }
 
+/// populate replace hash map recursively
 fn populate_replace_recursive<'populate, DB>(
     replace_hash_map: &mut HashMap<&'populate BoxMigration<DB>, Vec<&'populate BoxMigration<DB>>>,
     key: &'populate BoxMigration<DB>,
@@ -442,6 +447,7 @@ fn populate_replace_recursive<'populate, DB>(
     Ok(())
 }
 
+/// get all parents of migration recursively
 fn get_parent_recursive<DB>(
     migration: &BoxMigration<DB>,
     original_migration: &[BoxMigration<DB>],
@@ -467,6 +473,7 @@ fn get_parent_recursive<DB>(
     Ok(parents)
 }
 
+/// get run before migration recursively for a migration
 fn get_run_before_recursive<DB>(
     migration: &BoxMigration<DB>,
     original_migration: &[BoxMigration<DB>],
@@ -492,10 +499,17 @@ fn get_run_before_recursive<DB>(
     Ok(run_before_list)
 }
 
-// filter migration list to only contains migrations which is related to with
-// list migration, removes all migrations which is not related to them according
-// to provided plan. We should not check replaces migration since it is already
-// handled and all replaces migration are removed as required
+/// Filter migration list to only contain related migration to with list
+/// migrations according to plan type. Related migration are
+/// 1. For apply plan type
+///     - Parents of with list migration
+///     - Migrations which have with list migration in their run before list
+/// 2. For revert plan type
+///     - Migrations which have with list migration in their parents list
+///     - Run before of with list migration
+///
+/// Note: This function assumes replaces relationship is already handled
+/// before calling this function
 fn only_related_migration<DB>(
     migration_list: &mut MigrationVec<'_, DB>,
     with_list: Vec<&BoxMigration<DB>>,
@@ -624,13 +638,14 @@ where
     Ok(())
 }
 
-fn get_recursive<'get, DB>(
+// get all replaces migration recursively for a migration
+fn get_recursive_replaces<'get, DB>(
     hash_map: &'get HashMap<BoxMigration<DB>, &'get BoxMigration<DB>>,
     val: &'get BoxMigration<DB>,
 ) -> Vec<&'get BoxMigration<DB>> {
     let mut recursive_vec = vec![val];
     if let Some(&parent) = hash_map.get(val) {
-        recursive_vec.extend(get_recursive(hash_map, parent));
+        recursive_vec.extend(get_recursive_replaces(hash_map, parent));
     }
     recursive_vec
 }
@@ -662,6 +677,9 @@ where
                 message: "no migration are added to migration list".to_string(),
             });
         }
+        // if there is any virtual migration which is not replaced than return
+        // error since virtual migration should only be used for replacing
+        // another migration
         if self
             .migrations()
             .iter()
@@ -674,8 +692,9 @@ where
 
         tracing::debug!("generating {:?} migration plan", plan);
 
-        // Hashmap which contains key as migration and value is migration which replaces
-        // this migration. One migration can only have one parent
+        // hashmap which contains key as child migration and value is parent
+        // migration which replaces this child migration. One migration can
+        // only have one parent
         let mut replaces_child_parent_hash_map = HashMap::new();
 
         for parent_migration in self.migrations() {
@@ -692,10 +711,13 @@ where
             }
         }
 
-        // Hashmap which contains all children of migration generated from replace list
+        // Hashmap which contains key as migration and value is vector of migration
+        // which are children of this migration due to replace. One migration can
+        // have multiple children
         let mut replace_children = HashMap::<_, Vec<_>>::new();
-        // in first loop add initial parent and child from parent due to replace
+        // in first loop add direct children of parent due to replace
         for (child, &parent) in &replaces_child_parent_hash_map {
+            // if child is virtual than we need to find non virtual migration
             let children_migration = if child.is_virtual() {
                 self.migrations()
                     .iter()
@@ -712,7 +734,7 @@ where
                 .or_default()
                 .push(children_migration);
         }
-        // in second loop through recursive add all descendants
+        // in second loop add recursive children of parent due to replace
         for (child, &parent) in &replaces_child_parent_hash_map {
             let children_migration = if child.is_virtual() {
                 self.migrations()
@@ -727,8 +749,9 @@ where
             };
             populate_replace_recursive(&mut replace_children, parent, children_migration)?;
         }
-        // Hashmap which contains key as migration and value as list of migration
-        // which becomes parent for key due to value having key as run before value
+        // Hashmap which contains key as migration and value is vector of migration
+        // which should run before this migration. One migration can have
+        // multiple run before migration
         let mut run_before_child_parent_hash_map = HashMap::<_, Vec<_>>::new();
 
         for parent_migration in self.migrations() {
@@ -742,12 +765,19 @@ where
 
         let mut migration_list = Vec::new();
 
-        // Create migration list until migration list length is equal to original vec
-        // length
+        // keep looping until all migration are added to migration list. In each loop
+        // check if any migration can be added to migration list or not. A migration
+        // can be added if all its parents are already added to migration list
         let original_migration_length = self.migrations().len();
         while migration_list.len() != original_migration_length {
             let loop_initial_migration_list_length = migration_list.len();
             for migration in self.migrations() {
+                // check if all parents and run before migration are already added to
+                // migration list and if it replaces any migration than that migration
+                // should be added to migration list as well before adding this migration
+                // to migration list. Also if this migration have children due to replace
+                // than their parents and run before should be added to migration list
+                // before adding this migration to migration list
                 let all_required_added = !migration_list.contains(&migration)
                     && migration
                         .parents()
@@ -762,9 +792,8 @@ where
                         .get(migration)
                         .is_none_or(|replace_migration| migration_list.contains(replace_migration))
                     && replace_children.get(migration).is_none_or(|children| {
-                        // check if children parents and run before are added or not already before
-                        // adding replace migration. Since replace migration may not depend on
-                        // children parent its need to be added first
+                        // if children are present than their parents and run before should be
+                        // added to migration list before adding replace migration
                         children.iter().all(|&child| {
                             child
                                 .parents()
@@ -785,10 +814,8 @@ where
                 }
             }
 
-            // If old migration plan length is equal to current length than no new migration
-            // was added. Next loop also will not add migration so return error. This case
-            // can arise due to looping in migration plan i.e If there is two migration A
-            // and B, than when B is ancestor of A as well as descendants of A
+            // if no migration is added in this loop than it means there is a deadlock
+            // and we cannot proceed further
             if loop_initial_migration_list_length == migration_list.len() {
                 return Err(Error::PlanError {
                     message: "reached deadlock stage during plan generation".to_string(),
@@ -796,18 +823,14 @@ where
             }
         }
 
-        // if there is only plan than further process. In further process replaces
-        // migrations are also handled for removing conflicting migrations where certain
-        // migrations replaces certain other migrations. While initially creating
-        // migrations both new and replaced migration are present
+        // if plan is provided than modify migration list according to plan else
+        // return all migration in order of apply
         if let Some(some_plan) = plan {
             self.ensure_migration_table_exists(connection).await?;
 
+            // fetch applied migration from database
             let applied_migration_sql_rows =
                 self.fetch_applied_migration_from_db(connection).await?;
-
-            // convert applied migration sql rows to vector of migration implemented
-            // objects
             let mut applied_migrations = Vec::new();
             for migration in self.migrations() {
                 if applied_migration_sql_rows
@@ -818,9 +841,8 @@ where
                 }
             }
 
-            // Check if any of parents of certain applied migrations are applied or not. If
-            // any parents are not applied for applied migration than raises
-            // error also takes consideration of replace migration
+            // Check if any child migration is applied before its parent migration
+            // according to parents and run before field. If yes than return error
             for &migration in &applied_migrations {
                 let mut parents = vec![];
                 if let Some(run_before_list) = run_before_child_parent_hash_map.get(migration) {
@@ -833,7 +855,8 @@ where
                     parents.push(parent);
                 }
                 for parent in parents {
-                    let recursive_vec = get_recursive(&replaces_child_parent_hash_map, parent);
+                    let recursive_vec =
+                        get_recursive_replaces(&replaces_child_parent_hash_map, parent);
                     if !applied_migrations
                         .iter()
                         .any(|applied| recursive_vec.contains(applied))
@@ -852,19 +875,23 @@ where
                 }
             }
 
-            // Remove migration from migration list according to replaces vector
+            // Check if any migration and its replaces are applied together or not
+            // If yes than return error
             for migration in migration_list.clone() {
-                // Only need to check case when migration have children
+                // Check if this migration have any children due to replace
                 if let Some(children) = replace_children.get(&migration) {
-                    // Check if any replaces children are applied or not
+                    // Check if any one of replaced migration is applied or not
                     let replaces_applied = children
                         .iter()
                         .any(|&replace_migration| applied_migrations.contains(&replace_migration));
 
-                    // If any one of replaced migrations is applied than do not add current
-                    // migration to migration plan else add only current migration to migration plan
+                    // If replaces migration is applied than we cannot apply this migration
+                    // If replaces migration is not applied than we can remove all replaced
+                    // migration from migration list since this migration will apply in
+                    // place of them
                     if replaces_applied {
-                        // Error if current migration as well as replace migration both are applied
+                        // Errors out if this migration is also applied since both
+                        // migration and its replaces cannot be applied together
                         if applied_migrations.contains(&migration) {
                             return Err(Error::PlanError {
                                 message: format!(
@@ -876,9 +903,8 @@ where
                         }
                         migration_list.retain(|&plan_migration| migration != plan_migration);
                     } else {
-                        // we can remove all children migrations here since migrations which
-                        // replaced them will be above them in generation list so migration will
-                        // apply in provided order
+                        // remove all replaced migration from migration list since this
+                        // migration will apply in place of them
                         for replaced_migration in children {
                             migration_list
                                 .retain(|plan_migration| replaced_migration != plan_migration);
@@ -909,8 +935,8 @@ where
     ) -> Result<(), Error> {
         tracing::debug!("running plan {:?}", plan);
         self.lock(connection).await?;
-        // do not return result of migrations early from run function hold it till lock
-        // is unlocked
+        // store result of applying migration so that we can unlock lock before
+        // returning result
         let result = async {
             for migration in self.generate_migration_plan(connection, Some(plan)).await? {
                 match plan.plan_type {

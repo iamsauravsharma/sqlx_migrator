@@ -13,8 +13,7 @@ pub trait OldMigrator<DB>: Send + Sync
 where
     DB: Database,
 {
-    /// Get a list of applied migration from old migrator which can be
-    /// represented by `sqlx_migrator` migrator
+    /// Returns a list of applied migrations from the old migrator
     async fn applied_migrations(
         &self,
         connection: &mut <DB as Database>::Connection,
@@ -42,15 +41,15 @@ where
     }
 }
 
-/// Trait which is implemented by a migrator which supports synchronization from
-/// old migrator to new migrator
+/// Trait which is implemented for syncing a migration from old migrator to new
+/// migrator for a specific database
 #[async_trait::async_trait]
 pub trait Synchronize<DB>: Info<DB> + DatabaseOperation<DB>
 where
     DB: Database,
 {
-    /// Synchronizes migrations from an older migration system to the sqlx
-    /// migrator.
+    /// Syncs the applied migrations from an old migrator to the current
+    /// migrator
     ///
     /// This function serves two primary purposes:
     /// 1. Migrating from external migrations to`sqlx_migrator` migration
@@ -71,6 +70,7 @@ where
     {
         tracing::debug!("syncing old migrator");
         self.lock(connection).await?;
+        // Use a block to ensure the lock is released before returning
         let result = async {
             let old_migrator_applied_migrations =
                 old_migrator.applied_migrations(connection).await?;
@@ -78,9 +78,8 @@ where
                 self.fetch_applied_migration_from_db(connection).await?;
             let full_migration_list = self.migrations();
             for migration in old_migrator_applied_migrations {
-                // if migration list contains old migrator migration as well as old migrator
-                // migration is not applied than add migration to database table without
-                // performing any up and down operation
+                // Only add migration if it exists in the full migration list
+                // and has not already been applied in the new migrator
                 if full_migration_list.contains(&migration)
                     && !already_applied_migration
                         .iter()

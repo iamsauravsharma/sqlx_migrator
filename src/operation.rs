@@ -44,33 +44,30 @@ use sqlx::Database;
 
 use crate::error::Error;
 
-/// Trait for defining a database operation.
+/// Trait representing a database migration operation.
 ///
-/// An Operation represents action that can be applied to or reverted from a
-/// database during a migration. Each operation can have an up method for
-/// applying the change and an optional down method for rolling it back.
-///
-/// Operations can also specify whether they are destructible meaning that they
-/// require user confirmation before being applied, due to potential data loss
-/// or irreversible changes
+/// Operations are the building blocks of a migration, defining the specific
+/// changes to be made to the database schema or data. Each operation must
+/// implement the `up` method to apply the operation, and can optionally
+/// implement the `down` method to reverse the operation.
 #[async_trait::async_trait]
 pub trait Operation<DB>: Send + Sync
 where
     DB: Database,
 {
-    /// The up method executes the operation when applying the migration.
+    /// The up method applies the operation to the database.
     ///
     /// This method is called when the migration is being applied to the
     /// database. Implement this method to define the changes you want to
     /// apply.
     async fn up(&self, connection: &mut <DB as Database>::Connection) -> Result<(), Error>;
 
-    /// The down method reverses the operation when rolling back the
-    /// migration.
+    /// The down method reverts the operation, if possible.
     ///
-    /// This method is called when the migration is being rolled back. Implement
-    /// this method if you want to make the operation reversible. If not
-    /// implemented, the operation is considered irreversible.
+    /// Down operations are optional and may not be implemented for all. If
+    /// not implemented, the operation is considered irreversible. If you want
+    /// to make an operation reversible, implement this method to define how
+    /// to revert the changes made in the `up` method.
     async fn down(&self, connection: &mut <DB as Database>::Connection) -> Result<(), Error> {
         let _connection = connection;
         return Err(Error::IrreversibleOperation);

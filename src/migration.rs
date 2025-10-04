@@ -57,19 +57,19 @@ use std::hash::Hash;
 
 use crate::operation::Operation;
 
-/// Trait for defining database migration
+/// Trait representing a database migration.
 ///
-/// A migration represents a set of operations that can be applied to or
-/// reverted from a database. Each migration has an associated application name,
-/// migration name, and may depend on other migrations.
-///
-/// Migrations can also replace existing migrations, enforce ordering with
-/// run before and parents, and control atomicity and virtualization.
+/// A migration consists of a series of operations that modify the database
+/// schema or data. Each migration is uniquely identified by its application
+/// name and migration name. It can also have dependencies on other migrations
+/// through parents, replacements, and run-before relationships.
 ///
 /// Migration trait is implemented for `(A,N) where A: AsRef<str>, N:
 /// AsRef<str>` where A is the app name and N is the name of the migration. You
-/// can use migration in this form in `parents`, `replaces` and `run_before` if
-/// you cannot reference migration or create migration easily
+/// can use this to create a virtual migration which can be used to represent a
+/// migration which is not present in the codebase but is present in the
+/// database. This is useful when you want to represent a migration which is
+/// applied outside the codebase and cannot be imported in the codebase.
 pub trait Migration<DB>: Send + Sync {
     /// Returns the application name associated with the migration.
     /// This can be the name of the folder or library where the migration is
@@ -82,20 +82,20 @@ pub trait Migration<DB>: Send + Sync {
     /// Returns the migration name, typically the file name without the
     /// extension.
     ///
-    /// This value, together with the application name, is used to uniquely
-    /// identify a migration and determine equality between migrations.
+    /// This value, together with the application name, uniquely identifies a
+    /// migration.
     fn name(&self) -> &str;
 
-    /// Returns the list of parent migrations.
+    /// Returns the list of parent migrations that must be applied before this
+    /// migration can be applied.
     ///
-    /// Parent migrations must be applied before this migration can be applied.
-    /// If no parent migrations are required, return an empty vector.
+    /// This can be useful for defining dependencies between migrations.
     fn parents(&self) -> Vec<Box<dyn Migration<DB>>>;
 
-    /// Returns the operations associated with this migration.
+    /// Returns the list of operations that make up the migration.
     ///
-    /// A migration can include multiple operations (e.g., create, drop) that
-    /// are related.
+    /// These operations will be executed when the migration is applied or
+    /// reverted.
     fn operations(&self) -> Vec<Box<dyn Operation<DB>>>;
 
     /// Returns the list of migrations that this migration replaces.
@@ -109,8 +109,9 @@ pub trait Migration<DB>: Send + Sync {
         vec![]
     }
 
-    /// Returns the list of migrations that this migration must run before(when
-    /// applying) or after (when reverting).
+    /// Returns the list of migrations that should be run before this migration
+    /// when applying. but when reverting this migration these migrations
+    /// should be reverted after this migration is reverted.
     ///
     /// This can be useful when a migration from another library needs to be
     /// applied after this migration or reverted before this migration.

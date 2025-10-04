@@ -159,7 +159,7 @@ async fn main() {
     let pool = sqlx::Pool::<Postgres>::connect(&uri).await.unwrap();
     let mut migrator = Migrator::default();
     // Adding migration can fail if another migration with same app and name and different values gets added
-    // Adding migrations add its parents, replaces and not before as well
+    // Adding migrations add its parents, replaces and run before as well
     migrator.add_migration(Box::new(FirstMigration)).unwrap();
 }
 ```
@@ -202,7 +202,6 @@ struct Cli {
 
 #[derive(clap::Subcommand)]
 enum CliSubcommand {
-    #[command()]
     Migrator(sqlx_migrator::cli::MigrationCommand)
 }
 
@@ -249,8 +248,10 @@ impl<DB, T> OldMigrator<DB> for SqlxMigrator
         .fetch_all(connection)
         .await?;
         let mut migrations = vec![];
-        // your custom logic here for example for sqlx you may use a migration name as combination of both version
-        // and description or only one between them it is your choice and sqlx migrator have no preference between them
+        // your custom logic here to map from old migrator to new migration
+        // for example for sqlx you may use a migration name as combination of both version
+        // and description or only one between them it is your choice
+        // and sqlx migrator have no preference between them
         Ok(migrations)
     }
 }

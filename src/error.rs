@@ -25,14 +25,14 @@ pub enum Error {
     IrreversibleOperation,
     /// Error for pending migration present
     #[cfg(feature = "cli")]
-    #[error("pending migration present")]
+    #[error("pending migrations exists. Apply all using migrate subcommand")]
     PendingMigrationPresent,
     /// Error when applied migrations exists
     #[cfg(feature = "cli")]
     #[error("applied migrations exists. Revert all using revert subcommand")]
     AppliedMigrationExists,
     /// Error when unsupported database is used as any database
-    #[error("database not supported")]
+    #[error("unsupported database")]
     UnsupportedDatabase,
     /// Error when table prefix is invalid
     #[error("table prefix name can only contain [a-z0-9_]")]
@@ -42,7 +42,7 @@ pub enum Error {
     InvalidSchema,
     /// Error raised when two migration with same name are added and there value
     /// is not consistent
-    #[error("migration for app: {app} with name: {name} consists of inconsistent values")]
+    #[error("inconsistent migration found for {app} - {name}")]
     InconsistentMigration {
         /// Migration application name
         app: String,

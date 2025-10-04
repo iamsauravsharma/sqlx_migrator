@@ -75,18 +75,14 @@ impl MigrationCommand {
 #[derive(Subcommand, Debug)]
 enum SubCommand {
     /// Apply migrations
-    #[command()]
     Apply(Apply),
     /// Drop migration information table. Needs all migrations to be
     /// reverted else raises error
-    #[command()]
     Drop,
     /// List migrations along with their status and time applied if migrations
     /// is already applied
-    #[command()]
     List,
     /// Revert migrations
-    #[command()]
     Revert(Revert),
 }
 
