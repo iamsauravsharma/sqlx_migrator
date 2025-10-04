@@ -222,7 +222,7 @@ async fn same_name_used_multiple_time() {
     let plan = generate_apply_all_plan(&mut migrator, vec_box!(A, B, C, D)).await;
     assert_eq!(
         plan.err().map(|e| e.to_string()),
-        Some("migration for app: test with name: b consists of inconsistent values".to_string())
+        Some("inconsistent migration found for test - b".to_string())
     );
 }
 
