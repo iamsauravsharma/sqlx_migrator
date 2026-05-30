@@ -57,7 +57,7 @@ impl DatabaseOperation<Any> for Migrator<Any> {
             <MySql as Database>::NAME => mysql::create_migrator_table_query(&self.table_name()),
             _ => return Err(Error::UnsupportedDatabase),
         };
-        sqlx::query(&sql_query).execute(connection).await?;
+        sqlx::query(sql_query).execute(connection).await?;
         Ok(())
     }
 
@@ -74,7 +74,7 @@ impl DatabaseOperation<Any> for Migrator<Any> {
             <MySql as Database>::NAME => mysql::drop_table_query(&self.table_name()),
             _ => return Err(Error::UnsupportedDatabase),
         };
-        sqlx::query(&sql_query).execute(connection).await?;
+        sqlx::query(sql_query).execute(connection).await?;
         Ok(())
     }
 
@@ -92,7 +92,7 @@ impl DatabaseOperation<Any> for Migrator<Any> {
             <MySql as Database>::NAME => mysql::add_migration_query(&self.table_name()),
             _ => return Err(Error::UnsupportedDatabase),
         };
-        sqlx::query(&sql_query)
+        sqlx::query(sql_query)
             .bind(migration.app())
             .bind(migration.name())
             .execute(connection)
@@ -114,7 +114,7 @@ impl DatabaseOperation<Any> for Migrator<Any> {
             <MySql as Database>::NAME => mysql::delete_migration_query(&self.table_name()),
             _ => return Err(Error::UnsupportedDatabase),
         };
-        sqlx::query(&sql_query)
+        sqlx::query(sql_query)
             .bind(migration.app())
             .bind(migration.name())
             .execute(connection)
@@ -136,7 +136,7 @@ impl DatabaseOperation<Any> for Migrator<Any> {
             <MySql as Database>::NAME => mysql::fetch_rows_query(&self.table_name()),
             _ => return Err(Error::UnsupportedDatabase),
         };
-        Ok(sqlx::query_as::<_, AppliedMigrationSqlRow>(&query)
+        Ok(sqlx::query_as::<_, AppliedMigrationSqlRow>(query)
             .fetch_all(connection)
             .await?)
     }

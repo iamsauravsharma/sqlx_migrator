@@ -40,7 +40,7 @@ impl Operation<Sqlite> for ExampleOperation {
 "
 )]
 
-use sqlx::Database;
+use sqlx::{AssertSqlSafe, Database};
 
 use crate::error::Error;
 
@@ -91,11 +91,12 @@ where
     DB: Database,
     U: AsRef<str> + Send + Sync,
     D: AsRef<str> + Send + Sync,
+    <DB as Database>::Arguments: sqlx::IntoArguments<DB>,
     for<'c> &'c mut <DB as Database>::Connection: sqlx::Executor<'c, Database = DB>,
-    for<'q> <DB as Database>::Arguments<'q>: sqlx::IntoArguments<'q, DB>,
 {
     async fn up(&self, connection: &mut <DB as Database>::Connection) -> Result<(), Error> {
-        sqlx::query(self.0.as_ref())
+        let query = self.0.as_ref().to_string();
+        sqlx::query(AssertSqlSafe(query))
             .execute(connection)
             .await
             .map_err(Error::from)?;
@@ -103,7 +104,8 @@ where
     }
 
     async fn down(&self, connection: &mut <DB as Database>::Connection) -> Result<(), Error> {
-        sqlx::query(self.1.as_ref())
+        let query = self.1.as_ref().to_string();
+        sqlx::query(AssertSqlSafe(query))
             .execute(connection)
             .await
             .map_err(Error::from)?;
