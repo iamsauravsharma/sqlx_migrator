@@ -705,7 +705,7 @@ where
                     .is_some()
                 {
                     return Err(Error::PlanError {
-                        message: format!("migration {child_name} replaced multiple times",),
+                        message: format!("migration {child_name} replaced multiple times"),
                     });
                 }
             }

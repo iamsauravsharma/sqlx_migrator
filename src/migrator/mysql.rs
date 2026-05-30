@@ -1,4 +1,4 @@
-use sqlx::{Database, MySql};
+use sqlx::{AssertSqlSafe, Database, MySql};
 
 use super::{DatabaseOperation, Migrator};
 use crate::error::Error;
@@ -6,8 +6,8 @@ use crate::migration::{AppliedMigrationSqlRow, Migration};
 
 /// create migrator table query
 #[must_use]
-pub(crate) fn create_migrator_table_query(table_name: &str) -> String {
-    format!(
+pub(crate) fn create_migrator_table_query(table_name: &str) -> AssertSqlSafe<String> {
+    AssertSqlSafe(format!(
         "CREATE TABLE IF NOT EXISTS {table_name} (
         id INT PRIMARY KEY NOT NULL AUTO_INCREMENT,
         app VARCHAR(384) NOT NULL,
@@ -15,33 +15,35 @@ pub(crate) fn create_migrator_table_query(table_name: &str) -> String {
         applied_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
         UNIQUE (app, name)
     )"
-    )
+    ))
 }
 
 /// Drop table query
 #[must_use]
-pub(crate) fn drop_table_query(table_name: &str) -> String {
-    format!("DROP TABLE IF EXISTS {table_name}")
+pub(crate) fn drop_table_query(table_name: &str) -> AssertSqlSafe<String> {
+    AssertSqlSafe(format!("DROP TABLE IF EXISTS {table_name}"))
 }
 
 /// fetch rows
-pub(crate) fn fetch_rows_query(table_name: &str) -> String {
-    format!(
+pub(crate) fn fetch_rows_query(table_name: &str) -> AssertSqlSafe<String> {
+    AssertSqlSafe(format!(
         "SELECT id, app, name, DATE_FORMAT(applied_time, '%Y-%m-%d %H:%i:%s') AS applied_time \
          FROM {table_name}"
-    )
+    ))
 }
 
 /// add migration query
 #[must_use]
-pub(crate) fn add_migration_query(table_name: &str) -> String {
-    format!("INSERT INTO {table_name}(app, name) VALUES (?, ?)")
+pub(crate) fn add_migration_query(table_name: &str) -> AssertSqlSafe<String> {
+    AssertSqlSafe(format!("INSERT INTO {table_name}(app, name) VALUES (?, ?)"))
 }
 
 /// delete migration query
 #[must_use]
-pub(crate) fn delete_migration_query(table_name: &str) -> String {
-    format!("DELETE FROM {table_name} WHERE app = ? AND name = ?")
+pub(crate) fn delete_migration_query(table_name: &str) -> AssertSqlSafe<String> {
+    AssertSqlSafe(format!(
+        "DELETE FROM {table_name} WHERE app = ? AND name = ?"
+    ))
 }
 
 /// get current database query
@@ -75,7 +77,7 @@ impl DatabaseOperation<MySql> for Migrator<MySql> {
         &self,
         connection: &mut <MySql as Database>::Connection,
     ) -> Result<(), Error> {
-        sqlx::query(&create_migrator_table_query(&self.table_name()))
+        sqlx::query(create_migrator_table_query(&self.table_name()))
             .execute(connection)
             .await?;
         Ok(())
@@ -85,7 +87,7 @@ impl DatabaseOperation<MySql> for Migrator<MySql> {
         &self,
         connection: &mut <MySql as Database>::Connection,
     ) -> Result<(), Error> {
-        sqlx::query(&drop_table_query(&self.table_name()))
+        sqlx::query(drop_table_query(&self.table_name()))
             .execute(connection)
             .await?;
         Ok(())
@@ -96,7 +98,7 @@ impl DatabaseOperation<MySql> for Migrator<MySql> {
         connection: &mut <MySql as Database>::Connection,
         migration: &Box<dyn Migration<MySql>>,
     ) -> Result<(), Error> {
-        sqlx::query(&add_migration_query(&self.table_name()))
+        sqlx::query(add_migration_query(&self.table_name()))
             .bind(migration.app())
             .bind(migration.name())
             .execute(connection)
@@ -109,7 +111,7 @@ impl DatabaseOperation<MySql> for Migrator<MySql> {
         connection: &mut <MySql as Database>::Connection,
         migration: &Box<dyn Migration<MySql>>,
     ) -> Result<(), Error> {
-        sqlx::query(&delete_migration_query(&self.table_name()))
+        sqlx::query(delete_migration_query(&self.table_name()))
             .bind(migration.app())
             .bind(migration.name())
             .execute(connection)
@@ -122,7 +124,7 @@ impl DatabaseOperation<MySql> for Migrator<MySql> {
         connection: &mut <MySql as Database>::Connection,
     ) -> Result<Vec<AppliedMigrationSqlRow>, Error> {
         Ok(
-            sqlx::query_as::<_, AppliedMigrationSqlRow>(&fetch_rows_query(&self.table_name()))
+            sqlx::query_as::<_, AppliedMigrationSqlRow>(fetch_rows_query(&self.table_name()))
                 .fetch_all(connection)
                 .await?,
         )
