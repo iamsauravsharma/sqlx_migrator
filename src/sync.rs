@@ -85,15 +85,17 @@ where
                         .iter()
                         .any(|applied| applied == &migration)
                 {
-                    self.add_migration_to_db_table(connection, &migration)
+                    self.add_migration_to_db_table(connection, migration.as_ref())
                         .await?;
                 }
             }
             Ok(())
         }
         .await;
-        self.unlock(connection).await?;
-        result
+        // unlock before returning; if both sync and unlock fail, the sync
+        // error takes precedence over the unlock error.
+        let unlock_result = self.unlock(connection).await;
+        result.and(unlock_result)
     }
 }
 

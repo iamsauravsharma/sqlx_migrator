@@ -25,6 +25,7 @@ pub(crate) fn drop_table_query(table_name: &str) -> AssertSqlSafe<String> {
 }
 
 /// fetch rows
+#[must_use]
 pub(crate) fn fetch_rows_query(table_name: &str) -> AssertSqlSafe<String> {
     AssertSqlSafe(format!(
         "SELECT id, app, name, DATE_FORMAT(applied_time, '%Y-%m-%d %H:%i:%s') AS applied_time \
@@ -52,15 +53,11 @@ pub(crate) fn current_database_query() -> &'static str {
 }
 
 /// get lock database query
-/// # Errors
-/// Failed to lock database
 pub(crate) fn lock_database_query() -> &'static str {
     "SELECT GET_LOCK(?, -1)"
 }
 
-/// get lock database query
-/// # Errors
-/// Failed to lock database
+/// get unlock database query
 pub(crate) fn unlock_database_query() -> &'static str {
     "SELECT RELEASE_LOCK(?)"
 }
@@ -96,7 +93,7 @@ impl DatabaseOperation<MySql> for Migrator<MySql> {
     async fn add_migration_to_db_table(
         &self,
         connection: &mut <MySql as Database>::Connection,
-        migration: &Box<dyn Migration<MySql>>,
+        migration: &dyn Migration<MySql>,
     ) -> Result<(), Error> {
         sqlx::query(add_migration_query(&self.table_name()))
             .bind(migration.app())
@@ -109,7 +106,7 @@ impl DatabaseOperation<MySql> for Migrator<MySql> {
     async fn delete_migration_from_db_table(
         &self,
         connection: &mut <MySql as Database>::Connection,
-        migration: &Box<dyn Migration<MySql>>,
+        migration: &dyn Migration<MySql>,
     ) -> Result<(), Error> {
         sqlx::query(delete_migration_query(&self.table_name()))
             .bind(migration.app())

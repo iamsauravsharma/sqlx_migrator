@@ -25,6 +25,7 @@ pub(crate) fn drop_table_query(table_name: &str) -> AssertSqlSafe<String> {
 }
 
 /// fetch rows
+#[must_use]
 pub(crate) fn fetch_rows_query(table_name: &str) -> AssertSqlSafe<String> {
     AssertSqlSafe(format!(
         "SELECT id, app, name, applied_time FROM {table_name}"
@@ -72,7 +73,7 @@ impl DatabaseOperation<Sqlite> for Migrator<Sqlite> {
     async fn add_migration_to_db_table(
         &self,
         connection: &mut <Sqlite as Database>::Connection,
-        migration: &Box<dyn Migration<Sqlite>>,
+        migration: &dyn Migration<Sqlite>,
     ) -> Result<(), Error> {
         sqlx::query(add_migration_query(&self.table_name()))
             .bind(migration.app())
@@ -85,7 +86,7 @@ impl DatabaseOperation<Sqlite> for Migrator<Sqlite> {
     async fn delete_migration_from_db_table(
         &self,
         connection: &mut <Sqlite as Database>::Connection,
-        migration: &Box<dyn Migration<Sqlite>>,
+        migration: &dyn Migration<Sqlite>,
     ) -> Result<(), Error> {
         sqlx::query(delete_migration_query(&self.table_name()))
             .bind(migration.app())
@@ -107,6 +108,9 @@ impl DatabaseOperation<Sqlite> for Migrator<Sqlite> {
     }
 
     async fn lock(&self, _connection: &mut <Sqlite as Database>::Connection) -> Result<(), Error> {
+        // SQLite serialises writes at the engine level. True advisory locking is
+        // not available, so concurrent migrators against the same file are not
+        // protected here. Use a single migrator instance per database file.
         Ok(())
     }
 

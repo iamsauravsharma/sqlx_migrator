@@ -68,9 +68,8 @@ where
     /// not implemented, the operation is considered irreversible. If you want
     /// to make an operation reversible, implement this method to define how
     /// to revert the changes made in the `up` method.
-    async fn down(&self, connection: &mut <DB as Database>::Connection) -> Result<(), Error> {
-        let _connection = connection;
-        return Err(Error::IrreversibleOperation);
+    async fn down(&self, _connection: &mut <DB as Database>::Connection) -> Result<(), Error> {
+        Err(Error::IrreversibleOperation)
     }
 
     /// Indicates whether the `up` operation is destructible.
@@ -94,6 +93,10 @@ where
     <DB as Database>::Arguments: sqlx::IntoArguments<DB>,
     for<'c> &'c mut <DB as Database>::Connection: sqlx::Executor<'c, Database = DB>,
 {
+    /// # Warning
+    /// The SQL strings are executed directly via [`AssertSqlSafe`]. The caller
+    /// is responsible for ensuring the strings do not contain untrusted or
+    /// unsanitised input.
     async fn up(&self, connection: &mut <DB as Database>::Connection) -> Result<(), Error> {
         let query = self.0.as_ref().to_string();
         sqlx::query(AssertSqlSafe(query))
