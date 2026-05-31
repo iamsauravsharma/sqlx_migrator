@@ -81,7 +81,7 @@ impl DatabaseOperation<Any> for Migrator<Any> {
     async fn add_migration_to_db_table(
         &self,
         connection: &mut <Any as Database>::Connection,
-        migration: &Box<dyn Migration<Any>>,
+        migration: &dyn Migration<Any>,
     ) -> Result<(), Error> {
         let sql_query = match connection.backend_name() {
             #[cfg(feature = "postgres")]
@@ -103,7 +103,7 @@ impl DatabaseOperation<Any> for Migrator<Any> {
     async fn delete_migration_from_db_table(
         &self,
         connection: &mut <Any as Database>::Connection,
-        migration: &Box<dyn Migration<Any>>,
+        migration: &dyn Migration<Any>,
     ) -> Result<(), Error> {
         let sql_query = match connection.backend_name() {
             #[cfg(feature = "postgres")]

@@ -25,6 +25,7 @@ pub(crate) fn drop_table_query(table_name: &str) -> AssertSqlSafe<String> {
 }
 
 /// Fetch rows
+#[must_use]
 pub(crate) fn fetch_rows_query(table_name: &str) -> AssertSqlSafe<String> {
     AssertSqlSafe(format!(
         "SELECT id, app, name, applied_time::TEXT FROM {table_name}"
@@ -57,7 +58,7 @@ pub(crate) fn lock_database_query() -> &'static str {
     "SELECT pg_advisory_lock($1)"
 }
 
-/// get lock database query
+/// get unlock database query
 pub(crate) fn unlock_database_query() -> &'static str {
     "SELECT pg_advisory_unlock($1)"
 }
@@ -93,7 +94,7 @@ impl DatabaseOperation<Postgres> for Migrator<Postgres> {
     async fn add_migration_to_db_table(
         &self,
         connection: &mut <Postgres as Database>::Connection,
-        migration: &Box<dyn Migration<Postgres>>,
+        migration: &dyn Migration<Postgres>,
     ) -> Result<(), Error> {
         sqlx::query(add_migration_query(&self.table_name()))
             .bind(migration.app())
@@ -106,7 +107,7 @@ impl DatabaseOperation<Postgres> for Migrator<Postgres> {
     async fn delete_migration_from_db_table(
         &self,
         connection: &mut <Postgres as Database>::Connection,
-        migration: &Box<dyn Migration<Postgres>>,
+        migration: &dyn Migration<Postgres>,
     ) -> Result<(), Error> {
         sqlx::query(delete_migration_query(&self.table_name()))
             .bind(migration.app())

@@ -4,7 +4,6 @@ macro_rules! vec_box {
     ($elem:expr; $n:expr) => (vec![Box::new($elem); $n]);
     ($($x:expr),*) => (vec![$(Box::new($x)),*]);
     ($($x:expr,)*) => (vec![$(Box::new($x)),*]);
-    ($($x:expr,)*) => (sqlx_migrator::vec_box![$($x),*]);
 }
 
 /// Macro for implementing the [Migration](crate::migration::Migration) trait
@@ -16,7 +15,8 @@ macro_rules! vec_box {
 /// - `$db:ty`: the type of database
 /// - `$op:ty`: The type for which the migration is being implemented
 /// - `$app_name:literal`: Name of app to be used for app variable
-/// - `$migration_name:literal`: Name of app to be used for app variable
+/// - `$migration_name:literal`: Name of migration to be used for the `name`
+///   function
 /// - `$parents:expr`: List of parents migration.
 /// - `$operations:expr`: List of operations
 #[macro_export]

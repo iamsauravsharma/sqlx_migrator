@@ -22,7 +22,7 @@
 //! }
 //! ```
 #![expect(clippy::print_stdout, reason = "allow printing to stdout in cli")]
-use std::io::Write as _;
+use std::io::{IsTerminal as _, Write as _};
 
 use clap::{Parser, Subcommand};
 use sqlx::Database;
@@ -132,12 +132,11 @@ async fn list_migrations<DB>(
 where
     DB: Database,
 {
-    let migration_plan = migrator.generate_migration_plan(connection, None).await?;
-
-    let apply_plan = migrator
-        .generate_migration_plan(connection, Some(&Plan::apply_all()))
-        .await?;
+    migrator.ensure_migration_table_exists(connection).await?;
     let applied_migrations = migrator.fetch_applied_migration_from_db(connection).await?;
+    let migration_plan = migrator.generate_migration_plan_with_rows(None, &[])?;
+    let apply_plan = migrator
+        .generate_migration_plan_with_rows(Some(&Plan::apply_all()), &applied_migrations)?;
 
     let widths = [5, 10, 50, 10, 40];
     let full_width = widths.iter().sum::<usize>() + widths.len() * 3;
@@ -222,15 +221,14 @@ impl Apply {
     where
         DB: Database,
     {
-        let plan;
-        if let Some(count) = self.count {
-            plan = Plan::apply_count(count);
+        let plan = if let Some(count) = self.count {
+            Plan::apply_count(count)
         } else if let Some(app) = &self.app {
-            plan = Plan::apply_name(app, &self.migration);
+            Plan::apply_name(app, &self.migration)
         } else {
-            plan = Plan::apply_all();
+            Plan::apply_all()
         }
-        let plan = plan.fake(self.fake);
+        .fake(self.fake);
         let migrations = migrator
             .generate_migration_plan(connection, Some(&plan))
             .await?;
@@ -260,6 +258,13 @@ impl Apply {
                 .filter(|m| m.operations().iter().any(|o| o.is_destructible()))
                 .collect::<Vec<_>>();
             if !self.force && !destructible_migrations.is_empty() && !self.fake {
+                if !std::io::stdin().is_terminal() {
+                    println!(
+                        "Skipping destructible migration prompt: stdin is not a terminal. Use \
+                         --force to apply non-interactively."
+                    );
+                    return Ok(());
+                }
                 let mut input = String::new();
                 println!(
                     "Do you want to apply destructible migrations {} (y/N)",
@@ -319,17 +324,16 @@ impl Revert {
     where
         DB: Database,
     {
-        let plan;
-        if let Some(count) = self.count {
-            plan = Plan::revert_count(count);
+        let plan = if let Some(count) = self.count {
+            Plan::revert_count(count)
         } else if let Some(app) = &self.app {
-            plan = Plan::revert_name(app, &self.migration);
+            Plan::revert_name(app, &self.migration)
         } else if self.all {
-            plan = Plan::revert_all();
+            Plan::revert_all()
         } else {
-            plan = Plan::revert_count(1);
+            Plan::revert_count(1)
         }
-        let plan = plan.fake(self.fake);
+        .fake(self.fake);
         let revert_migrations = migrator
             .generate_migration_plan(connection, Some(&plan))
             .await?;
@@ -353,6 +357,13 @@ impl Revert {
             }
         } else {
             if !self.force && !revert_migrations.is_empty() && !self.fake {
+                if !std::io::stdin().is_terminal() {
+                    println!(
+                        "Skipping revert prompt: stdin is not a terminal. Use --force to revert \
+                         non-interactively."
+                    );
+                    return Ok(());
+                }
                 let mut input = String::new();
                 println!(
                     "Do you want to revert {} migrations (y/N)",
