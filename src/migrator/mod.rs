@@ -377,15 +377,12 @@ pub trait Info<DB> {
 /// migration processes.
 ///
 /// # Security
-/// The methods in this trait receive a `table_name` (via
-/// [`Info::migrations`] and [`Migrator::table_name`]) that is interpolated
-/// directly into SQL strings. The built-in [`Migrator`] implementation
-/// validates the table name prefix and schema before use, so the risk is
-/// mitigated for default users. **Custom implementations must ensure that
-/// `table_name` is derived exclusively from validated output of
-/// [`Migrator::table_name`]** and is never constructed from untrusted
-/// sources (e.g., config files, CLI arguments, environment variables),
-/// or they will be vulnerable to SQL injection.
+/// When implementing this trait, it is crucial to ensure that all database
+/// interactions are performed securely to prevent SQL injection and other
+/// vulnerabilities. Always use parameterized queries and avoid directly
+/// interpolating user input into SQL statements. If your implementation
+/// involves dynamic SQL generation, make sure to properly sanitize and validate
+/// all inputs.
 #[async_trait::async_trait]
 pub trait DatabaseOperation<DB>
 where
@@ -468,45 +465,6 @@ fn populate_replace_recursive<'populate, DB>(
 /// dependency order. This function keeps only the subset that is actually
 /// needed to safely apply or revert the requested targets — discarding
 /// unrelated migrations from other apps or branches.
-///
-/// ## Algorithm — BFS expansion
-///
-/// The related set is seeded with the explicit target migrations. A BFS queue
-/// is then used to expand the set one hop at a time: whenever a migration is
-/// added to the related set it is enqueued, and when it is dequeued every
-/// migration in `migration_list` is checked to see whether it is directly
-/// linked to the just-dequeued migration. Transitivity is handled naturally:
-/// a migration added in one hop is itself dequeued and can pull in further
-/// migrations.
-///
-/// A migration `M` is pulled in when processing the already-included
-/// migration `C` if:
-///
-/// ### Apply direction
-/// - `M` is a **direct parent** of `C`, OR a parent of any migration that `C`
-///   transitively **replaces** (replacement-inherited parent), OR
-/// - `C` (or any migration `C` transitively replaces) is in `M`'s **direct
-///   `run_before`** list — making `M` an implicit prerequisite.
-///
-/// ### Revert direction
-/// - `C` is a **direct parent** of `M`, OR a parent of any migration that `M`
-///   transitively **replaces** (replacement-inherited parent), OR
-/// - `M` (or any migration `M` transitively replaces) is in `C`'s **direct
-///   `run_before`** list — `C` runs before `M`, so reverting `C` requires `M`
-///   to be reverted first.
-///
-/// Replacement-inherited edges are necessary because the ordering phase places
-/// a replacer after all of its replaced migrations' prerequisites. A targeted
-/// plan must therefore pull in those same prerequisites.
-///
-/// Because `PartialEq` for `dyn Migration` compares only `(app, name)`,
-/// virtual tuple references and concrete struct references are resolved
-/// transparently without needing a separate lookup table.
-///
-/// ## Note
-/// This function assumes that `replaces` relationships have already been
-/// resolved before it is called — replaced migrations will not appear in
-/// `migration_list` at this point.
 fn only_related_migration<DB>(
     migration_list: &mut MigrationVec<'_, DB>,
     with_list: Vec<&BoxMigration<DB>>,
@@ -518,7 +476,7 @@ fn only_related_migration<DB>(
     let mut related: Vec<&BoxMigration<DB>> = vec![];
     let mut queue: VecDeque<&BoxMigration<DB>> = VecDeque::new();
 
-    // Seed the BFS with the explicitly requested targets (deduplicated).
+    // Seed the BFS with the explicitly requested targets
     for with in with_list {
         if !related.contains(&with) {
             related.push(with);
@@ -534,8 +492,7 @@ fn only_related_migration<DB>(
             }
             let should_include = match plan_type {
                 PlanType::Apply => {
-                    // Collect the migrations that `current` transitively replaces so that
-                    // replacement-inherited parent/run_before edges can be checked below.
+                    // Collect the migrations that `current` transitively replaces.
                     let current_replaced = replace_children.get(current);
 
                     // m is a direct parent of current, or a parent of any
@@ -756,9 +713,11 @@ where
 
         tracing::debug!("generating {:?} migration plan", plan);
 
-        // hashmap which contains key as child migration and value is parent
-        // migration which replaces this child migration. One migration can
-        // only have one parent
+        // Hashmap which contains key as child migration and value as parent migration
+        // Child migration is migration which is replaced by parent migration. One
+        // migration can only be replaced by one migration but one migration can replace
+        // multiple migration so we can have multiple child for one parent but one child
+        // can only have one parent
         let mut replaces_child_parent_hash_map = HashMap::new();
 
         for parent_migration in self.migrations() {
@@ -813,6 +772,7 @@ where
             };
             populate_replace_recursive(&mut replace_children, parent, children_migration)?;
         }
+
         // Hashmap which contains key as migration and value is vector of migration
         // which should run before this migration. One migration can have
         // multiple run before migration
@@ -828,11 +788,10 @@ where
         }
 
         let mut migration_list = Vec::new();
-        // HashSet tracks which migrations are already in migration_list by
-        // (app, name), giving O(1) membership checks in the inner loop and
-        // reducing overall plan-generation complexity from O(n³) to O(n²).
-        let mut migration_set: HashSet<(String, String)> =
-            HashSet::with_capacity(self.migrations().len());
+        // HashSet to keep track of migration which are already added to migration list
+        // to avoid adding same migration multiple times to migration list since one
+        // migration can be parent, run before or replace multiple migration
+        let mut migration_set = HashSet::new();
 
         // keep looping until all migration are added to migration list. In each loop
         // check if any migration can be added to migration list or not. A migration
@@ -841,49 +800,40 @@ where
         while migration_list.len() != original_migration_length {
             let loop_initial_migration_list_length = migration_list.len();
             for migration in self.migrations() {
-                let migration_key = (migration.app().to_string(), migration.name().to_string());
                 // check if all parents and run before migration are already added to
                 // migration list and if it replaces any migration than that migration
                 // should be added to migration list as well before adding this migration
                 // to migration list. Also if this migration have children due to replace
                 // than their parents and run before should be added to migration list
                 // before adding this migration to migration list
-                let all_required_added = !migration_set.contains(&migration_key)
-                    && migration.parents().iter().all(|p| {
-                        migration_set.contains(&(p.app().to_string(), p.name().to_string()))
-                    })
+                let all_required_added = !migration_set.contains(migration)
+                    && migration
+                        .parents()
+                        .iter()
+                        .all(|p| migration_set.contains(p))
                     && run_before_child_parent_hash_map
                         .get(migration)
                         .unwrap_or(&vec![])
                         .iter()
-                        .all(|rb| {
-                            migration_set.contains(&(rb.app().to_string(), rb.name().to_string()))
-                        })
+                        .all(|rb| migration_set.contains(rb))
                     && replaces_child_parent_hash_map
                         .get(migration)
-                        .is_none_or(|r| {
-                            migration_set.contains(&(r.app().to_string(), r.name().to_string()))
-                        })
+                        .is_none_or(|r| migration_set.contains(r))
                     && replace_children.get(migration).is_none_or(|children| {
                         // if children are present than their parents and run before should be
                         // added to migration list before adding replace migration
                         children.iter().all(|&child| {
-                            child.parents().iter().all(|p| {
-                                migration_set.contains(&(p.app().to_string(), p.name().to_string()))
-                            }) && run_before_child_parent_hash_map
-                                .get(child)
-                                .unwrap_or(&vec![])
-                                .iter()
-                                .all(|rb| {
-                                    migration_set
-                                        .contains(&(rb.app().to_string(), rb.name().to_string()))
-                                        || children.contains(rb)
-                                })
+                            child.parents().iter().all(|p| migration_set.contains(p))
+                                && run_before_child_parent_hash_map
+                                    .get(child)
+                                    .unwrap_or(&vec![])
+                                    .iter()
+                                    .all(|rb| migration_set.contains(rb) || children.contains(rb))
                         })
                     });
                 if all_required_added {
                     migration_list.push(migration);
-                    migration_set.insert(migration_key);
+                    migration_set.insert(migration);
                 }
             }
 
