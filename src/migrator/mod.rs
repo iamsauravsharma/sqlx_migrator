@@ -473,31 +473,35 @@ fn only_related_migration<DB>(
 ) {
     use std::collections::VecDeque;
 
-    let mut related: Vec<&BoxMigration<DB>> = vec![];
+    // `related` is a membership set only; BFS visitation order is kept by
+    // `queue`, so a HashSet keeps the inner-loop `contains` checks O(1).
+    let mut related: HashSet<&BoxMigration<DB>> = HashSet::new();
     let mut queue: VecDeque<&BoxMigration<DB>> = VecDeque::new();
 
     // Seed the BFS with the explicitly requested targets
     for with in with_list {
-        if !related.contains(&with) {
-            related.push(with);
+        if related.insert(with) {
             queue.push_back(with);
         }
     }
 
     // Expand one hop at a time until no new migrations can be reached.
     while let Some(current) = queue.pop_front() {
+        // These depend only on `current`, so compute them once per BFS node
+        // instead of once per (current, m) pair. `parents()`/`run_before()`
+        // each allocate a fresh Vec, so hoisting avoids repeated allocations.
+        let current_parents = current.parents();
+        let current_run_before = current.run_before();
+        let current_replaced = replace_children.get(current);
         for &m in migration_list.iter() {
             if related.contains(&m) {
                 continue;
             }
             let should_include = match plan_type {
                 PlanType::Apply => {
-                    // Collect the migrations that `current` transitively replaces.
-                    let current_replaced = replace_children.get(current);
-
                     // m is a direct parent of current, or a parent of any
                     // migration current transitively replaces (inherited edge).
-                    let is_parent = current.parents().iter().any(|p| p.as_ref() == m.as_ref())
+                    let is_parent = current_parents.iter().any(|p| p.as_ref() == m.as_ref())
                         || current_replaced.is_some_and(|children| {
                             children.iter().any(|child| {
                                 child.parents().iter().any(|p| p.as_ref() == m.as_ref())
@@ -538,14 +542,12 @@ fn only_related_migration<DB>(
 
                     // m (or any migration m replaces) is in current's run_before,
                     // meaning current runs before m, so m must be reverted before current.
-                    let is_run_before = current
-                        .run_before()
+                    let is_run_before = current_run_before
                         .iter()
                         .any(|rb| rb.as_ref() == m.as_ref())
                         || m_replaced.is_some_and(|children| {
                             children.iter().any(|child| {
-                                current
-                                    .run_before()
+                                current_run_before
                                     .iter()
                                     .any(|rb| rb.as_ref() == child.as_ref())
                             })
@@ -555,7 +557,7 @@ fn only_related_migration<DB>(
                 }
             };
             if should_include {
-                related.push(m);
+                related.insert(m);
                 queue.push_back(m);
             }
         }
@@ -565,9 +567,9 @@ fn only_related_migration<DB>(
 }
 
 /// Process plan to provided migrations list
-fn process_plan<DB>(
-    migration_list: &mut MigrationVec<'_, DB>,
-    applied_migrations: &MigrationVec<'_, DB>,
+fn process_plan<'process, DB>(
+    migration_list: &mut MigrationVec<'process, DB>,
+    applied_migrations: &HashSet<&'process BoxMigration<DB>>,
     plan: &Plan,
     replace_children: &HashMap<&BoxMigration<DB>, Vec<&BoxMigration<DB>>>,
 ) -> Result<(), Error>
@@ -645,6 +647,28 @@ where
         migration_list.truncate(count);
     }
     Ok(())
+}
+
+/// Resolve a replaced migration to the concrete migration registered in the
+/// list.
+///
+/// A virtual migration is only a placeholder for a real migration sharing the
+/// same app/name, so when `child` is virtual the matching non-virtual migration
+/// must be located; otherwise `child` itself is returned.
+fn resolve_replaced_migration<'resolve, DB>(
+    migrations: &'resolve [BoxMigration<DB>],
+    child: &'resolve BoxMigration<DB>,
+) -> Result<&'resolve BoxMigration<DB>, Error> {
+    if child.is_virtual() {
+        migrations
+            .iter()
+            .find(|&search_migration| search_migration == child)
+            .ok_or(Error::PlanError {
+                message: "Failed finding non virtual migration for virtual migration".to_string(),
+            })
+    } else {
+        Ok(child)
+    }
 }
 
 // get all replaces migration recursively for a migration
@@ -740,18 +764,7 @@ where
         let mut replace_children = HashMap::<_, Vec<_>>::new();
         // in first loop add direct children of parent due to replace
         for (child, &parent) in &replaces_child_parent_hash_map {
-            // if child is virtual than we need to find non virtual migration
-            let children_migration = if child.is_virtual() {
-                self.migrations()
-                    .iter()
-                    .find(|&search_migration| search_migration == child)
-                    .ok_or(Error::PlanError {
-                        message: "Failed finding non virtual migration for virtual migration"
-                            .to_string(),
-                    })?
-            } else {
-                child
-            };
+            let children_migration = resolve_replaced_migration(self.migrations(), child)?;
             replace_children
                 .entry(parent)
                 .or_default()
@@ -759,17 +772,7 @@ where
         }
         // in second loop add recursive children of parent due to replace
         for (child, &parent) in &replaces_child_parent_hash_map {
-            let children_migration = if child.is_virtual() {
-                self.migrations()
-                    .iter()
-                    .find(|&search_migration| search_migration == child)
-                    .ok_or(Error::PlanError {
-                        message: "Failed finding non virtual migration for virtual migration"
-                            .to_string(),
-                    })?
-            } else {
-                child
-            };
+            let children_migration = resolve_replaced_migration(self.migrations(), child)?;
             populate_replace_recursive(&mut replace_children, parent, children_migration)?;
         }
 
@@ -849,19 +852,28 @@ where
         // if plan is provided than modify migration list according to plan else
         // return all migration in order of apply
         if let Some(some_plan) = plan {
-            let mut applied_migrations = Vec::new();
+            // Index the applied rows by (app, name) once so matching each
+            // migration is an O(1) lookup rather than an O(rows) rescan, and
+            // keep the result in a set for O(1) membership tests below.
+            let applied_row_keys: HashSet<(&str, &str)> = applied_migration_sql_rows
+                .iter()
+                .map(|row| (row.app(), row.name()))
+                .collect();
+            let mut applied_migrations = HashSet::new();
             for migration in self.migrations() {
-                if applied_migration_sql_rows
-                    .iter()
-                    .any(|sqlx_migration| sqlx_migration == migration)
-                {
-                    applied_migrations.push(migration);
+                if applied_row_keys.contains(&(migration.app(), migration.name())) {
+                    applied_migrations.insert(migration);
                 }
             }
 
             // Check if any child migration is applied before its parent migration
-            // according to parents and run before field. If yes than return error
-            for &migration in &applied_migrations {
+            // according to parents and run before field. If yes than return error.
+            // Iterate `self.migrations()` (not the set) so the reported error is
+            // deterministic when multiple migrations violate the constraint.
+            for migration in self.migrations() {
+                if !applied_migrations.contains(&migration) {
+                    continue;
+                }
                 let mut parents = vec![];
                 if let Some(run_before_list) = run_before_child_parent_hash_map.get(migration) {
                     for &run_before in run_before_list {
@@ -1117,7 +1129,7 @@ impl<DB> Migrator<DB> {
         if prefix_str.is_empty()
             || !prefix_str
                 .chars()
-                .all(|c| char::is_ascii_lowercase(&c) || char::is_numeric(c) || c == '_')
+                .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_')
         {
             return Err(Error::InvalidTablePrefix);
         }
@@ -1154,10 +1166,10 @@ impl<DB> Migrator<DB> {
             || !schema_str
                 .chars()
                 .next()
-                .is_some_and(|c| char::is_ascii_lowercase(&c) || c == '_')
+                .is_some_and(|c| c.is_ascii_lowercase() || c == '_')
             || !schema_str
                 .chars()
-                .all(|c| char::is_ascii_lowercase(&c) || char::is_numeric(c) || c == '_')
+                .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_')
         {
             return Err(Error::InvalidSchema);
         }
