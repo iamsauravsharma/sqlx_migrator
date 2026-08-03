@@ -49,8 +49,8 @@ pub enum Error {
         /// Migration name
         name: String,
     },
-    /// Error raised when virtual migration is invalid virtual migration is
-    /// invalid if it have any fields present expect app name and migration name
+    /// Error raised when virtual migration is invalid. Virtual migration is
+    /// invalid if it has any fields present except app name and migration name
     #[error("invalid virtual migration")]
     InvalidVirtualMigration,
 }

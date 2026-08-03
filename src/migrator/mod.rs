@@ -438,7 +438,7 @@ fn populate_replace_recursive<'populate, DB>(
     // protect against a case where two migration replaces each other
     if key == value {
         return Err(Error::PlanError {
-            message: "two migrations replaces each other".to_string(),
+            message: "two migrations replace each other".to_string(),
         });
     }
     let replace_hash_map_vec = replace_hash_map.entry(key).or_default();
@@ -600,11 +600,11 @@ where
                     .any(|migration| migration.app() == app)
                 {
                     return Err(Error::PlanError {
-                        message: format!("migration {app}:{name} doesn't exists for app"),
+                        message: format!("migration {app}:{name} doesn't exist for app"),
                     });
                 }
                 return Err(Error::PlanError {
-                    message: format!("app {app} doesn't exists"),
+                    message: format!("app {app} doesn't exist"),
                 });
             };
             pos
@@ -614,7 +614,7 @@ where
                 .rposition(|migration| migration.app() == app)
             else {
                 return Err(Error::PlanError {
-                    message: format!("app {app} doesn't exists"),
+                    message: format!("app {app} doesn't exist"),
                 });
             };
             pos
@@ -719,10 +719,10 @@ where
     ) -> MigrationVecResult<'_, DB> {
         if self.migrations().is_empty() {
             return Err(Error::PlanError {
-                message: "no migration are added to migration list".to_string(),
+                message: "no migrations are added to the migration list".to_string(),
             });
         }
-        // if there is any virtual migration which is not replaced than return
+        // if there is any virtual migration which is not replaced then return
         // error since virtual migration should only be used for replacing
         // another migration
         if self
@@ -731,7 +731,7 @@ where
             .any(|migration| migration.is_virtual())
         {
             return Err(Error::PlanError {
-                message: "virtual migrations which is not replaced is present".to_string(),
+                message: "virtual migration which is not replaced is present".to_string(),
             });
         }
 
@@ -804,10 +804,10 @@ where
             let loop_initial_migration_list_length = migration_list.len();
             for migration in self.migrations() {
                 // check if all parents and run before migration are already added to
-                // migration list and if it replaces any migration than that migration
+                // migration list and if it replaces any migration then that migration
                 // should be added to migration list as well before adding this migration
                 // to migration list. Also if this migration have children due to replace
-                // than their parents and run before should be added to migration list
+                // then their parents and run before should be added to migration list
                 // before adding this migration to migration list
                 let all_required_added = !migration_set.contains(migration)
                     && migration
@@ -823,7 +823,7 @@ where
                         .get(migration)
                         .is_none_or(|r| migration_set.contains(r))
                     && replace_children.get(migration).is_none_or(|children| {
-                        // if children are present than their parents and run before should be
+                        // if children are present then their parents and run before should be
                         // added to migration list before adding replace migration
                         children.iter().all(|&child| {
                             child.parents().iter().all(|p| migration_set.contains(p))
@@ -840,7 +840,7 @@ where
                 }
             }
 
-            // if no migration is added in this loop than it means there is a deadlock
+            // if no migration is added in this loop then it means there is a deadlock
             // and we cannot proceed further
             if loop_initial_migration_list_length == migration_list.len() {
                 return Err(Error::PlanError {
@@ -849,7 +849,7 @@ where
             }
         }
 
-        // if plan is provided than modify migration list according to plan else
+        // if plan is provided then modify migration list according to plan else
         // return all migration in order of apply
         if let Some(some_plan) = plan {
             // Index the applied rows by (app, name) once so matching each
@@ -867,7 +867,7 @@ where
             }
 
             // Check if any child migration is applied before its parent migration
-            // according to parents and run before field. If yes than return error.
+            // according to parents and run before field. If yes then return error.
             // Iterate `self.migrations()` (not the set) so the reported error is
             // deterministic when multiple migrations violate the constraint.
             for migration in self.migrations() {
@@ -893,8 +893,7 @@ where
                     {
                         return Err(Error::PlanError {
                             message: format!(
-                                "children migration {}:{} applied before its parent migration \
-                                 {}:{}",
+                                "child migration {}:{} applied before its parent migration {}:{}",
                                 migration.app(),
                                 migration.name(),
                                 parent.app(),
@@ -918,8 +917,8 @@ where
                         .iter()
                         .any(|&replace_migration| applied_migrations.contains(&replace_migration));
 
-                    // If replaces migration is applied than we cannot apply this migration
-                    // If replaces migration is not applied than we can remove all replaced
+                    // If replaces migration is applied then we cannot apply this migration
+                    // If replaces migration is not applied then we can remove all replaced
                     // migration from migration list since this migration will apply in
                     // place of them
                     if replaces_applied {
