@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/migrator/mod.rs`."><title>mod.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-1ed95124.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="sqlx_migrator" data-themes="" data-resource-suffix="" data-rustdoc-version="1.99.0-nightly (af3d95584 2026-07-09)" data-channel="nightly" data-search-js="search-9944d736.js" data-stringdex-js="stringdex-2da4960a.js" data-settings-js="settings-170eb4bf.js" ><script src="../../../static.files/storage-41dd4d93.js"></script><script defer src="../../../static.files/src-script-813739b1.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-417ebf0a.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-f7c3ffd8.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1><div class="sub-heading">sqlx_migrator/migrator/</div>mod.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-4"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="doccomment">//! Migrator module
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/migrator/mod.rs`."><title>mod.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-650bd49d.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="sqlx_migrator" data-themes="" data-resource-suffix="" data-rustdoc-version="1.99.0-nightly (11177f223 2026-08-02)" data-channel="nightly" data-search-js="search-cf4fc35e.js" data-stringdex-js="stringdex-b5109af9.js" data-settings-js="settings-170eb4bf.js" ><script src="../../../static.files/storage-41dd4d93.js"></script><script defer src="../../../static.files/src-script-813739b1.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-417ebf0a.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-d4bd101e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1><div class="sub-heading">sqlx_migrator/migrator/</div>mod.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-4"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="doccomment">//! Migrator module
 <a href=#2 id=2 data-nosnippet>2</a>//!
 <a href=#3 id=3 data-nosnippet>3</a>//! It contains common enum and trait for implementing migrator for sqlx
 <a href=#4 id=4 data-nosnippet>4</a>//! supported database
@@ -438,7 +438,7 @@
 <a href=#438 id=438 data-nosnippet>438</a>    <span class="comment">// protect against a case where two migration replaces each other
 <a href=#439 id=439 data-nosnippet>439</a>    </span><span class="kw">if </span>key == value {
 <a href=#440 id=440 data-nosnippet>440</a>        <span class="kw">return </span><span class="prelude-val">Err</span>(Error::PlanError {
-<a href=#441 id=441 data-nosnippet>441</a>            message: <span class="string">"two migrations replaces each other"</span>.to_string(),
+<a href=#441 id=441 data-nosnippet>441</a>            message: <span class="string">"two migrations replace each other"</span>.to_string(),
 <a href=#442 id=442 data-nosnippet>442</a>        });
 <a href=#443 id=443 data-nosnippet>443</a>    }
 <a href=#444 id=444 data-nosnippet>444</a>    <span class="kw">let </span>replace_hash_map_vec = replace_hash_map.entry(key).or_default();
@@ -600,11 +600,11 @@
 <a href=#600 id=600 data-nosnippet>600</a>                    .any(|migration| migration.app() == app)
 <a href=#601 id=601 data-nosnippet>601</a>                {
 <a href=#602 id=602 data-nosnippet>602</a>                    <span class="kw">return </span><span class="prelude-val">Err</span>(Error::PlanError {
-<a href=#603 id=603 data-nosnippet>603</a>                        message: <span class="macro">format!</span>(<span class="string">"migration {app}:{name} doesn't exists for app"</span>),
+<a href=#603 id=603 data-nosnippet>603</a>                        message: <span class="macro">format!</span>(<span class="string">"migration {app}:{name} doesn't exist for app"</span>),
 <a href=#604 id=604 data-nosnippet>604</a>                    });
 <a href=#605 id=605 data-nosnippet>605</a>                }
 <a href=#606 id=606 data-nosnippet>606</a>                <span class="kw">return </span><span class="prelude-val">Err</span>(Error::PlanError {
-<a href=#607 id=607 data-nosnippet>607</a>                    message: <span class="macro">format!</span>(<span class="string">"app {app} doesn't exists"</span>),
+<a href=#607 id=607 data-nosnippet>607</a>                    message: <span class="macro">format!</span>(<span class="string">"app {app} doesn't exist"</span>),
 <a href=#608 id=608 data-nosnippet>608</a>                });
 <a href=#609 id=609 data-nosnippet>609</a>            };
 <a href=#610 id=610 data-nosnippet>610</a>            pos
@@ -614,7 +614,7 @@
 <a href=#614 id=614 data-nosnippet>614</a>                .rposition(|migration| migration.app() == app)
 <a href=#615 id=615 data-nosnippet>615</a>            <span class="kw">else </span>{
 <a href=#616 id=616 data-nosnippet>616</a>                <span class="kw">return </span><span class="prelude-val">Err</span>(Error::PlanError {
-<a href=#617 id=617 data-nosnippet>617</a>                    message: <span class="macro">format!</span>(<span class="string">"app {app} doesn't exists"</span>),
+<a href=#617 id=617 data-nosnippet>617</a>                    message: <span class="macro">format!</span>(<span class="string">"app {app} doesn't exist"</span>),
 <a href=#618 id=618 data-nosnippet>618</a>                });
 <a href=#619 id=619 data-nosnippet>619</a>            };
 <a href=#620 id=620 data-nosnippet>620</a>            pos
@@ -719,10 +719,10 @@
 <a href=#719 id=719 data-nosnippet>719</a>    ) -&gt; MigrationVecResult&lt;<span class="lifetime">'_</span>, DB&gt; {
 <a href=#720 id=720 data-nosnippet>720</a>        <span class="kw">if </span><span class="self">self</span>.migrations().is_empty() {
 <a href=#721 id=721 data-nosnippet>721</a>            <span class="kw">return </span><span class="prelude-val">Err</span>(Error::PlanError {
-<a href=#722 id=722 data-nosnippet>722</a>                message: <span class="string">"no migration are added to migration list"</span>.to_string(),
+<a href=#722 id=722 data-nosnippet>722</a>                message: <span class="string">"no migrations are added to the migration list"</span>.to_string(),
 <a href=#723 id=723 data-nosnippet>723</a>            });
 <a href=#724 id=724 data-nosnippet>724</a>        }
-<a href=#725 id=725 data-nosnippet>725</a>        <span class="comment">// if there is any virtual migration which is not replaced than return
+<a href=#725 id=725 data-nosnippet>725</a>        <span class="comment">// if there is any virtual migration which is not replaced then return
 <a href=#726 id=726 data-nosnippet>726</a>        // error since virtual migration should only be used for replacing
 <a href=#727 id=727 data-nosnippet>727</a>        // another migration
 <a href=#728 id=728 data-nosnippet>728</a>        </span><span class="kw">if </span><span class="self">self
@@ -731,7 +731,7 @@
 <a href=#731 id=731 data-nosnippet>731</a>            .any(|migration| migration.is_virtual())
 <a href=#732 id=732 data-nosnippet>732</a>        {
 <a href=#733 id=733 data-nosnippet>733</a>            <span class="kw">return </span><span class="prelude-val">Err</span>(Error::PlanError {
-<a href=#734 id=734 data-nosnippet>734</a>                message: <span class="string">"virtual migrations which is not replaced is present"</span>.to_string(),
+<a href=#734 id=734 data-nosnippet>734</a>                message: <span class="string">"virtual migration which is not replaced is present"</span>.to_string(),
 <a href=#735 id=735 data-nosnippet>735</a>            });
 <a href=#736 id=736 data-nosnippet>736</a>        }
 <a href=#737 id=737 data-nosnippet>737</a>
@@ -804,10 +804,10 @@
 <a href=#804 id=804 data-nosnippet>804</a>            <span class="kw">let </span>loop_initial_migration_list_length = migration_list.len();
 <a href=#805 id=805 data-nosnippet>805</a>            <span class="kw">for </span>migration <span class="kw">in </span><span class="self">self</span>.migrations() {
 <a href=#806 id=806 data-nosnippet>806</a>                <span class="comment">// check if all parents and run before migration are already added to
-<a href=#807 id=807 data-nosnippet>807</a>                // migration list and if it replaces any migration than that migration
+<a href=#807 id=807 data-nosnippet>807</a>                // migration list and if it replaces any migration then that migration
 <a href=#808 id=808 data-nosnippet>808</a>                // should be added to migration list as well before adding this migration
 <a href=#809 id=809 data-nosnippet>809</a>                // to migration list. Also if this migration have children due to replace
-<a href=#810 id=810 data-nosnippet>810</a>                // than their parents and run before should be added to migration list
+<a href=#810 id=810 data-nosnippet>810</a>                // then their parents and run before should be added to migration list
 <a href=#811 id=811 data-nosnippet>811</a>                // before adding this migration to migration list
 <a href=#812 id=812 data-nosnippet>812</a>                </span><span class="kw">let </span>all_required_added = !migration_set.contains(migration)
 <a href=#813 id=813 data-nosnippet>813</a>                    &amp;&amp; migration
@@ -823,7 +823,7 @@
 <a href=#823 id=823 data-nosnippet>823</a>                        .get(migration)
 <a href=#824 id=824 data-nosnippet>824</a>                        .is_none_or(|r| migration_set.contains(r))
 <a href=#825 id=825 data-nosnippet>825</a>                    &amp;&amp; replace_children.get(migration).is_none_or(|children| {
-<a href=#826 id=826 data-nosnippet>826</a>                        <span class="comment">// if children are present than their parents and run before should be
+<a href=#826 id=826 data-nosnippet>826</a>                        <span class="comment">// if children are present then their parents and run before should be
 <a href=#827 id=827 data-nosnippet>827</a>                        // added to migration list before adding replace migration
 <a href=#828 id=828 data-nosnippet>828</a>                        </span>children.iter().all(|<span class="kw-2">&amp;</span>child| {
 <a href=#829 id=829 data-nosnippet>829</a>                            child.parents().iter().all(|p| migration_set.contains(p))
@@ -840,7 +840,7 @@
 <a href=#840 id=840 data-nosnippet>840</a>                }
 <a href=#841 id=841 data-nosnippet>841</a>            }
 <a href=#842 id=842 data-nosnippet>842</a>
-<a href=#843 id=843 data-nosnippet>843</a>            <span class="comment">// if no migration is added in this loop than it means there is a deadlock
+<a href=#843 id=843 data-nosnippet>843</a>            <span class="comment">// if no migration is added in this loop then it means there is a deadlock
 <a href=#844 id=844 data-nosnippet>844</a>            // and we cannot proceed further
 <a href=#845 id=845 data-nosnippet>845</a>            </span><span class="kw">if </span>loop_initial_migration_list_length == migration_list.len() {
 <a href=#846 id=846 data-nosnippet>846</a>                <span class="kw">return </span><span class="prelude-val">Err</span>(Error::PlanError {
@@ -849,7 +849,7 @@
 <a href=#849 id=849 data-nosnippet>849</a>            }
 <a href=#850 id=850 data-nosnippet>850</a>        }
 <a href=#851 id=851 data-nosnippet>851</a>
-<a href=#852 id=852 data-nosnippet>852</a>        <span class="comment">// if plan is provided than modify migration list according to plan else
+<a href=#852 id=852 data-nosnippet>852</a>        <span class="comment">// if plan is provided then modify migration list according to plan else
 <a href=#853 id=853 data-nosnippet>853</a>        // return all migration in order of apply
 <a href=#854 id=854 data-nosnippet>854</a>        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(some_plan) = plan {
 <a href=#855 id=855 data-nosnippet>855</a>            <span class="comment">// Index the applied rows by (app, name) once so matching each
@@ -867,7 +867,7 @@
 <a href=#867 id=867 data-nosnippet>867</a>            }
 <a href=#868 id=868 data-nosnippet>868</a>
 <a href=#869 id=869 data-nosnippet>869</a>            <span class="comment">// Check if any child migration is applied before its parent migration
-<a href=#870 id=870 data-nosnippet>870</a>            // according to parents and run before field. If yes than return error.
+<a href=#870 id=870 data-nosnippet>870</a>            // according to parents and run before field. If yes then return error.
 <a href=#871 id=871 data-nosnippet>871</a>            // Iterate `self.migrations()` (not the set) so the reported error is
 <a href=#872 id=872 data-nosnippet>872</a>            // deterministic when multiple migrations violate the constraint.
 <a href=#873 id=873 data-nosnippet>873</a>            </span><span class="kw">for </span>migration <span class="kw">in </span><span class="self">self</span>.migrations() {
@@ -893,349 +893,348 @@
 <a href=#893 id=893 data-nosnippet>893</a>                    {
 <a href=#894 id=894 data-nosnippet>894</a>                        <span class="kw">return </span><span class="prelude-val">Err</span>(Error::PlanError {
 <a href=#895 id=895 data-nosnippet>895</a>                            message: <span class="macro">format!</span>(
-<a href=#896 id=896 data-nosnippet>896</a>                                <span class="string">"children migration {}:{} applied before its parent migration \
-<a href=#897 id=897 data-nosnippet>897</a>                                 {}:{}"</span>,
-<a href=#898 id=898 data-nosnippet>898</a>                                migration.app(),
-<a href=#899 id=899 data-nosnippet>899</a>                                migration.name(),
-<a href=#900 id=900 data-nosnippet>900</a>                                parent.app(),
-<a href=#901 id=901 data-nosnippet>901</a>                                parent.name()
-<a href=#902 id=902 data-nosnippet>902</a>                            ),
-<a href=#903 id=903 data-nosnippet>903</a>                        });
-<a href=#904 id=904 data-nosnippet>904</a>                    }
-<a href=#905 id=905 data-nosnippet>905</a>                }
-<a href=#906 id=906 data-nosnippet>906</a>            }
-<a href=#907 id=907 data-nosnippet>907</a>
-<a href=#908 id=908 data-nosnippet>908</a>            <span class="comment">// Check if any migration and its replaces are applied together or not.
-<a href=#909 id=909 data-nosnippet>909</a>            // Collect all removals first to avoid cloning migration_list.
-<a href=#910 id=910 data-nosnippet>910</a>            </span><span class="kw">let </span><span class="kw-2">mut </span>to_remove_replacers: Vec&lt;<span class="kw-2">&amp;</span>BoxMigration&lt;DB&gt;&gt; = <span class="macro">vec!</span>[];
-<a href=#911 id=911 data-nosnippet>911</a>            <span class="kw">let </span><span class="kw-2">mut </span>to_remove_replaced: Vec&lt;<span class="kw-2">&amp;</span>BoxMigration&lt;DB&gt;&gt; = <span class="macro">vec!</span>[];
-<a href=#912 id=912 data-nosnippet>912</a>
-<a href=#913 id=913 data-nosnippet>913</a>            <span class="kw">for </span><span class="kw-2">&amp;</span>migration <span class="kw">in </span><span class="kw-2">&amp;</span>migration_list {
-<a href=#914 id=914 data-nosnippet>914</a>                <span class="comment">// Check if this migration have any children due to replace
-<a href=#915 id=915 data-nosnippet>915</a>                </span><span class="kw">if let </span><span class="prelude-val">Some</span>(children) = replace_children.get(<span class="kw-2">&amp;</span>migration) {
-<a href=#916 id=916 data-nosnippet>916</a>                    <span class="comment">// Check if any one of replaced migration is applied or not
-<a href=#917 id=917 data-nosnippet>917</a>                    </span><span class="kw">let </span>replaces_applied = children
-<a href=#918 id=918 data-nosnippet>918</a>                        .iter()
-<a href=#919 id=919 data-nosnippet>919</a>                        .any(|<span class="kw-2">&amp;</span>replace_migration| applied_migrations.contains(<span class="kw-2">&amp;</span>replace_migration));
-<a href=#920 id=920 data-nosnippet>920</a>
-<a href=#921 id=921 data-nosnippet>921</a>                    <span class="comment">// If replaces migration is applied than we cannot apply this migration
-<a href=#922 id=922 data-nosnippet>922</a>                    // If replaces migration is not applied than we can remove all replaced
-<a href=#923 id=923 data-nosnippet>923</a>                    // migration from migration list since this migration will apply in
-<a href=#924 id=924 data-nosnippet>924</a>                    // place of them
-<a href=#925 id=925 data-nosnippet>925</a>                    </span><span class="kw">if </span>replaces_applied {
-<a href=#926 id=926 data-nosnippet>926</a>                        <span class="comment">// Errors out if this migration is also applied since both
-<a href=#927 id=927 data-nosnippet>927</a>                        // migration and its replaces cannot be applied together
-<a href=#928 id=928 data-nosnippet>928</a>                        </span><span class="kw">if </span>applied_migrations.contains(<span class="kw-2">&amp;</span>migration) {
-<a href=#929 id=929 data-nosnippet>929</a>                            <span class="kw">return </span><span class="prelude-val">Err</span>(Error::PlanError {
-<a href=#930 id=930 data-nosnippet>930</a>                                message: <span class="macro">format!</span>(
-<a href=#931 id=931 data-nosnippet>931</a>                                    <span class="string">"migration {}:{} and its replaces are applied together"</span>,
-<a href=#932 id=932 data-nosnippet>932</a>                                    migration.app(),
-<a href=#933 id=933 data-nosnippet>933</a>                                    migration.name(),
-<a href=#934 id=934 data-nosnippet>934</a>                                ),
-<a href=#935 id=935 data-nosnippet>935</a>                            });
-<a href=#936 id=936 data-nosnippet>936</a>                        }
-<a href=#937 id=937 data-nosnippet>937</a>                        to_remove_replacers.push(migration);
-<a href=#938 id=938 data-nosnippet>938</a>                    } <span class="kw">else </span>{
-<a href=#939 id=939 data-nosnippet>939</a>                        <span class="comment">// remove all replaced migration from migration list since this
-<a href=#940 id=940 data-nosnippet>940</a>                        // migration will apply in place of them
-<a href=#941 id=941 data-nosnippet>941</a>                        </span>to_remove_replaced.extend(children);
-<a href=#942 id=942 data-nosnippet>942</a>                    }
-<a href=#943 id=943 data-nosnippet>943</a>                }
-<a href=#944 id=944 data-nosnippet>944</a>            }
-<a href=#945 id=945 data-nosnippet>945</a>
-<a href=#946 id=946 data-nosnippet>946</a>            migration_list.retain(|<span class="kw-2">&amp;</span>m| {
-<a href=#947 id=947 data-nosnippet>947</a>                <span class="kw">let </span>list_contains_migration =
-<a href=#948 id=948 data-nosnippet>948</a>                    to_remove_replacers.contains(<span class="kw-2">&amp;</span>m) || to_remove_replaced.contains(<span class="kw-2">&amp;</span>m);
-<a href=#949 id=949 data-nosnippet>949</a>                !list_contains_migration
-<a href=#950 id=950 data-nosnippet>950</a>            });
-<a href=#951 id=951 data-nosnippet>951</a>
-<a href=#952 id=952 data-nosnippet>952</a>            process_plan(
-<a href=#953 id=953 data-nosnippet>953</a>                <span class="kw-2">&amp;mut </span>migration_list,
-<a href=#954 id=954 data-nosnippet>954</a>                <span class="kw-2">&amp;</span>applied_migrations,
-<a href=#955 id=955 data-nosnippet>955</a>                some_plan,
-<a href=#956 id=956 data-nosnippet>956</a>                <span class="kw-2">&amp;</span>replace_children,
-<a href=#957 id=957 data-nosnippet>957</a>            )<span class="question-mark">?</span>;
-<a href=#958 id=958 data-nosnippet>958</a>        }
-<a href=#959 id=959 data-nosnippet>959</a>
-<a href=#960 id=960 data-nosnippet>960</a>        <span class="prelude-val">Ok</span>(migration_list)
-<a href=#961 id=961 data-nosnippet>961</a>    }
-<a href=#962 id=962 data-nosnippet>962</a>
-<a href=#963 id=963 data-nosnippet>963</a>    <span class="doccomment">/// Generate migration plan according to plan.
-<a href=#964 id=964 data-nosnippet>964</a>    ///
-<a href=#965 id=965 data-nosnippet>965</a>    /// Returns a vector of migrations. If `plan` is `None`, returns all
-<a href=#966 id=966 data-nosnippet>966</a>    /// migrations in apply order without accessing the database. If `plan` is
-<a href=#967 id=967 data-nosnippet>967</a>    /// `Some`, calls [`DatabaseOperation::ensure_migration_table_exists`] and
-<a href=#968 id=968 data-nosnippet>968</a>    /// [`DatabaseOperation::fetch_applied_migration_from_db`] before delegating
-<a href=#969 id=969 data-nosnippet>969</a>    /// to [`Migrate::generate_migration_plan_with_rows`].
-<a href=#970 id=970 data-nosnippet>970</a>    ///
-<a href=#971 id=971 data-nosnippet>971</a>    /// If you have already fetched the applied rows for another purpose (e.g.,
-<a href=#972 id=972 data-nosnippet>972</a>    /// displaying status), call [`Migrate::generate_migration_plan_with_rows`]
-<a href=#973 id=973 data-nosnippet>973</a>    /// directly to avoid a redundant database round-trip.
-<a href=#974 id=974 data-nosnippet>974</a>    </span><span class="kw">async fn </span>generate_migration_plan(
-<a href=#975 id=975 data-nosnippet>975</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
-<a href=#976 id=976 data-nosnippet>976</a>        connection: <span class="kw-2">&amp;mut </span>&lt;DB <span class="kw">as </span>Database&gt;::Connection,
-<a href=#977 id=977 data-nosnippet>977</a>        plan: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>Plan&gt;,
-<a href=#978 id=978 data-nosnippet>978</a>    ) -&gt; MigrationVecResult&lt;<span class="lifetime">'_</span>, DB&gt; {
-<a href=#979 id=979 data-nosnippet>979</a>        <span class="kw">if </span>plan.is_some() {
-<a href=#980 id=980 data-nosnippet>980</a>            <span class="self">self</span>.ensure_migration_table_exists(connection).<span class="kw">await</span><span class="question-mark">?</span>;
-<a href=#981 id=981 data-nosnippet>981</a>            <span class="kw">let </span>rows = <span class="self">self</span>.fetch_applied_migration_from_db(connection).<span class="kw">await</span><span class="question-mark">?</span>;
-<a href=#982 id=982 data-nosnippet>982</a>            <span class="self">self</span>.generate_migration_plan_with_rows(plan, <span class="kw-2">&amp;</span>rows)
-<a href=#983 id=983 data-nosnippet>983</a>        } <span class="kw">else </span>{
-<a href=#984 id=984 data-nosnippet>984</a>            <span class="self">self</span>.generate_migration_plan_with_rows(plan, <span class="kw-2">&amp;</span>[])
-<a href=#985 id=985 data-nosnippet>985</a>        }
-<a href=#986 id=986 data-nosnippet>986</a>    }
-<a href=#987 id=987 data-nosnippet>987</a>
-<a href=#988 id=988 data-nosnippet>988</a>    <span class="doccomment">/// Run provided plan migrations
-<a href=#989 id=989 data-nosnippet>989</a>    ///
-<a href=#990 id=990 data-nosnippet>990</a>    /// # Errors
-<a href=#991 id=991 data-nosnippet>991</a>    /// If failed to run provided plan migrations
-<a href=#992 id=992 data-nosnippet>992</a>    </span><span class="kw">async fn </span>run(
-<a href=#993 id=993 data-nosnippet>993</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
-<a href=#994 id=994 data-nosnippet>994</a>        connection: <span class="kw-2">&amp;mut </span>&lt;DB <span class="kw">as </span>Database&gt;::Connection,
-<a href=#995 id=995 data-nosnippet>995</a>        plan: <span class="kw-2">&amp;</span>Plan,
-<a href=#996 id=996 data-nosnippet>996</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
-<a href=#997 id=997 data-nosnippet>997</a>        <span class="macro">tracing::debug!</span>(<span class="string">"running plan {:?}"</span>, plan);
-<a href=#998 id=998 data-nosnippet>998</a>        <span class="self">self</span>.lock(connection).<span class="kw">await</span><span class="question-mark">?</span>;
-<a href=#999 id=999 data-nosnippet>999</a>        <span class="comment">// store result of applying migration so that we can unlock lock before
-<a href=#1000 id=1000 data-nosnippet>1000</a>        // returning result
-<a href=#1001 id=1001 data-nosnippet>1001</a>        </span><span class="kw">let </span>result = <span class="kw">async </span>{
-<a href=#1002 id=1002 data-nosnippet>1002</a>            <span class="kw">for </span>migration <span class="kw">in </span><span class="self">self</span>.generate_migration_plan(connection, <span class="prelude-val">Some</span>(plan)).<span class="kw">await</span><span class="question-mark">? </span>{
-<a href=#1003 id=1003 data-nosnippet>1003</a>                <span class="kw">match </span>plan.plan_type {
-<a href=#1004 id=1004 data-nosnippet>1004</a>                    PlanType::Apply =&gt; {
-<a href=#1005 id=1005 data-nosnippet>1005</a>                        <span class="macro">tracing::debug!</span>(<span class="string">"applying {} : {}"</span>, migration.app(), migration.name());
-<a href=#1006 id=1006 data-nosnippet>1006</a>                        <span class="kw">let </span>operations = migration.operations();
-<a href=#1007 id=1007 data-nosnippet>1007</a>                        <span class="kw">if </span>migration.is_atomic() {
-<a href=#1008 id=1008 data-nosnippet>1008</a>                            <span class="kw">let </span><span class="kw-2">mut </span>transaction = connection.begin().<span class="kw">await</span><span class="question-mark">?</span>;
-<a href=#1009 id=1009 data-nosnippet>1009</a>                            <span class="kw">if </span>!plan.fake {
-<a href=#1010 id=1010 data-nosnippet>1010</a>                                <span class="kw">for </span>operation <span class="kw">in </span>operations {
-<a href=#1011 id=1011 data-nosnippet>1011</a>                                    operation.up(<span class="kw-2">&amp;mut </span>transaction).<span class="kw">await</span><span class="question-mark">?</span>;
-<a href=#1012 id=1012 data-nosnippet>1012</a>                                }
-<a href=#1013 id=1013 data-nosnippet>1013</a>                            }
-<a href=#1014 id=1014 data-nosnippet>1014</a>                            <span class="self">self</span>.add_migration_to_db_table(<span class="kw-2">&amp;mut </span>transaction, migration.as_ref())
-<a href=#1015 id=1015 data-nosnippet>1015</a>                                .<span class="kw">await</span><span class="question-mark">?</span>;
-<a href=#1016 id=1016 data-nosnippet>1016</a>                            transaction.commit().<span class="kw">await</span><span class="question-mark">?</span>;
-<a href=#1017 id=1017 data-nosnippet>1017</a>                        } <span class="kw">else </span>{
-<a href=#1018 id=1018 data-nosnippet>1018</a>                            <span class="kw">if </span>!plan.fake {
-<a href=#1019 id=1019 data-nosnippet>1019</a>                                <span class="kw">for </span>operation <span class="kw">in </span>operations {
-<a href=#1020 id=1020 data-nosnippet>1020</a>                                    operation.up(connection).<span class="kw">await</span><span class="question-mark">?</span>;
-<a href=#1021 id=1021 data-nosnippet>1021</a>                                }
-<a href=#1022 id=1022 data-nosnippet>1022</a>                            }
-<a href=#1023 id=1023 data-nosnippet>1023</a>                            <span class="self">self</span>.add_migration_to_db_table(connection, migration.as_ref())
-<a href=#1024 id=1024 data-nosnippet>1024</a>                                .<span class="kw">await</span><span class="question-mark">?</span>;
-<a href=#1025 id=1025 data-nosnippet>1025</a>                        }
-<a href=#1026 id=1026 data-nosnippet>1026</a>                    }
-<a href=#1027 id=1027 data-nosnippet>1027</a>                    PlanType::Revert =&gt; {
-<a href=#1028 id=1028 data-nosnippet>1028</a>                        <span class="macro">tracing::debug!</span>(<span class="string">"reverting {} : {}"</span>, migration.app(), migration.name());
-<a href=#1029 id=1029 data-nosnippet>1029</a>
-<a href=#1030 id=1030 data-nosnippet>1030</a>                        <span class="comment">// Reverse operation since last applied operation need to be reverted first
-<a href=#1031 id=1031 data-nosnippet>1031</a>                        </span><span class="kw">let </span><span class="kw-2">mut </span>operations = migration.operations();
-<a href=#1032 id=1032 data-nosnippet>1032</a>                        operations.reverse();
-<a href=#1033 id=1033 data-nosnippet>1033</a>
-<a href=#1034 id=1034 data-nosnippet>1034</a>                        <span class="kw">if </span>migration.is_atomic() {
-<a href=#1035 id=1035 data-nosnippet>1035</a>                            <span class="kw">let </span><span class="kw-2">mut </span>transaction = connection.begin().<span class="kw">await</span><span class="question-mark">?</span>;
-<a href=#1036 id=1036 data-nosnippet>1036</a>                            <span class="kw">if </span>!plan.fake {
-<a href=#1037 id=1037 data-nosnippet>1037</a>                                <span class="kw">for </span>operation <span class="kw">in </span>operations {
-<a href=#1038 id=1038 data-nosnippet>1038</a>                                    operation.down(<span class="kw-2">&amp;mut </span>transaction).<span class="kw">await</span><span class="question-mark">?</span>;
-<a href=#1039 id=1039 data-nosnippet>1039</a>                                }
-<a href=#1040 id=1040 data-nosnippet>1040</a>                            }
-<a href=#1041 id=1041 data-nosnippet>1041</a>                            <span class="self">self</span>.delete_migration_from_db_table(
-<a href=#1042 id=1042 data-nosnippet>1042</a>                                <span class="kw-2">&amp;mut </span>transaction,
-<a href=#1043 id=1043 data-nosnippet>1043</a>                                migration.as_ref(),
-<a href=#1044 id=1044 data-nosnippet>1044</a>                            )
-<a href=#1045 id=1045 data-nosnippet>1045</a>                            .<span class="kw">await</span><span class="question-mark">?</span>;
-<a href=#1046 id=1046 data-nosnippet>1046</a>                            transaction.commit().<span class="kw">await</span><span class="question-mark">?</span>;
-<a href=#1047 id=1047 data-nosnippet>1047</a>                        } <span class="kw">else </span>{
-<a href=#1048 id=1048 data-nosnippet>1048</a>                            <span class="kw">if </span>!plan.fake {
-<a href=#1049 id=1049 data-nosnippet>1049</a>                                <span class="kw">for </span>operation <span class="kw">in </span>operations {
-<a href=#1050 id=1050 data-nosnippet>1050</a>                                    operation.down(connection).<span class="kw">await</span><span class="question-mark">?</span>;
-<a href=#1051 id=1051 data-nosnippet>1051</a>                                }
-<a href=#1052 id=1052 data-nosnippet>1052</a>                            }
-<a href=#1053 id=1053 data-nosnippet>1053</a>                            <span class="self">self</span>.delete_migration_from_db_table(connection, migration.as_ref())
-<a href=#1054 id=1054 data-nosnippet>1054</a>                                .<span class="kw">await</span><span class="question-mark">?</span>;
-<a href=#1055 id=1055 data-nosnippet>1055</a>                        }
-<a href=#1056 id=1056 data-nosnippet>1056</a>                    }
-<a href=#1057 id=1057 data-nosnippet>1057</a>                }
-<a href=#1058 id=1058 data-nosnippet>1058</a>            }
-<a href=#1059 id=1059 data-nosnippet>1059</a>            <span class="prelude-val">Ok</span>(())
-<a href=#1060 id=1060 data-nosnippet>1060</a>        }
-<a href=#1061 id=1061 data-nosnippet>1061</a>        .<span class="kw">await</span>;
-<a href=#1062 id=1062 data-nosnippet>1062</a>        <span class="comment">// unlock before returning; if both migration and unlock fail, the
-<a href=#1063 id=1063 data-nosnippet>1063</a>        // migration error takes precedence over the unlock error.
-<a href=#1064 id=1064 data-nosnippet>1064</a>        </span><span class="kw">let </span>unlock_result = <span class="self">self</span>.unlock(connection).<span class="kw">await</span>;
-<a href=#1065 id=1065 data-nosnippet>1065</a>        result.and(unlock_result)
-<a href=#1066 id=1066 data-nosnippet>1066</a>    }
-<a href=#1067 id=1067 data-nosnippet>1067</a>}
-<a href=#1068 id=1068 data-nosnippet>1068</a>
-<a href=#1069 id=1069 data-nosnippet>1069</a><span class="kw">const </span>DEFAULT_TABLE_NAME: <span class="kw-2">&amp;</span>str = <span class="string">"_sqlx_migrator_migrations"</span>;
-<a href=#1070 id=1070 data-nosnippet>1070</a>
-<a href=#1071 id=1071 data-nosnippet>1071</a><span class="doccomment">/// A struct that stores migration-related metadata, including the list of
-<a href=#1072 id=1072 data-nosnippet>1072</a>/// migrations and configuration such as table and schema name
-<a href=#1073 id=1073 data-nosnippet>1073</a></span><span class="kw">pub struct </span>Migrator&lt;DB&gt; {
-<a href=#1074 id=1074 data-nosnippet>1074</a>    migrations: Vec&lt;BoxMigration&lt;DB&gt;&gt;,
-<a href=#1075 id=1075 data-nosnippet>1075</a>    table_prefix: <span class="prelude-ty">Option</span>&lt;String&gt;,
-<a href=#1076 id=1076 data-nosnippet>1076</a>    schema: <span class="prelude-ty">Option</span>&lt;String&gt;,
-<a href=#1077 id=1077 data-nosnippet>1077</a>}
-<a href=#1078 id=1078 data-nosnippet>1078</a>
-<a href=#1079 id=1079 data-nosnippet>1079</a><span class="kw">impl</span>&lt;DB&gt; Migrator&lt;DB&gt; {
-<a href=#1080 id=1080 data-nosnippet>1080</a>    <span class="doccomment">/// Creates a new migrator
-<a href=#1081 id=1081 data-nosnippet>1081</a>    ///
-<a href=#1082 id=1082 data-nosnippet>1082</a>    /// # Example
-<a href=#1083 id=1083 data-nosnippet>1083</a>    /// ```rust
-<a href=#1084 id=1084 data-nosnippet>1084</a>    /// # #[cfg(feature="sqlite")]
-<a href=#1085 id=1085 data-nosnippet>1085</a>    /// # fn main() {
-<a href=#1086 id=1086 data-nosnippet>1086</a>    /// let migrator = sqlx_migrator::Migrator::&lt;sqlx::Sqlite&gt;::new();
-<a href=#1087 id=1087 data-nosnippet>1087</a>    /// assert_eq!(&amp;migrator.table_name(), "_sqlx_migrator_migrations")
-<a href=#1088 id=1088 data-nosnippet>1088</a>    /// # }
-<a href=#1089 id=1089 data-nosnippet>1089</a>    /// # #[cfg(not(feature="sqlite"))]
-<a href=#1090 id=1090 data-nosnippet>1090</a>    /// # fn main() {
-<a href=#1091 id=1091 data-nosnippet>1091</a>    /// # }
-<a href=#1092 id=1092 data-nosnippet>1092</a>    /// ```
-<a href=#1093 id=1093 data-nosnippet>1093</a>    </span><span class="attr">#[must_use]
-<a href=#1094 id=1094 data-nosnippet>1094</a>    </span><span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
-<a href=#1095 id=1095 data-nosnippet>1095</a>        <span class="self">Self </span>{
-<a href=#1096 id=1096 data-nosnippet>1096</a>            migrations: Vec::default(),
-<a href=#1097 id=1097 data-nosnippet>1097</a>            table_prefix: <span class="prelude-val">None</span>,
-<a href=#1098 id=1098 data-nosnippet>1098</a>            schema: <span class="prelude-val">None</span>,
-<a href=#1099 id=1099 data-nosnippet>1099</a>        }
-<a href=#1100 id=1100 data-nosnippet>1100</a>    }
-<a href=#1101 id=1101 data-nosnippet>1101</a>
-<a href=#1102 id=1102 data-nosnippet>1102</a>    <span class="doccomment">/// Configures a prefix for the migrator table name.
-<a href=#1103 id=1103 data-nosnippet>1103</a>    ///
-<a href=#1104 id=1104 data-nosnippet>1104</a>    /// The table name will be formatted as
-<a href=#1105 id=1105 data-nosnippet>1105</a>    /// `_{prefix}_sqlx_migrator_migrations`. Only ASCII lowercase, numeric
-<a href=#1106 id=1106 data-nosnippet>1106</a>    /// characters and underscores are allowed in the prefix.
-<a href=#1107 id=1107 data-nosnippet>1107</a>    ///
-<a href=#1108 id=1108 data-nosnippet>1108</a>    /// # Example
-<a href=#1109 id=1109 data-nosnippet>1109</a>    /// ```rust
-<a href=#1110 id=1110 data-nosnippet>1110</a>    /// # #[cfg(feature="sqlite")]
-<a href=#1111 id=1111 data-nosnippet>1111</a>    /// # fn main() {
-<a href=#1112 id=1112 data-nosnippet>1112</a>    /// let migrator = sqlx_migrator::Migrator::&lt;sqlx::Sqlite&gt;::new()
-<a href=#1113 id=1113 data-nosnippet>1113</a>    ///     .set_table_prefix("prefix_value")
-<a href=#1114 id=1114 data-nosnippet>1114</a>    ///     .unwrap();
-<a href=#1115 id=1115 data-nosnippet>1115</a>    /// assert_eq!(
-<a href=#1116 id=1116 data-nosnippet>1116</a>    ///     &amp;migrator.table_name(),
-<a href=#1117 id=1117 data-nosnippet>1117</a>    ///     "_prefix_value_sqlx_migrator_migrations"
-<a href=#1118 id=1118 data-nosnippet>1118</a>    /// )
-<a href=#1119 id=1119 data-nosnippet>1119</a>    /// # }
-<a href=#1120 id=1120 data-nosnippet>1120</a>    /// # #[cfg(not(feature="sqlite"))]
-<a href=#1121 id=1121 data-nosnippet>1121</a>    /// # fn main() {
-<a href=#1122 id=1122 data-nosnippet>1122</a>    /// # }
-<a href=#1123 id=1123 data-nosnippet>1123</a>    /// ```
-<a href=#1124 id=1124 data-nosnippet>1124</a>    ///
-<a href=#1125 id=1125 data-nosnippet>1125</a>    /// # Errors
-<a href=#1126 id=1126 data-nosnippet>1126</a>    /// When passed table prefix name contains invalid characters
-<a href=#1127 id=1127 data-nosnippet>1127</a>    </span><span class="kw">pub fn </span>set_table_prefix(<span class="kw-2">mut </span><span class="self">self</span>, prefix: <span class="kw">impl </span>Into&lt;String&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, Error&gt; {
-<a href=#1128 id=1128 data-nosnippet>1128</a>        <span class="kw">let </span>prefix_str = prefix.into();
-<a href=#1129 id=1129 data-nosnippet>1129</a>        <span class="kw">if </span>prefix_str.is_empty()
-<a href=#1130 id=1130 data-nosnippet>1130</a>            || !prefix_str
-<a href=#1131 id=1131 data-nosnippet>1131</a>                .chars()
-<a href=#1132 id=1132 data-nosnippet>1132</a>                .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == <span class="string">'_'</span>)
-<a href=#1133 id=1133 data-nosnippet>1133</a>        {
-<a href=#1134 id=1134 data-nosnippet>1134</a>            <span class="kw">return </span><span class="prelude-val">Err</span>(Error::InvalidTablePrefix);
-<a href=#1135 id=1135 data-nosnippet>1135</a>        }
-<a href=#1136 id=1136 data-nosnippet>1136</a>        <span class="self">self</span>.table_prefix = <span class="prelude-val">Some</span>(prefix_str);
-<a href=#1137 id=1137 data-nosnippet>1137</a>        <span class="prelude-val">Ok</span>(<span class="self">self</span>)
-<a href=#1138 id=1138 data-nosnippet>1138</a>    }
-<a href=#1139 id=1139 data-nosnippet>1139</a>
-<a href=#1140 id=1140 data-nosnippet>1140</a>    <span class="doccomment">/// Configures a schema for the migrator table.
-<a href=#1141 id=1141 data-nosnippet>1141</a>    ///
-<a href=#1142 id=1142 data-nosnippet>1142</a>    /// When set, the table name will be formatted as `{schema}.{table_name}`.
-<a href=#1143 id=1143 data-nosnippet>1143</a>    /// Schema name can only contain [a-z0-9_] and begin with [a-z_]
-<a href=#1144 id=1144 data-nosnippet>1144</a>    ///
-<a href=#1145 id=1145 data-nosnippet>1145</a>    /// # Examples
-<a href=#1146 id=1146 data-nosnippet>1146</a>    /// ```rust
-<a href=#1147 id=1147 data-nosnippet>1147</a>    /// # #[cfg(feature="sqlite")]
-<a href=#1148 id=1148 data-nosnippet>1148</a>    /// # fn main() {
-<a href=#1149 id=1149 data-nosnippet>1149</a>    /// let migrator = sqlx_migrator::Migrator::&lt;sqlx::Sqlite&gt;::new()
-<a href=#1150 id=1150 data-nosnippet>1150</a>    ///     .set_schema("migrations")
-<a href=#1151 id=1151 data-nosnippet>1151</a>    ///     .unwrap();
-<a href=#1152 id=1152 data-nosnippet>1152</a>    /// assert_eq!(
-<a href=#1153 id=1153 data-nosnippet>1153</a>    ///     &amp;migrator.table_name(),
-<a href=#1154 id=1154 data-nosnippet>1154</a>    ///     "migrations._sqlx_migrator_migrations"
-<a href=#1155 id=1155 data-nosnippet>1155</a>    /// );
-<a href=#1156 id=1156 data-nosnippet>1156</a>    /// # }
-<a href=#1157 id=1157 data-nosnippet>1157</a>    /// # #[cfg(not(feature="sqlite"))]
-<a href=#1158 id=1158 data-nosnippet>1158</a>    /// # fn main() {}
-<a href=#1159 id=1159 data-nosnippet>1159</a>    /// ```
-<a href=#1160 id=1160 data-nosnippet>1160</a>    ///
-<a href=#1161 id=1161 data-nosnippet>1161</a>    /// # Errors
-<a href=#1162 id=1162 data-nosnippet>1162</a>    /// When passed schema name contains invalid characters
-<a href=#1163 id=1163 data-nosnippet>1163</a>    </span><span class="kw">pub fn </span>set_schema(<span class="kw-2">mut </span><span class="self">self</span>, schema: <span class="kw">impl </span>Into&lt;String&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, Error&gt; {
-<a href=#1164 id=1164 data-nosnippet>1164</a>        <span class="kw">let </span>schema_str = schema.into();
-<a href=#1165 id=1165 data-nosnippet>1165</a>        <span class="kw">if </span>schema_str.is_empty()
-<a href=#1166 id=1166 data-nosnippet>1166</a>            || !schema_str
-<a href=#1167 id=1167 data-nosnippet>1167</a>                .chars()
-<a href=#1168 id=1168 data-nosnippet>1168</a>                .next()
-<a href=#1169 id=1169 data-nosnippet>1169</a>                .is_some_and(|c| c.is_ascii_lowercase() || c == <span class="string">'_'</span>)
-<a href=#1170 id=1170 data-nosnippet>1170</a>            || !schema_str
-<a href=#1171 id=1171 data-nosnippet>1171</a>                .chars()
-<a href=#1172 id=1172 data-nosnippet>1172</a>                .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == <span class="string">'_'</span>)
-<a href=#1173 id=1173 data-nosnippet>1173</a>        {
-<a href=#1174 id=1174 data-nosnippet>1174</a>            <span class="kw">return </span><span class="prelude-val">Err</span>(Error::InvalidSchema);
-<a href=#1175 id=1175 data-nosnippet>1175</a>        }
-<a href=#1176 id=1176 data-nosnippet>1176</a>        <span class="self">self</span>.schema = <span class="prelude-val">Some</span>(schema_str);
-<a href=#1177 id=1177 data-nosnippet>1177</a>        <span class="prelude-val">Ok</span>(<span class="self">self</span>)
-<a href=#1178 id=1178 data-nosnippet>1178</a>    }
-<a href=#1179 id=1179 data-nosnippet>1179</a>
-<a href=#1180 id=1180 data-nosnippet>1180</a>    <span class="doccomment">/// Get name of table which is used for storing migrations related
-<a href=#1181 id=1181 data-nosnippet>1181</a>    /// information in database
-<a href=#1182 id=1182 data-nosnippet>1182</a>    ///
-<a href=#1183 id=1183 data-nosnippet>1183</a>    /// Format depends on configuration:
-<a href=#1184 id=1184 data-nosnippet>1184</a>    /// - With schema: `{schema}._sqlx_migrator_migrations`
-<a href=#1185 id=1185 data-nosnippet>1185</a>    /// - With prefix: `_{prefix}_sqlx_migrator_migrations`
-<a href=#1186 id=1186 data-nosnippet>1186</a>    /// - With both: `{schema}._{prefix}_sqlx_migrator_migrations`
-<a href=#1187 id=1187 data-nosnippet>1187</a>    /// - Default: `_sqlx_migrator_migrations`
-<a href=#1188 id=1188 data-nosnippet>1188</a>    ///
-<a href=#1189 id=1189 data-nosnippet>1189</a>    /// # Examples
-<a href=#1190 id=1190 data-nosnippet>1190</a>    /// ```rust
-<a href=#1191 id=1191 data-nosnippet>1191</a>    /// # #[cfg(feature="sqlite")]
-<a href=#1192 id=1192 data-nosnippet>1192</a>    /// # fn main() {
-<a href=#1193 id=1193 data-nosnippet>1193</a>    /// let migrator = sqlx_migrator::Migrator::&lt;sqlx::Sqlite&gt;::new()
-<a href=#1194 id=1194 data-nosnippet>1194</a>    ///     .set_schema("app_schema")
-<a href=#1195 id=1195 data-nosnippet>1195</a>    ///     .unwrap()
-<a href=#1196 id=1196 data-nosnippet>1196</a>    ///     .set_table_prefix("v1")
-<a href=#1197 id=1197 data-nosnippet>1197</a>    ///     .unwrap();
-<a href=#1198 id=1198 data-nosnippet>1198</a>    /// assert_eq!(
-<a href=#1199 id=1199 data-nosnippet>1199</a>    ///     &amp;migrator.table_name(),
-<a href=#1200 id=1200 data-nosnippet>1200</a>    ///     "app_schema._v1_sqlx_migrator_migrations"
-<a href=#1201 id=1201 data-nosnippet>1201</a>    /// );
-<a href=#1202 id=1202 data-nosnippet>1202</a>    /// # }
-<a href=#1203 id=1203 data-nosnippet>1203</a>    /// # #[cfg(not(feature="sqlite"))]
-<a href=#1204 id=1204 data-nosnippet>1204</a>    /// # fn main() {}
-<a href=#1205 id=1205 data-nosnippet>1205</a>    /// ```
-<a href=#1206 id=1206 data-nosnippet>1206</a>    </span><span class="attr">#[must_use]
-<a href=#1207 id=1207 data-nosnippet>1207</a>    </span><span class="kw">pub fn </span>table_name(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; String {
-<a href=#1208 id=1208 data-nosnippet>1208</a>        <span class="kw">let </span><span class="kw-2">mut </span>table_name = DEFAULT_TABLE_NAME.to_string();
-<a href=#1209 id=1209 data-nosnippet>1209</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(prefix) = <span class="kw-2">&amp;</span><span class="self">self</span>.table_prefix {
-<a href=#1210 id=1210 data-nosnippet>1210</a>            table_name = <span class="macro">format!</span>(<span class="string">"_{prefix}{table_name}"</span>);
-<a href=#1211 id=1211 data-nosnippet>1211</a>        }
-<a href=#1212 id=1212 data-nosnippet>1212</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(schema) = <span class="kw-2">&amp;</span><span class="self">self</span>.schema {
-<a href=#1213 id=1213 data-nosnippet>1213</a>            table_name = <span class="macro">format!</span>(<span class="string">"{schema}.{table_name}"</span>);
-<a href=#1214 id=1214 data-nosnippet>1214</a>        }
-<a href=#1215 id=1215 data-nosnippet>1215</a>        table_name
-<a href=#1216 id=1216 data-nosnippet>1216</a>    }
-<a href=#1217 id=1217 data-nosnippet>1217</a>}
-<a href=#1218 id=1218 data-nosnippet>1218</a>
-<a href=#1219 id=1219 data-nosnippet>1219</a><span class="kw">impl</span>&lt;DB&gt; Default <span class="kw">for </span>Migrator&lt;DB&gt; {
-<a href=#1220 id=1220 data-nosnippet>1220</a>    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
-<a href=#1221 id=1221 data-nosnippet>1221</a>        <span class="self">Self</span>::new()
-<a href=#1222 id=1222 data-nosnippet>1222</a>    }
-<a href=#1223 id=1223 data-nosnippet>1223</a>}
-<a href=#1224 id=1224 data-nosnippet>1224</a>
-<a href=#1225 id=1225 data-nosnippet>1225</a><span class="kw">impl</span>&lt;DB&gt; Info&lt;DB&gt; <span class="kw">for </span>Migrator&lt;DB&gt; {
-<a href=#1226 id=1226 data-nosnippet>1226</a>    <span class="kw">fn </span>migrations(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[BoxMigration&lt;DB&gt;] {
-<a href=#1227 id=1227 data-nosnippet>1227</a>        <span class="kw-2">&amp;</span><span class="self">self</span>.migrations
-<a href=#1228 id=1228 data-nosnippet>1228</a>    }
-<a href=#1229 id=1229 data-nosnippet>1229</a>
-<a href=#1230 id=1230 data-nosnippet>1230</a>    <span class="kw">fn </span>migrations_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>Vec&lt;BoxMigration&lt;DB&gt;&gt; {
-<a href=#1231 id=1231 data-nosnippet>1231</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>.migrations
-<a href=#1232 id=1232 data-nosnippet>1232</a>    }
-<a href=#1233 id=1233 data-nosnippet>1233</a>}
-<a href=#1234 id=1234 data-nosnippet>1234</a>
-<a href=#1235 id=1235 data-nosnippet>1235</a><span class="kw">impl</span>&lt;DB&gt; Migrate&lt;DB&gt; <span class="kw">for </span>Migrator&lt;DB&gt;
-<a href=#1236 id=1236 data-nosnippet>1236</a><span class="kw">where
-<a href=#1237 id=1237 data-nosnippet>1237</a>    </span>DB: Database,
-<a href=#1238 id=1238 data-nosnippet>1238</a>    <span class="self">Self</span>: DatabaseOperation&lt;DB&gt;,
-<a href=#1239 id=1239 data-nosnippet>1239</a>{
-<a href=#1240 id=1240 data-nosnippet>1240</a>}
+<a href=#896 id=896 data-nosnippet>896</a>                                <span class="string">"child migration {}:{} applied before its parent migration {}:{}"</span>,
+<a href=#897 id=897 data-nosnippet>897</a>                                migration.app(),
+<a href=#898 id=898 data-nosnippet>898</a>                                migration.name(),
+<a href=#899 id=899 data-nosnippet>899</a>                                parent.app(),
+<a href=#900 id=900 data-nosnippet>900</a>                                parent.name()
+<a href=#901 id=901 data-nosnippet>901</a>                            ),
+<a href=#902 id=902 data-nosnippet>902</a>                        });
+<a href=#903 id=903 data-nosnippet>903</a>                    }
+<a href=#904 id=904 data-nosnippet>904</a>                }
+<a href=#905 id=905 data-nosnippet>905</a>            }
+<a href=#906 id=906 data-nosnippet>906</a>
+<a href=#907 id=907 data-nosnippet>907</a>            <span class="comment">// Check if any migration and its replaces are applied together or not.
+<a href=#908 id=908 data-nosnippet>908</a>            // Collect all removals first to avoid cloning migration_list.
+<a href=#909 id=909 data-nosnippet>909</a>            </span><span class="kw">let </span><span class="kw-2">mut </span>to_remove_replacers: Vec&lt;<span class="kw-2">&amp;</span>BoxMigration&lt;DB&gt;&gt; = <span class="macro">vec!</span>[];
+<a href=#910 id=910 data-nosnippet>910</a>            <span class="kw">let </span><span class="kw-2">mut </span>to_remove_replaced: Vec&lt;<span class="kw-2">&amp;</span>BoxMigration&lt;DB&gt;&gt; = <span class="macro">vec!</span>[];
+<a href=#911 id=911 data-nosnippet>911</a>
+<a href=#912 id=912 data-nosnippet>912</a>            <span class="kw">for </span><span class="kw-2">&amp;</span>migration <span class="kw">in </span><span class="kw-2">&amp;</span>migration_list {
+<a href=#913 id=913 data-nosnippet>913</a>                <span class="comment">// Check if this migration have any children due to replace
+<a href=#914 id=914 data-nosnippet>914</a>                </span><span class="kw">if let </span><span class="prelude-val">Some</span>(children) = replace_children.get(<span class="kw-2">&amp;</span>migration) {
+<a href=#915 id=915 data-nosnippet>915</a>                    <span class="comment">// Check if any one of replaced migration is applied or not
+<a href=#916 id=916 data-nosnippet>916</a>                    </span><span class="kw">let </span>replaces_applied = children
+<a href=#917 id=917 data-nosnippet>917</a>                        .iter()
+<a href=#918 id=918 data-nosnippet>918</a>                        .any(|<span class="kw-2">&amp;</span>replace_migration| applied_migrations.contains(<span class="kw-2">&amp;</span>replace_migration));
+<a href=#919 id=919 data-nosnippet>919</a>
+<a href=#920 id=920 data-nosnippet>920</a>                    <span class="comment">// If replaces migration is applied then we cannot apply this migration
+<a href=#921 id=921 data-nosnippet>921</a>                    // If replaces migration is not applied then we can remove all replaced
+<a href=#922 id=922 data-nosnippet>922</a>                    // migration from migration list since this migration will apply in
+<a href=#923 id=923 data-nosnippet>923</a>                    // place of them
+<a href=#924 id=924 data-nosnippet>924</a>                    </span><span class="kw">if </span>replaces_applied {
+<a href=#925 id=925 data-nosnippet>925</a>                        <span class="comment">// Errors out if this migration is also applied since both
+<a href=#926 id=926 data-nosnippet>926</a>                        // migration and its replaces cannot be applied together
+<a href=#927 id=927 data-nosnippet>927</a>                        </span><span class="kw">if </span>applied_migrations.contains(<span class="kw-2">&amp;</span>migration) {
+<a href=#928 id=928 data-nosnippet>928</a>                            <span class="kw">return </span><span class="prelude-val">Err</span>(Error::PlanError {
+<a href=#929 id=929 data-nosnippet>929</a>                                message: <span class="macro">format!</span>(
+<a href=#930 id=930 data-nosnippet>930</a>                                    <span class="string">"migration {}:{} and its replaces are applied together"</span>,
+<a href=#931 id=931 data-nosnippet>931</a>                                    migration.app(),
+<a href=#932 id=932 data-nosnippet>932</a>                                    migration.name(),
+<a href=#933 id=933 data-nosnippet>933</a>                                ),
+<a href=#934 id=934 data-nosnippet>934</a>                            });
+<a href=#935 id=935 data-nosnippet>935</a>                        }
+<a href=#936 id=936 data-nosnippet>936</a>                        to_remove_replacers.push(migration);
+<a href=#937 id=937 data-nosnippet>937</a>                    } <span class="kw">else </span>{
+<a href=#938 id=938 data-nosnippet>938</a>                        <span class="comment">// remove all replaced migration from migration list since this
+<a href=#939 id=939 data-nosnippet>939</a>                        // migration will apply in place of them
+<a href=#940 id=940 data-nosnippet>940</a>                        </span>to_remove_replaced.extend(children);
+<a href=#941 id=941 data-nosnippet>941</a>                    }
+<a href=#942 id=942 data-nosnippet>942</a>                }
+<a href=#943 id=943 data-nosnippet>943</a>            }
+<a href=#944 id=944 data-nosnippet>944</a>
+<a href=#945 id=945 data-nosnippet>945</a>            migration_list.retain(|<span class="kw-2">&amp;</span>m| {
+<a href=#946 id=946 data-nosnippet>946</a>                <span class="kw">let </span>list_contains_migration =
+<a href=#947 id=947 data-nosnippet>947</a>                    to_remove_replacers.contains(<span class="kw-2">&amp;</span>m) || to_remove_replaced.contains(<span class="kw-2">&amp;</span>m);
+<a href=#948 id=948 data-nosnippet>948</a>                !list_contains_migration
+<a href=#949 id=949 data-nosnippet>949</a>            });
+<a href=#950 id=950 data-nosnippet>950</a>
+<a href=#951 id=951 data-nosnippet>951</a>            process_plan(
+<a href=#952 id=952 data-nosnippet>952</a>                <span class="kw-2">&amp;mut </span>migration_list,
+<a href=#953 id=953 data-nosnippet>953</a>                <span class="kw-2">&amp;</span>applied_migrations,
+<a href=#954 id=954 data-nosnippet>954</a>                some_plan,
+<a href=#955 id=955 data-nosnippet>955</a>                <span class="kw-2">&amp;</span>replace_children,
+<a href=#956 id=956 data-nosnippet>956</a>            )<span class="question-mark">?</span>;
+<a href=#957 id=957 data-nosnippet>957</a>        }
+<a href=#958 id=958 data-nosnippet>958</a>
+<a href=#959 id=959 data-nosnippet>959</a>        <span class="prelude-val">Ok</span>(migration_list)
+<a href=#960 id=960 data-nosnippet>960</a>    }
+<a href=#961 id=961 data-nosnippet>961</a>
+<a href=#962 id=962 data-nosnippet>962</a>    <span class="doccomment">/// Generate migration plan according to plan.
+<a href=#963 id=963 data-nosnippet>963</a>    ///
+<a href=#964 id=964 data-nosnippet>964</a>    /// Returns a vector of migrations. If `plan` is `None`, returns all
+<a href=#965 id=965 data-nosnippet>965</a>    /// migrations in apply order without accessing the database. If `plan` is
+<a href=#966 id=966 data-nosnippet>966</a>    /// `Some`, calls [`DatabaseOperation::ensure_migration_table_exists`] and
+<a href=#967 id=967 data-nosnippet>967</a>    /// [`DatabaseOperation::fetch_applied_migration_from_db`] before delegating
+<a href=#968 id=968 data-nosnippet>968</a>    /// to [`Migrate::generate_migration_plan_with_rows`].
+<a href=#969 id=969 data-nosnippet>969</a>    ///
+<a href=#970 id=970 data-nosnippet>970</a>    /// If you have already fetched the applied rows for another purpose (e.g.,
+<a href=#971 id=971 data-nosnippet>971</a>    /// displaying status), call [`Migrate::generate_migration_plan_with_rows`]
+<a href=#972 id=972 data-nosnippet>972</a>    /// directly to avoid a redundant database round-trip.
+<a href=#973 id=973 data-nosnippet>973</a>    </span><span class="kw">async fn </span>generate_migration_plan(
+<a href=#974 id=974 data-nosnippet>974</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
+<a href=#975 id=975 data-nosnippet>975</a>        connection: <span class="kw-2">&amp;mut </span>&lt;DB <span class="kw">as </span>Database&gt;::Connection,
+<a href=#976 id=976 data-nosnippet>976</a>        plan: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>Plan&gt;,
+<a href=#977 id=977 data-nosnippet>977</a>    ) -&gt; MigrationVecResult&lt;<span class="lifetime">'_</span>, DB&gt; {
+<a href=#978 id=978 data-nosnippet>978</a>        <span class="kw">if </span>plan.is_some() {
+<a href=#979 id=979 data-nosnippet>979</a>            <span class="self">self</span>.ensure_migration_table_exists(connection).<span class="kw">await</span><span class="question-mark">?</span>;
+<a href=#980 id=980 data-nosnippet>980</a>            <span class="kw">let </span>rows = <span class="self">self</span>.fetch_applied_migration_from_db(connection).<span class="kw">await</span><span class="question-mark">?</span>;
+<a href=#981 id=981 data-nosnippet>981</a>            <span class="self">self</span>.generate_migration_plan_with_rows(plan, <span class="kw-2">&amp;</span>rows)
+<a href=#982 id=982 data-nosnippet>982</a>        } <span class="kw">else </span>{
+<a href=#983 id=983 data-nosnippet>983</a>            <span class="self">self</span>.generate_migration_plan_with_rows(plan, <span class="kw-2">&amp;</span>[])
+<a href=#984 id=984 data-nosnippet>984</a>        }
+<a href=#985 id=985 data-nosnippet>985</a>    }
+<a href=#986 id=986 data-nosnippet>986</a>
+<a href=#987 id=987 data-nosnippet>987</a>    <span class="doccomment">/// Run provided plan migrations
+<a href=#988 id=988 data-nosnippet>988</a>    ///
+<a href=#989 id=989 data-nosnippet>989</a>    /// # Errors
+<a href=#990 id=990 data-nosnippet>990</a>    /// If failed to run provided plan migrations
+<a href=#991 id=991 data-nosnippet>991</a>    </span><span class="kw">async fn </span>run(
+<a href=#992 id=992 data-nosnippet>992</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
+<a href=#993 id=993 data-nosnippet>993</a>        connection: <span class="kw-2">&amp;mut </span>&lt;DB <span class="kw">as </span>Database&gt;::Connection,
+<a href=#994 id=994 data-nosnippet>994</a>        plan: <span class="kw-2">&amp;</span>Plan,
+<a href=#995 id=995 data-nosnippet>995</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
+<a href=#996 id=996 data-nosnippet>996</a>        <span class="macro">tracing::debug!</span>(<span class="string">"running plan {:?}"</span>, plan);
+<a href=#997 id=997 data-nosnippet>997</a>        <span class="self">self</span>.lock(connection).<span class="kw">await</span><span class="question-mark">?</span>;
+<a href=#998 id=998 data-nosnippet>998</a>        <span class="comment">// store result of applying migration so that we can unlock lock before
+<a href=#999 id=999 data-nosnippet>999</a>        // returning result
+<a href=#1000 id=1000 data-nosnippet>1000</a>        </span><span class="kw">let </span>result = <span class="kw">async </span>{
+<a href=#1001 id=1001 data-nosnippet>1001</a>            <span class="kw">for </span>migration <span class="kw">in </span><span class="self">self</span>.generate_migration_plan(connection, <span class="prelude-val">Some</span>(plan)).<span class="kw">await</span><span class="question-mark">? </span>{
+<a href=#1002 id=1002 data-nosnippet>1002</a>                <span class="kw">match </span>plan.plan_type {
+<a href=#1003 id=1003 data-nosnippet>1003</a>                    PlanType::Apply =&gt; {
+<a href=#1004 id=1004 data-nosnippet>1004</a>                        <span class="macro">tracing::debug!</span>(<span class="string">"applying {} : {}"</span>, migration.app(), migration.name());
+<a href=#1005 id=1005 data-nosnippet>1005</a>                        <span class="kw">let </span>operations = migration.operations();
+<a href=#1006 id=1006 data-nosnippet>1006</a>                        <span class="kw">if </span>migration.is_atomic() {
+<a href=#1007 id=1007 data-nosnippet>1007</a>                            <span class="kw">let </span><span class="kw-2">mut </span>transaction = connection.begin().<span class="kw">await</span><span class="question-mark">?</span>;
+<a href=#1008 id=1008 data-nosnippet>1008</a>                            <span class="kw">if </span>!plan.fake {
+<a href=#1009 id=1009 data-nosnippet>1009</a>                                <span class="kw">for </span>operation <span class="kw">in </span>operations {
+<a href=#1010 id=1010 data-nosnippet>1010</a>                                    operation.up(<span class="kw-2">&amp;mut </span>transaction).<span class="kw">await</span><span class="question-mark">?</span>;
+<a href=#1011 id=1011 data-nosnippet>1011</a>                                }
+<a href=#1012 id=1012 data-nosnippet>1012</a>                            }
+<a href=#1013 id=1013 data-nosnippet>1013</a>                            <span class="self">self</span>.add_migration_to_db_table(<span class="kw-2">&amp;mut </span>transaction, migration.as_ref())
+<a href=#1014 id=1014 data-nosnippet>1014</a>                                .<span class="kw">await</span><span class="question-mark">?</span>;
+<a href=#1015 id=1015 data-nosnippet>1015</a>                            transaction.commit().<span class="kw">await</span><span class="question-mark">?</span>;
+<a href=#1016 id=1016 data-nosnippet>1016</a>                        } <span class="kw">else </span>{
+<a href=#1017 id=1017 data-nosnippet>1017</a>                            <span class="kw">if </span>!plan.fake {
+<a href=#1018 id=1018 data-nosnippet>1018</a>                                <span class="kw">for </span>operation <span class="kw">in </span>operations {
+<a href=#1019 id=1019 data-nosnippet>1019</a>                                    operation.up(connection).<span class="kw">await</span><span class="question-mark">?</span>;
+<a href=#1020 id=1020 data-nosnippet>1020</a>                                }
+<a href=#1021 id=1021 data-nosnippet>1021</a>                            }
+<a href=#1022 id=1022 data-nosnippet>1022</a>                            <span class="self">self</span>.add_migration_to_db_table(connection, migration.as_ref())
+<a href=#1023 id=1023 data-nosnippet>1023</a>                                .<span class="kw">await</span><span class="question-mark">?</span>;
+<a href=#1024 id=1024 data-nosnippet>1024</a>                        }
+<a href=#1025 id=1025 data-nosnippet>1025</a>                    }
+<a href=#1026 id=1026 data-nosnippet>1026</a>                    PlanType::Revert =&gt; {
+<a href=#1027 id=1027 data-nosnippet>1027</a>                        <span class="macro">tracing::debug!</span>(<span class="string">"reverting {} : {}"</span>, migration.app(), migration.name());
+<a href=#1028 id=1028 data-nosnippet>1028</a>
+<a href=#1029 id=1029 data-nosnippet>1029</a>                        <span class="comment">// Reverse operation since last applied operation need to be reverted first
+<a href=#1030 id=1030 data-nosnippet>1030</a>                        </span><span class="kw">let </span><span class="kw-2">mut </span>operations = migration.operations();
+<a href=#1031 id=1031 data-nosnippet>1031</a>                        operations.reverse();
+<a href=#1032 id=1032 data-nosnippet>1032</a>
+<a href=#1033 id=1033 data-nosnippet>1033</a>                        <span class="kw">if </span>migration.is_atomic() {
+<a href=#1034 id=1034 data-nosnippet>1034</a>                            <span class="kw">let </span><span class="kw-2">mut </span>transaction = connection.begin().<span class="kw">await</span><span class="question-mark">?</span>;
+<a href=#1035 id=1035 data-nosnippet>1035</a>                            <span class="kw">if </span>!plan.fake {
+<a href=#1036 id=1036 data-nosnippet>1036</a>                                <span class="kw">for </span>operation <span class="kw">in </span>operations {
+<a href=#1037 id=1037 data-nosnippet>1037</a>                                    operation.down(<span class="kw-2">&amp;mut </span>transaction).<span class="kw">await</span><span class="question-mark">?</span>;
+<a href=#1038 id=1038 data-nosnippet>1038</a>                                }
+<a href=#1039 id=1039 data-nosnippet>1039</a>                            }
+<a href=#1040 id=1040 data-nosnippet>1040</a>                            <span class="self">self</span>.delete_migration_from_db_table(
+<a href=#1041 id=1041 data-nosnippet>1041</a>                                <span class="kw-2">&amp;mut </span>transaction,
+<a href=#1042 id=1042 data-nosnippet>1042</a>                                migration.as_ref(),
+<a href=#1043 id=1043 data-nosnippet>1043</a>                            )
+<a href=#1044 id=1044 data-nosnippet>1044</a>                            .<span class="kw">await</span><span class="question-mark">?</span>;
+<a href=#1045 id=1045 data-nosnippet>1045</a>                            transaction.commit().<span class="kw">await</span><span class="question-mark">?</span>;
+<a href=#1046 id=1046 data-nosnippet>1046</a>                        } <span class="kw">else </span>{
+<a href=#1047 id=1047 data-nosnippet>1047</a>                            <span class="kw">if </span>!plan.fake {
+<a href=#1048 id=1048 data-nosnippet>1048</a>                                <span class="kw">for </span>operation <span class="kw">in </span>operations {
+<a href=#1049 id=1049 data-nosnippet>1049</a>                                    operation.down(connection).<span class="kw">await</span><span class="question-mark">?</span>;
+<a href=#1050 id=1050 data-nosnippet>1050</a>                                }
+<a href=#1051 id=1051 data-nosnippet>1051</a>                            }
+<a href=#1052 id=1052 data-nosnippet>1052</a>                            <span class="self">self</span>.delete_migration_from_db_table(connection, migration.as_ref())
+<a href=#1053 id=1053 data-nosnippet>1053</a>                                .<span class="kw">await</span><span class="question-mark">?</span>;
+<a href=#1054 id=1054 data-nosnippet>1054</a>                        }
+<a href=#1055 id=1055 data-nosnippet>1055</a>                    }
+<a href=#1056 id=1056 data-nosnippet>1056</a>                }
+<a href=#1057 id=1057 data-nosnippet>1057</a>            }
+<a href=#1058 id=1058 data-nosnippet>1058</a>            <span class="prelude-val">Ok</span>(())
+<a href=#1059 id=1059 data-nosnippet>1059</a>        }
+<a href=#1060 id=1060 data-nosnippet>1060</a>        .<span class="kw">await</span>;
+<a href=#1061 id=1061 data-nosnippet>1061</a>        <span class="comment">// unlock before returning; if both migration and unlock fail, the
+<a href=#1062 id=1062 data-nosnippet>1062</a>        // migration error takes precedence over the unlock error.
+<a href=#1063 id=1063 data-nosnippet>1063</a>        </span><span class="kw">let </span>unlock_result = <span class="self">self</span>.unlock(connection).<span class="kw">await</span>;
+<a href=#1064 id=1064 data-nosnippet>1064</a>        result.and(unlock_result)
+<a href=#1065 id=1065 data-nosnippet>1065</a>    }
+<a href=#1066 id=1066 data-nosnippet>1066</a>}
+<a href=#1067 id=1067 data-nosnippet>1067</a>
+<a href=#1068 id=1068 data-nosnippet>1068</a><span class="kw">const </span>DEFAULT_TABLE_NAME: <span class="kw-2">&amp;</span>str = <span class="string">"_sqlx_migrator_migrations"</span>;
+<a href=#1069 id=1069 data-nosnippet>1069</a>
+<a href=#1070 id=1070 data-nosnippet>1070</a><span class="doccomment">/// A struct that stores migration-related metadata, including the list of
+<a href=#1071 id=1071 data-nosnippet>1071</a>/// migrations and configuration such as table and schema name
+<a href=#1072 id=1072 data-nosnippet>1072</a></span><span class="kw">pub struct </span>Migrator&lt;DB&gt; {
+<a href=#1073 id=1073 data-nosnippet>1073</a>    migrations: Vec&lt;BoxMigration&lt;DB&gt;&gt;,
+<a href=#1074 id=1074 data-nosnippet>1074</a>    table_prefix: <span class="prelude-ty">Option</span>&lt;String&gt;,
+<a href=#1075 id=1075 data-nosnippet>1075</a>    schema: <span class="prelude-ty">Option</span>&lt;String&gt;,
+<a href=#1076 id=1076 data-nosnippet>1076</a>}
+<a href=#1077 id=1077 data-nosnippet>1077</a>
+<a href=#1078 id=1078 data-nosnippet>1078</a><span class="kw">impl</span>&lt;DB&gt; Migrator&lt;DB&gt; {
+<a href=#1079 id=1079 data-nosnippet>1079</a>    <span class="doccomment">/// Creates a new migrator
+<a href=#1080 id=1080 data-nosnippet>1080</a>    ///
+<a href=#1081 id=1081 data-nosnippet>1081</a>    /// # Example
+<a href=#1082 id=1082 data-nosnippet>1082</a>    /// ```rust
+<a href=#1083 id=1083 data-nosnippet>1083</a>    /// # #[cfg(feature="sqlite")]
+<a href=#1084 id=1084 data-nosnippet>1084</a>    /// # fn main() {
+<a href=#1085 id=1085 data-nosnippet>1085</a>    /// let migrator = sqlx_migrator::Migrator::&lt;sqlx::Sqlite&gt;::new();
+<a href=#1086 id=1086 data-nosnippet>1086</a>    /// assert_eq!(&amp;migrator.table_name(), "_sqlx_migrator_migrations")
+<a href=#1087 id=1087 data-nosnippet>1087</a>    /// # }
+<a href=#1088 id=1088 data-nosnippet>1088</a>    /// # #[cfg(not(feature="sqlite"))]
+<a href=#1089 id=1089 data-nosnippet>1089</a>    /// # fn main() {
+<a href=#1090 id=1090 data-nosnippet>1090</a>    /// # }
+<a href=#1091 id=1091 data-nosnippet>1091</a>    /// ```
+<a href=#1092 id=1092 data-nosnippet>1092</a>    </span><span class="attr">#[must_use]
+<a href=#1093 id=1093 data-nosnippet>1093</a>    </span><span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
+<a href=#1094 id=1094 data-nosnippet>1094</a>        <span class="self">Self </span>{
+<a href=#1095 id=1095 data-nosnippet>1095</a>            migrations: Vec::default(),
+<a href=#1096 id=1096 data-nosnippet>1096</a>            table_prefix: <span class="prelude-val">None</span>,
+<a href=#1097 id=1097 data-nosnippet>1097</a>            schema: <span class="prelude-val">None</span>,
+<a href=#1098 id=1098 data-nosnippet>1098</a>        }
+<a href=#1099 id=1099 data-nosnippet>1099</a>    }
+<a href=#1100 id=1100 data-nosnippet>1100</a>
+<a href=#1101 id=1101 data-nosnippet>1101</a>    <span class="doccomment">/// Configures a prefix for the migrator table name.
+<a href=#1102 id=1102 data-nosnippet>1102</a>    ///
+<a href=#1103 id=1103 data-nosnippet>1103</a>    /// The table name will be formatted as
+<a href=#1104 id=1104 data-nosnippet>1104</a>    /// `_{prefix}_sqlx_migrator_migrations`. Only ASCII lowercase, numeric
+<a href=#1105 id=1105 data-nosnippet>1105</a>    /// characters and underscores are allowed in the prefix.
+<a href=#1106 id=1106 data-nosnippet>1106</a>    ///
+<a href=#1107 id=1107 data-nosnippet>1107</a>    /// # Example
+<a href=#1108 id=1108 data-nosnippet>1108</a>    /// ```rust
+<a href=#1109 id=1109 data-nosnippet>1109</a>    /// # #[cfg(feature="sqlite")]
+<a href=#1110 id=1110 data-nosnippet>1110</a>    /// # fn main() {
+<a href=#1111 id=1111 data-nosnippet>1111</a>    /// let migrator = sqlx_migrator::Migrator::&lt;sqlx::Sqlite&gt;::new()
+<a href=#1112 id=1112 data-nosnippet>1112</a>    ///     .set_table_prefix("prefix_value")
+<a href=#1113 id=1113 data-nosnippet>1113</a>    ///     .unwrap();
+<a href=#1114 id=1114 data-nosnippet>1114</a>    /// assert_eq!(
+<a href=#1115 id=1115 data-nosnippet>1115</a>    ///     &amp;migrator.table_name(),
+<a href=#1116 id=1116 data-nosnippet>1116</a>    ///     "_prefix_value_sqlx_migrator_migrations"
+<a href=#1117 id=1117 data-nosnippet>1117</a>    /// )
+<a href=#1118 id=1118 data-nosnippet>1118</a>    /// # }
+<a href=#1119 id=1119 data-nosnippet>1119</a>    /// # #[cfg(not(feature="sqlite"))]
+<a href=#1120 id=1120 data-nosnippet>1120</a>    /// # fn main() {
+<a href=#1121 id=1121 data-nosnippet>1121</a>    /// # }
+<a href=#1122 id=1122 data-nosnippet>1122</a>    /// ```
+<a href=#1123 id=1123 data-nosnippet>1123</a>    ///
+<a href=#1124 id=1124 data-nosnippet>1124</a>    /// # Errors
+<a href=#1125 id=1125 data-nosnippet>1125</a>    /// When passed table prefix name contains invalid characters
+<a href=#1126 id=1126 data-nosnippet>1126</a>    </span><span class="kw">pub fn </span>set_table_prefix(<span class="kw-2">mut </span><span class="self">self</span>, prefix: <span class="kw">impl </span>Into&lt;String&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, Error&gt; {
+<a href=#1127 id=1127 data-nosnippet>1127</a>        <span class="kw">let </span>prefix_str = prefix.into();
+<a href=#1128 id=1128 data-nosnippet>1128</a>        <span class="kw">if </span>prefix_str.is_empty()
+<a href=#1129 id=1129 data-nosnippet>1129</a>            || !prefix_str
+<a href=#1130 id=1130 data-nosnippet>1130</a>                .chars()
+<a href=#1131 id=1131 data-nosnippet>1131</a>                .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == <span class="string">'_'</span>)
+<a href=#1132 id=1132 data-nosnippet>1132</a>        {
+<a href=#1133 id=1133 data-nosnippet>1133</a>            <span class="kw">return </span><span class="prelude-val">Err</span>(Error::InvalidTablePrefix);
+<a href=#1134 id=1134 data-nosnippet>1134</a>        }
+<a href=#1135 id=1135 data-nosnippet>1135</a>        <span class="self">self</span>.table_prefix = <span class="prelude-val">Some</span>(prefix_str);
+<a href=#1136 id=1136 data-nosnippet>1136</a>        <span class="prelude-val">Ok</span>(<span class="self">self</span>)
+<a href=#1137 id=1137 data-nosnippet>1137</a>    }
+<a href=#1138 id=1138 data-nosnippet>1138</a>
+<a href=#1139 id=1139 data-nosnippet>1139</a>    <span class="doccomment">/// Configures a schema for the migrator table.
+<a href=#1140 id=1140 data-nosnippet>1140</a>    ///
+<a href=#1141 id=1141 data-nosnippet>1141</a>    /// When set, the table name will be formatted as `{schema}.{table_name}`.
+<a href=#1142 id=1142 data-nosnippet>1142</a>    /// Schema name can only contain [a-z0-9_] and begin with [a-z_]
+<a href=#1143 id=1143 data-nosnippet>1143</a>    ///
+<a href=#1144 id=1144 data-nosnippet>1144</a>    /// # Examples
+<a href=#1145 id=1145 data-nosnippet>1145</a>    /// ```rust
+<a href=#1146 id=1146 data-nosnippet>1146</a>    /// # #[cfg(feature="sqlite")]
+<a href=#1147 id=1147 data-nosnippet>1147</a>    /// # fn main() {
+<a href=#1148 id=1148 data-nosnippet>1148</a>    /// let migrator = sqlx_migrator::Migrator::&lt;sqlx::Sqlite&gt;::new()
+<a href=#1149 id=1149 data-nosnippet>1149</a>    ///     .set_schema("migrations")
+<a href=#1150 id=1150 data-nosnippet>1150</a>    ///     .unwrap();
+<a href=#1151 id=1151 data-nosnippet>1151</a>    /// assert_eq!(
+<a href=#1152 id=1152 data-nosnippet>1152</a>    ///     &amp;migrator.table_name(),
+<a href=#1153 id=1153 data-nosnippet>1153</a>    ///     "migrations._sqlx_migrator_migrations"
+<a href=#1154 id=1154 data-nosnippet>1154</a>    /// );
+<a href=#1155 id=1155 data-nosnippet>1155</a>    /// # }
+<a href=#1156 id=1156 data-nosnippet>1156</a>    /// # #[cfg(not(feature="sqlite"))]
+<a href=#1157 id=1157 data-nosnippet>1157</a>    /// # fn main() {}
+<a href=#1158 id=1158 data-nosnippet>1158</a>    /// ```
+<a href=#1159 id=1159 data-nosnippet>1159</a>    ///
+<a href=#1160 id=1160 data-nosnippet>1160</a>    /// # Errors
+<a href=#1161 id=1161 data-nosnippet>1161</a>    /// When passed schema name contains invalid characters
+<a href=#1162 id=1162 data-nosnippet>1162</a>    </span><span class="kw">pub fn </span>set_schema(<span class="kw-2">mut </span><span class="self">self</span>, schema: <span class="kw">impl </span>Into&lt;String&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, Error&gt; {
+<a href=#1163 id=1163 data-nosnippet>1163</a>        <span class="kw">let </span>schema_str = schema.into();
+<a href=#1164 id=1164 data-nosnippet>1164</a>        <span class="kw">if </span>schema_str.is_empty()
+<a href=#1165 id=1165 data-nosnippet>1165</a>            || !schema_str
+<a href=#1166 id=1166 data-nosnippet>1166</a>                .chars()
+<a href=#1167 id=1167 data-nosnippet>1167</a>                .next()
+<a href=#1168 id=1168 data-nosnippet>1168</a>                .is_some_and(|c| c.is_ascii_lowercase() || c == <span class="string">'_'</span>)
+<a href=#1169 id=1169 data-nosnippet>1169</a>            || !schema_str
+<a href=#1170 id=1170 data-nosnippet>1170</a>                .chars()
+<a href=#1171 id=1171 data-nosnippet>1171</a>                .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == <span class="string">'_'</span>)
+<a href=#1172 id=1172 data-nosnippet>1172</a>        {
+<a href=#1173 id=1173 data-nosnippet>1173</a>            <span class="kw">return </span><span class="prelude-val">Err</span>(Error::InvalidSchema);
+<a href=#1174 id=1174 data-nosnippet>1174</a>        }
+<a href=#1175 id=1175 data-nosnippet>1175</a>        <span class="self">self</span>.schema = <span class="prelude-val">Some</span>(schema_str);
+<a href=#1176 id=1176 data-nosnippet>1176</a>        <span class="prelude-val">Ok</span>(<span class="self">self</span>)
+<a href=#1177 id=1177 data-nosnippet>1177</a>    }
+<a href=#1178 id=1178 data-nosnippet>1178</a>
+<a href=#1179 id=1179 data-nosnippet>1179</a>    <span class="doccomment">/// Get name of table which is used for storing migrations related
+<a href=#1180 id=1180 data-nosnippet>1180</a>    /// information in database
+<a href=#1181 id=1181 data-nosnippet>1181</a>    ///
+<a href=#1182 id=1182 data-nosnippet>1182</a>    /// Format depends on configuration:
+<a href=#1183 id=1183 data-nosnippet>1183</a>    /// - With schema: `{schema}._sqlx_migrator_migrations`
+<a href=#1184 id=1184 data-nosnippet>1184</a>    /// - With prefix: `_{prefix}_sqlx_migrator_migrations`
+<a href=#1185 id=1185 data-nosnippet>1185</a>    /// - With both: `{schema}._{prefix}_sqlx_migrator_migrations`
+<a href=#1186 id=1186 data-nosnippet>1186</a>    /// - Default: `_sqlx_migrator_migrations`
+<a href=#1187 id=1187 data-nosnippet>1187</a>    ///
+<a href=#1188 id=1188 data-nosnippet>1188</a>    /// # Examples
+<a href=#1189 id=1189 data-nosnippet>1189</a>    /// ```rust
+<a href=#1190 id=1190 data-nosnippet>1190</a>    /// # #[cfg(feature="sqlite")]
+<a href=#1191 id=1191 data-nosnippet>1191</a>    /// # fn main() {
+<a href=#1192 id=1192 data-nosnippet>1192</a>    /// let migrator = sqlx_migrator::Migrator::&lt;sqlx::Sqlite&gt;::new()
+<a href=#1193 id=1193 data-nosnippet>1193</a>    ///     .set_schema("app_schema")
+<a href=#1194 id=1194 data-nosnippet>1194</a>    ///     .unwrap()
+<a href=#1195 id=1195 data-nosnippet>1195</a>    ///     .set_table_prefix("v1")
+<a href=#1196 id=1196 data-nosnippet>1196</a>    ///     .unwrap();
+<a href=#1197 id=1197 data-nosnippet>1197</a>    /// assert_eq!(
+<a href=#1198 id=1198 data-nosnippet>1198</a>    ///     &amp;migrator.table_name(),
+<a href=#1199 id=1199 data-nosnippet>1199</a>    ///     "app_schema._v1_sqlx_migrator_migrations"
+<a href=#1200 id=1200 data-nosnippet>1200</a>    /// );
+<a href=#1201 id=1201 data-nosnippet>1201</a>    /// # }
+<a href=#1202 id=1202 data-nosnippet>1202</a>    /// # #[cfg(not(feature="sqlite"))]
+<a href=#1203 id=1203 data-nosnippet>1203</a>    /// # fn main() {}
+<a href=#1204 id=1204 data-nosnippet>1204</a>    /// ```
+<a href=#1205 id=1205 data-nosnippet>1205</a>    </span><span class="attr">#[must_use]
+<a href=#1206 id=1206 data-nosnippet>1206</a>    </span><span class="kw">pub fn </span>table_name(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; String {
+<a href=#1207 id=1207 data-nosnippet>1207</a>        <span class="kw">let </span><span class="kw-2">mut </span>table_name = DEFAULT_TABLE_NAME.to_string();
+<a href=#1208 id=1208 data-nosnippet>1208</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(prefix) = <span class="kw-2">&amp;</span><span class="self">self</span>.table_prefix {
+<a href=#1209 id=1209 data-nosnippet>1209</a>            table_name = <span class="macro">format!</span>(<span class="string">"_{prefix}{table_name}"</span>);
+<a href=#1210 id=1210 data-nosnippet>1210</a>        }
+<a href=#1211 id=1211 data-nosnippet>1211</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(schema) = <span class="kw-2">&amp;</span><span class="self">self</span>.schema {
+<a href=#1212 id=1212 data-nosnippet>1212</a>            table_name = <span class="macro">format!</span>(<span class="string">"{schema}.{table_name}"</span>);
+<a href=#1213 id=1213 data-nosnippet>1213</a>        }
+<a href=#1214 id=1214 data-nosnippet>1214</a>        table_name
+<a href=#1215 id=1215 data-nosnippet>1215</a>    }
+<a href=#1216 id=1216 data-nosnippet>1216</a>}
+<a href=#1217 id=1217 data-nosnippet>1217</a>
+<a href=#1218 id=1218 data-nosnippet>1218</a><span class="kw">impl</span>&lt;DB&gt; Default <span class="kw">for </span>Migrator&lt;DB&gt; {
+<a href=#1219 id=1219 data-nosnippet>1219</a>    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+<a href=#1220 id=1220 data-nosnippet>1220</a>        <span class="self">Self</span>::new()
+<a href=#1221 id=1221 data-nosnippet>1221</a>    }
+<a href=#1222 id=1222 data-nosnippet>1222</a>}
+<a href=#1223 id=1223 data-nosnippet>1223</a>
+<a href=#1224 id=1224 data-nosnippet>1224</a><span class="kw">impl</span>&lt;DB&gt; Info&lt;DB&gt; <span class="kw">for </span>Migrator&lt;DB&gt; {
+<a href=#1225 id=1225 data-nosnippet>1225</a>    <span class="kw">fn </span>migrations(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[BoxMigration&lt;DB&gt;] {
+<a href=#1226 id=1226 data-nosnippet>1226</a>        <span class="kw-2">&amp;</span><span class="self">self</span>.migrations
+<a href=#1227 id=1227 data-nosnippet>1227</a>    }
+<a href=#1228 id=1228 data-nosnippet>1228</a>
+<a href=#1229 id=1229 data-nosnippet>1229</a>    <span class="kw">fn </span>migrations_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>Vec&lt;BoxMigration&lt;DB&gt;&gt; {
+<a href=#1230 id=1230 data-nosnippet>1230</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>.migrations
+<a href=#1231 id=1231 data-nosnippet>1231</a>    }
+<a href=#1232 id=1232 data-nosnippet>1232</a>}
+<a href=#1233 id=1233 data-nosnippet>1233</a>
+<a href=#1234 id=1234 data-nosnippet>1234</a><span class="kw">impl</span>&lt;DB&gt; Migrate&lt;DB&gt; <span class="kw">for </span>Migrator&lt;DB&gt;
+<a href=#1235 id=1235 data-nosnippet>1235</a><span class="kw">where
+<a href=#1236 id=1236 data-nosnippet>1236</a>    </span>DB: Database,
+<a href=#1237 id=1237 data-nosnippet>1237</a>    <span class="self">Self</span>: DatabaseOperation&lt;DB&gt;,
+<a href=#1238 id=1238 data-nosnippet>1238</a>{
+<a href=#1239 id=1239 data-nosnippet>1239</a>}
 </code></pre></div></section></main></body></html>
