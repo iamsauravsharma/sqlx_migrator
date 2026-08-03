@@ -469,7 +469,7 @@ async fn apply_all_with_no_migrations_is_error() {
     let plan = generate_apply_all_plan(&mut migrator, vec_box!()).await;
     assert_eq!(
         plan.err().map(|e| e.to_string()),
-        Some("plan error: no migration are added to migration list".to_string())
+        Some("plan error: no migrations are added to the migration list".to_string())
     );
 }
 
@@ -512,7 +512,7 @@ async fn circular_parent_dependency_deadlocks() {
 }
 
 /// A mutual `replaces` relationship (A replaces B and B replaces A) must return
-/// a "two migrations replaces each other" error. (Previously misnamed as
+/// a "two migrations replace each other" error. (Previously misnamed as
 /// `run_before_interrelated_test`.)
 #[tokio::test]
 async fn replaces_interrelated_test() {
@@ -525,7 +525,7 @@ async fn replaces_interrelated_test() {
     let plan = generate_apply_all_plan(&mut migrator, vec_box!(A, B)).await;
     assert_eq!(
         plan.err().map(|e| e.to_string()),
-        Some("plan error: two migrations replaces each other".to_string())
+        Some("plan error: two migrations replace each other".to_string())
     );
 }
 
@@ -577,7 +577,7 @@ async fn replaces_depend_on_itself() {
     let plan = generate_apply_all_plan(&mut migrator, vec_box!(A, B)).await;
     assert_eq!(
         plan.err().map(|e| e.to_string()),
-        Some("plan error: two migrations replaces each other".to_string())
+        Some("plan error: two migrations replace each other".to_string())
     );
 }
 
@@ -865,7 +865,7 @@ async fn mutual_replacers_with_run_before_is_error() {
     let plan = generate_apply_all_plan(&mut migrator, vec_box!(A, B, C, D, E)).await;
     assert_eq!(
         plan.err().map(|e| e.to_string()),
-        Some("plan error: two migrations replaces each other".to_string())
+        Some("plan error: two migrations replace each other".to_string())
     );
 }
 
@@ -924,7 +924,7 @@ async fn child_applied_without_parent_is_error() {
     assert_eq!(
         plan.err().map(|e| e.to_string()),
         Some(
-            "plan error: children migration test:b applied before its parent migration test:a"
+            "plan error: child migration test:b applied before its parent migration test:a"
                 .to_string()
         )
     );
@@ -1003,7 +1003,7 @@ async fn unreplaced_virtual_migration_is_error() {
     let plan = generate_apply_all_plan(&mut migrator, vec_box!(A, ("test", "b"))).await;
     assert_eq!(
         plan.err().map(|e| e.to_string()),
-        Some("plan error: virtual migrations which is not replaced is present".to_string())
+        Some("plan error: virtual migration which is not replaced is present".to_string())
     );
 }
 
@@ -1664,7 +1664,7 @@ async fn apply_name_nonexistent_app_is_error() {
     .expect("nonexistent app must return an error");
     assert_eq!(
         err.to_string(),
-        "plan error: app nonexistent_app doesn't exists"
+        "plan error: app nonexistent_app doesn't exist"
     );
 }
 
@@ -1689,7 +1689,7 @@ async fn apply_name_nonexistent_migration_is_error() {
     .expect("nonexistent migration name must return an error");
     assert_eq!(
         err.to_string(),
-        "plan error: migration test:no_such_migration doesn't exists for app"
+        "plan error: migration test:no_such_migration doesn't exist for app"
     );
 }
 
@@ -1715,7 +1715,7 @@ async fn revert_name_nonexistent_app_is_error() {
     .expect("nonexistent app must return an error");
     assert_eq!(
         err.to_string(),
-        "plan error: app nonexistent_app doesn't exists"
+        "plan error: app nonexistent_app doesn't exist"
     );
 }
 

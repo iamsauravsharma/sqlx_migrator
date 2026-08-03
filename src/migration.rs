@@ -139,7 +139,7 @@ pub trait Migration<DB>: Send + Sync {
     ///
     /// A virtual migration serves as a reference to another migration with the
     /// same app and name. If the migration is virtual, all other methods
-    /// are ignored expect its application name and its own name to check with
+    /// are ignored except its application name and its own name to check with
     /// non virtual migration so such non virtual migration can be used in its
     /// place.
     fn is_virtual(&self) -> bool {

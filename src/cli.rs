@@ -22,6 +22,7 @@
 //! }
 //! ```
 #![expect(clippy::print_stdout, reason = "allow printing to stdout in cli")]
+use std::collections::{HashMap, HashSet};
 use std::io::{IsTerminal as _, Write as _};
 
 use clap::{Parser, Subcommand};
@@ -113,14 +114,23 @@ where
     DB: Database,
 {
     migrator.ensure_migration_table_exists(connection).await?;
-    if !migrator
-        .fetch_applied_migration_from_db(connection)
-        .await?
-        .is_empty()
-    {
-        return Err(Error::AppliedMigrationExists);
+    // hold lock for dropping migration table to avoid race condition where another
+    // process is applying migration and we are dropping the table
+    migrator.lock(connection).await?;
+    let result = async {
+        if !migrator
+            .fetch_applied_migration_from_db(connection)
+            .await?
+            .is_empty()
+        {
+            return Err(Error::AppliedMigrationExists);
+        }
+        migrator.drop_migration_table_if_exists(connection).await?;
+        Ok(())
     }
-    migrator.drop_migration_table_if_exists(connection).await?;
+    .await;
+    let unlock_result = migrator.unlock(connection).await;
+    result.and(unlock_result)?;
     println!("Dropped migrations table");
     Ok(())
 }
@@ -137,6 +147,16 @@ where
     let migration_plan = migrator.generate_migration_plan_with_rows(None, &[])?;
     let apply_plan = migrator
         .generate_migration_plan_with_rows(Some(&Plan::apply_all()), &applied_migrations)?;
+
+    // Index applied rows and the apply plan by (app, name)
+    let applied_by_key = applied_migrations
+        .iter()
+        .map(|row| ((row.app(), row.name()), row))
+        .collect::<HashMap<_, _>>();
+    let apply_plan_keys = apply_plan
+        .iter()
+        .map(|migration| (migration.app(), migration.name()))
+        .collect::<HashSet<_>>();
 
     let widths = [5, 10, 50, 10, 40];
     let full_width = widths.iter().sum::<usize>() + widths.len() * 3;
@@ -159,15 +179,11 @@ where
         let mut status = "\u{2717}";
         let mut applied_time = String::from("N/A");
 
-        let find_applied_migrations = applied_migrations
-            .iter()
-            .find(|&applied_migration| applied_migration == migration);
-
-        if let Some(sqlx_migration) = find_applied_migrations {
+        if let Some(sqlx_migration) = applied_by_key.get(&(migration.app(), migration.name())) {
             id = sqlx_migration.id().to_string();
             status = "\u{2713}";
             applied_time = sqlx_migration.applied_time().to_string();
-        } else if !apply_plan.contains(&migration) {
+        } else if !apply_plan_keys.contains(&(migration.app(), migration.name())) {
             status = "\u{2194}";
         }
 
@@ -188,7 +204,7 @@ where
 #[expect(clippy::struct_excessive_bools)]
 struct Apply {
     /// App name up to which migration needs to be applied. If migration option
-    /// is also present than only till migration is applied
+    /// is also present then only till migration is applied
     #[arg(long)]
     app: Option<String>,
     /// Check for pending migration
@@ -232,8 +248,12 @@ impl Apply {
         let migrations = migrator
             .generate_migration_plan(connection, Some(&plan))
             .await?;
-        if self.check && !migrations.is_empty() {
-            return Err(Error::PendingMigrationPresent);
+        if self.check {
+            if !migrations.is_empty() {
+                return Err(Error::PendingMigrationPresent);
+            }
+            println!("No pending migration to apply");
+            return Ok(());
         }
         if self.plan {
             if migrations.is_empty() {
@@ -267,17 +287,23 @@ impl Apply {
                 }
                 let mut input = String::new();
                 println!(
-                    "Do you want to apply destructible migrations {} (y/N)",
+                    "Do you want to apply {} destructible migrations? (y/N)",
                     destructible_migrations.len()
                 );
                 for (position, migration) in destructible_migrations.iter().enumerate() {
-                    println!("{position}. {} : {}", migration.app(), migration.name());
+                    println!(
+                        "{}. {} : {}",
+                        position + 1,
+                        migration.app(),
+                        migration.name()
+                    );
                 }
                 std::io::stdout().flush()?;
                 std::io::stdin().read_line(&mut input)?;
                 let input_trimmed = input.trim().to_ascii_lowercase();
                 // If answer is not y or yes then return
                 if !["y", "yes"].contains(&input_trimmed.as_str()) {
+                    println!("Aborted applying migrations");
                     return Ok(());
                 }
             }
@@ -295,7 +321,7 @@ struct Revert {
     #[arg(long, conflicts_with = "app")]
     all: bool,
     /// Revert migration till app migrations is reverted. If it is present
-    /// alongside migration options than only till migration is reverted
+    /// alongside migration options then only till migration is reverted
     #[arg(long)]
     app: Option<String>,
     /// Number of migration to revert. Conflicts with all and app args
@@ -366,17 +392,23 @@ impl Revert {
                 }
                 let mut input = String::new();
                 println!(
-                    "Do you want to revert {} migrations (y/N)",
+                    "Do you want to revert {} migrations? (y/N)",
                     revert_migrations.len()
                 );
                 for (position, migration) in revert_migrations.iter().enumerate() {
-                    println!("{position}. {} : {}", migration.app(), migration.name());
+                    println!(
+                        "{}. {} : {}",
+                        position + 1,
+                        migration.app(),
+                        migration.name()
+                    );
                 }
                 std::io::stdout().flush()?;
                 std::io::stdin().read_line(&mut input)?;
                 let input_trimmed = input.trim().to_ascii_lowercase();
                 // If answer is not y or yes then return
                 if !["y", "yes"].contains(&input_trimmed.as_str()) {
+                    println!("Aborted reverting migrations");
                     return Ok(());
                 }
             }

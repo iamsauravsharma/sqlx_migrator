@@ -1,6 +1,8 @@
 //! Module which is used to sync a external migration schema to `sqlx_migrator`
 //! sqlx migration
 
+use std::collections::HashSet;
+
 use sqlx::Database;
 
 use crate::migrator::DatabaseOperation;
@@ -76,15 +78,22 @@ where
                 old_migrator.applied_migrations(connection).await?;
             let already_applied_migration =
                 self.fetch_applied_migration_from_db(connection).await?;
-            let full_migration_list = self.migrations();
+            // Index known migrations and already applied migrations by (app, name) for O(1)
+            // lookup
+            let known_migrations = self
+                .migrations()
+                .iter()
+                .map(|migration| (migration.app(), migration.name()))
+                .collect::<HashSet<_>>();
+            let already_applied = already_applied_migration
+                .iter()
+                .map(|row| (row.app(), row.name()))
+                .collect::<HashSet<_>>();
             for migration in old_migrator_applied_migrations {
                 // Only add migration if it exists in the full migration list
                 // and has not already been applied in the new migrator
-                if full_migration_list.contains(&migration)
-                    && !already_applied_migration
-                        .iter()
-                        .any(|applied| applied == &migration)
-                {
+                let key = (migration.app(), migration.name());
+                if known_migrations.contains(&key) && !already_applied.contains(&key) {
                     self.add_migration_to_db_table(connection, migration.as_ref())
                         .await?;
                 }
