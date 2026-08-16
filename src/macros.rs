@@ -1,9 +1,7 @@
 /// Macro for vector of [`Box`]
 #[macro_export]
 macro_rules! vec_box {
-    ($elem:expr; $n:expr) => (vec![Box::new($elem); $n]);
-    ($($x:expr),*) => (vec![$(Box::new($x)),*]);
-    ($($x:expr,)*) => (vec![$(Box::new($x)),*]);
+    ($($x:expr),* $(,)?) => (vec![$(Box::new($x)),*]);
 }
 
 /// Macro for implementing the [Migration](crate::migration::Migration) trait

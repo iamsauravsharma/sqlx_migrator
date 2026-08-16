@@ -87,7 +87,7 @@ impl Migration<sqlx::Postgres> for FirstMigration {
     }
 
     // name of migration
-    // Combination of migration app and name must be unique to work properly expects for virtual migration
+    // Combination of migration app and name must be unique to work properly except for virtual migration
     fn name(&self) -> &str {
         "first_migration"
     }
@@ -172,10 +172,10 @@ You can run migrations directly or integrate them into a CLI:
 use sqlx_migrator::migrator::Plan;
 let mut conn = pool.acquire().await?;
 // use apply all to apply all pending migration
-migrator.run(&mut *conn, Plan::apply_all()).await.unwrap();
+migrator.run(&mut *conn, &Plan::apply_all()).await.unwrap();
 // or use revert all to revert all applied migrations
-migrator.run(&mut *conn, Plan::revert_all()).await.unwrap();
-// If you need to apply or revert to certain stage than see `Plan` docs
+migrator.run(&mut *conn, &Plan::revert_all()).await.unwrap();
+// If you need to apply or revert to certain stage then see `Plan` docs
 ```
 
 ## CLI Integration
@@ -188,7 +188,7 @@ examples of both approaches:
 ```rust
 use sqlx_migrator::cli::MigrationCommand;
 
-MigrationCommand::parse_and_run(&mut *conn, Box::new(migrator)).await.unwrap();
+MigrationCommand::parse_and_run(&mut *conn, &migrator).await.unwrap();
 ```
 
 #### Extending Your Own CLI with Migrator Support
@@ -211,7 +211,7 @@ impl Cli {
         // create connection
         match cli.sub_command {
             Migrator(m) => {
-                m.run(&mut conn, Box::new(migrator)).await.unwrap()
+                m.run(&mut conn, &migrator).await.unwrap()
             }
         }
     }

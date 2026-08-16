@@ -4,6 +4,12 @@ use super::{DatabaseOperation, Migrator};
 use crate::error::Error;
 use crate::migration::{AppliedMigrationSqlRow, Migration};
 
+/// Create schema query
+#[must_use]
+pub(crate) fn create_schema_query(schema_name: &str) -> AssertSqlSafe<String> {
+    AssertSqlSafe(format!("CREATE SCHEMA IF NOT EXISTS {schema_name}"))
+}
+
 /// Create migrator table query
 #[must_use]
 pub(crate) fn create_migrator_table_query(table_name: &str) -> AssertSqlSafe<String> {
@@ -48,20 +54,14 @@ pub(crate) fn delete_migration_query(table_name: &str) -> AssertSqlSafe<String> 
     ))
 }
 
-/// get current database query
-pub(crate) fn current_database_query() -> &'static str {
-    "SELECT CURRENT_DATABASE()"
-}
+/// current database query
+pub(crate) const CURRENT_DATABASE_QUERY: &str = "SELECT CURRENT_DATABASE()";
 
-/// get lock database query
-pub(crate) fn lock_database_query() -> &'static str {
-    "SELECT pg_advisory_lock($1)"
-}
+/// lock database query
+pub(crate) const LOCK_DATABASE_QUERY: &str = "SELECT pg_advisory_lock($1)";
 
-/// get unlock database query
-pub(crate) fn unlock_database_query() -> &'static str {
-    "SELECT pg_advisory_unlock($1)"
-}
+/// unlock database query
+pub(crate) const UNLOCK_DATABASE_QUERY: &str = "SELECT pg_advisory_unlock($1)";
 
 /// generate lock id
 pub(crate) fn get_lock_id(database_name: &str, table_name: &str) -> i64 {
@@ -75,6 +75,11 @@ impl DatabaseOperation<Postgres> for Migrator<Postgres> {
         &self,
         connection: &mut <Postgres as Database>::Connection,
     ) -> Result<(), Error> {
+        if let Some(schema) = &self.schema {
+            sqlx::query(create_schema_query(schema))
+                .execute(&mut *connection)
+                .await?;
+        }
         sqlx::query(create_migrator_table_query(&self.table_name()))
             .execute(connection)
             .await?;
@@ -129,11 +134,11 @@ impl DatabaseOperation<Postgres> for Migrator<Postgres> {
     }
 
     async fn lock(&self, connection: &mut <Postgres as Database>::Connection) -> Result<(), Error> {
-        let (database_name,): (String,) = sqlx::query_as(current_database_query())
+        let (database_name,): (String,) = sqlx::query_as(CURRENT_DATABASE_QUERY)
             .fetch_one(&mut *connection)
             .await?;
         let lock_id = get_lock_id(&database_name, &self.table_name());
-        sqlx::query(lock_database_query())
+        sqlx::query(LOCK_DATABASE_QUERY)
             .bind(lock_id)
             .execute(connection)
             .await?;
@@ -144,11 +149,11 @@ impl DatabaseOperation<Postgres> for Migrator<Postgres> {
         &self,
         connection: &mut <Postgres as Database>::Connection,
     ) -> Result<(), Error> {
-        let (database_name,): (String,) = sqlx::query_as(current_database_query())
+        let (database_name,): (String,) = sqlx::query_as(CURRENT_DATABASE_QUERY)
             .fetch_one(&mut *connection)
             .await?;
         let lock_id = get_lock_id(&database_name, &self.table_name());
-        sqlx::query(unlock_database_query())
+        sqlx::query(UNLOCK_DATABASE_QUERY)
             .bind(lock_id)
             .execute(connection)
             .await?;

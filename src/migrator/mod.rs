@@ -172,6 +172,10 @@ mod tests;
 type BoxMigration<DB> = Box<dyn Migration<DB>>;
 type MigrationVec<'migration, DB> = Vec<&'migration BoxMigration<DB>>;
 type MigrationVecResult<'migration, DB> = Result<MigrationVec<'migration, DB>, Error>;
+type StatusVec<'migration, 'row, DB> = Vec<(
+    &'migration BoxMigration<DB>,
+    Option<&'row AppliedMigrationSqlRow>,
+)>;
 
 #[derive(Debug)]
 enum PlanType {
@@ -220,10 +224,9 @@ impl Plan {
     /// By default, the `fake` flag is set to `false`, and the migration
     /// operations are executed as expected.
     #[must_use]
-    pub fn fake(self, fake: bool) -> Self {
-        let mut plan = self;
-        plan.fake = fake;
-        plan
+    pub fn fake(mut self, fake: bool) -> Self {
+        self.fake = fake;
+        self
     }
 
     /// Creates a new plan to apply all migrations.
@@ -233,10 +236,14 @@ impl Plan {
     }
 
     /// Creates a new plan to apply a specific migration by name. If migration
-    /// name is not provided it will apply app all migrations
+    /// name is not provided it will apply all migrations of the app
     #[must_use]
-    pub fn apply_name(app: &str, name: &Option<String>) -> Self {
-        Self::new(PlanType::Apply, Some((app.to_string(), name.clone())), None)
+    pub fn apply_name(app: &str, name: Option<&str>) -> Self {
+        Self::new(
+            PlanType::Apply,
+            Some((app.to_string(), name.map(ToString::to_string))),
+            None,
+        )
     }
 
     /// Creates a new plan to apply a limited number of migrations.
@@ -252,12 +259,12 @@ impl Plan {
     }
 
     /// Creates a new plan to revert a specific migration by name. If migration
-    /// name is not provided it will revert app all migrations
+    /// name is not provided it will revert all migrations of the app
     #[must_use]
-    pub fn revert_name(app: &str, name: &Option<String>) -> Self {
+    pub fn revert_name(app: &str, name: Option<&str>) -> Self {
         Self::new(
             PlanType::Revert,
-            Some((app.to_string(), name.clone())),
+            Some((app.to_string(), name.map(ToString::to_string))),
             None,
         )
     }
@@ -572,6 +579,7 @@ fn process_plan<'process, DB>(
     applied_migrations: &HashSet<&'process BoxMigration<DB>>,
     plan: &Plan,
     replace_children: &HashMap<&BoxMigration<DB>, Vec<&BoxMigration<DB>>>,
+    all_migrations: &[BoxMigration<DB>],
 ) -> Result<(), Error>
 where
     DB: Database,
@@ -588,36 +596,53 @@ where
     }
 
     if let Some((app, migration_name)) = &plan.app_migration {
-        // Find position of last migration which matches condition of provided app and
-        // migration name
+        // Find position of last migration which matches condition of provided
+        // app and migration name. A target that exists in the full migration
+        // list but not in the processed list has nothing to do (it is already
+        // applied/reverted or replaced), so the plan is empty rather than an
+        // error — this keeps targeted apply/revert idempotent. Only a target
+        // that doesn't exist at all is an error.
         let position = if let Some(name) = migration_name {
-            let Some(pos) = migration_list
+            let pos = migration_list
                 .iter()
-                .rposition(|migration| migration.app() == app && migration.name() == name)
-            else {
-                if migration_list
+                .rposition(|migration| migration.app() == app && migration.name() == name);
+            if pos.is_none() {
+                if !all_migrations
                     .iter()
                     .any(|migration| migration.app() == app)
                 {
                     return Err(Error::PlanError {
-                        message: format!("migration {app}:{name} doesn't exist for app"),
+                        message: format!("app {app} doesn't exist"),
                     });
                 }
-                return Err(Error::PlanError {
-                    message: format!("app {app} doesn't exist"),
-                });
-            };
+                if !all_migrations
+                    .iter()
+                    .any(|migration| migration.app() == app && migration.name() == name)
+                {
+                    return Err(Error::PlanError {
+                        message: format!("migration {name} doesn't exist for app {app}"),
+                    });
+                }
+            }
             pos
         } else {
-            let Some(pos) = migration_list
+            let pos = migration_list
                 .iter()
-                .rposition(|migration| migration.app() == app)
-            else {
+                .rposition(|migration| migration.app() == app);
+            if pos.is_none()
+                && !all_migrations
+                    .iter()
+                    .any(|migration| migration.app() == app)
+            {
                 return Err(Error::PlanError {
                     message: format!("app {app} doesn't exist"),
                 });
-            };
+            }
             pos
+        };
+        let Some(position) = position else {
+            migration_list.clear();
+            return Ok(());
         };
         migration_list.truncate(position + 1);
         let with_list = if migration_name.is_some() {
@@ -712,7 +737,7 @@ where
     /// virtual migrations, has a dependency deadlock, or if the plan
     /// references an app/migration that does not exist.
     #[expect(clippy::too_many_lines)]
-    fn generate_migration_plan_with_rows(
+    fn generate_migration_plan(
         &self,
         plan: Option<&Plan>,
         applied_migration_sql_rows: &[AppliedMigrationSqlRow],
@@ -953,35 +978,108 @@ where
                 &applied_migrations,
                 some_plan,
                 &replace_children,
+                self.migrations(),
             )?;
         }
 
         Ok(migration_list)
     }
 
-    /// Generate migration plan according to plan.
+    /// Ensures no pending migrations are present.
     ///
-    /// Returns a vector of migrations. If `plan` is `None`, returns all
-    /// migrations in apply order without accessing the database. If `plan` is
-    /// `Some`, calls [`DatabaseOperation::ensure_migration_table_exists`] and
-    /// [`DatabaseOperation::fetch_applied_migration_from_db`] before delegating
-    /// to [`Migrate::generate_migration_plan_with_rows`].
+    /// This is useful as an application startup check to refuse serving until
+    /// all migrations are applied.
     ///
-    /// If you have already fetched the applied rows for another purpose (e.g.,
-    /// displaying status), call [`Migrate::generate_migration_plan_with_rows`]
-    /// directly to avoid a redundant database round-trip.
-    async fn generate_migration_plan(
+    /// # Errors
+    /// Returns [`Error::PendingMigrationPresent`] when at least one migration
+    /// is pending, or other errors when plan generation fails
+    async fn check_pending(
         &self,
         connection: &mut <DB as Database>::Connection,
-        plan: Option<&Plan>,
-    ) -> MigrationVecResult<'_, DB> {
-        if plan.is_some() {
-            self.ensure_migration_table_exists(connection).await?;
-            let rows = self.fetch_applied_migration_from_db(connection).await?;
-            self.generate_migration_plan_with_rows(plan, &rows)
-        } else {
-            self.generate_migration_plan_with_rows(plan, &[])
+    ) -> Result<(), Error> {
+        self.ensure_migration_table_exists(connection).await?;
+        let applied_rows = self.fetch_applied_migration_from_db(connection).await?;
+        let pending = self.generate_migration_plan(Some(&Plan::apply_all()), &applied_rows)?;
+        if !pending.is_empty() {
+            return Err(Error::PendingMigrationPresent);
         }
+        Ok(())
+    }
+
+    /// Generate migration status using pre-fetched applied migration rows.
+    ///
+    /// This is the core status logic which performs **no database access**.
+    /// It is useful when you have already called
+    /// [`DatabaseOperation::fetch_applied_migration_from_db`] for another
+    /// purpose and want to avoid a redundant database round-trip. Returns
+    /// every migration in apply order paired with a reference to its applied
+    /// migration row when applied, or an empty list when no migrations are
+    /// added.
+    ///
+    /// # Errors
+    /// If plan generation fails
+    fn status<'get>(
+        &self,
+        applied_migration_sql_rows: &'get [AppliedMigrationSqlRow],
+    ) -> Result<StatusVec<'_, 'get, DB>, Error> {
+        if self.migrations().is_empty() {
+            return Ok(vec![]);
+        }
+        let applied_by_key = applied_migration_sql_rows
+            .iter()
+            .map(|row| ((row.app(), row.name()), row))
+            .collect::<HashMap<_, _>>();
+        Ok(self
+            .generate_migration_plan(None, &[])?
+            .into_iter()
+            .map(|migration| {
+                let applied = applied_by_key
+                    .get(&(migration.app(), migration.name()))
+                    .copied();
+                (migration, applied)
+            })
+            .collect())
+    }
+
+    /// Prune the migration table by deleting applied migration entries which
+    /// no longer have a corresponding migration in the migration list.
+    ///
+    /// This is useful for cleaning up the migration table after migrations
+    /// are removed from the codebase, since such entries would otherwise
+    /// linger in the migration table forever. Returns the number of pruned
+    /// entries.
+    ///
+    /// # Errors
+    /// If fetching or deleting applied migrations fails
+    async fn prune(&self, connection: &mut <DB as Database>::Connection) -> Result<usize, Error> {
+        tracing::debug!("pruning unknown applied migrations");
+        self.lock(connection).await?;
+        // store result of pruning so that lock is unlocked before returning
+        // result
+        let result = async {
+            self.ensure_migration_table_exists(connection).await?;
+            let applied_migrations = self.fetch_applied_migration_from_db(connection).await?;
+            let known_migrations = self
+                .migrations()
+                .iter()
+                .map(|migration| (migration.app(), migration.name()))
+                .collect::<HashSet<_>>();
+            let mut pruned_count = 0;
+            for row in &applied_migrations {
+                if !known_migrations.contains(&(row.app(), row.name())) {
+                    let unknown_migration = (row.app().to_string(), row.name().to_string());
+                    self.delete_migration_from_db_table(connection, &unknown_migration)
+                        .await?;
+                    pruned_count += 1;
+                }
+            }
+            Ok(pruned_count)
+        }
+        .await;
+        // unlock before returning; if both prune and unlock fail, the prune
+        // error takes precedence over the unlock error.
+        let unlock_result = self.unlock(connection).await;
+        result.and_then(|count| unlock_result.map(|()| count))
     }
 
     /// Run provided plan migrations
@@ -998,7 +1096,11 @@ where
         // store result of applying migration so that we can unlock lock before
         // returning result
         let result = async {
-            for migration in self.generate_migration_plan(connection, Some(plan)).await? {
+            self.ensure_migration_table_exists(connection).await?;
+            let applied_rows = self.fetch_applied_migration_from_db(connection).await?;
+            let plan_migrations = self.generate_migration_plan(Some(plan), &applied_rows)?;
+            for migration in plan_migrations {
+                let start_instant = std::time::Instant::now();
                 match plan.plan_type {
                     PlanType::Apply => {
                         tracing::debug!("applying {} : {}", migration.app(), migration.name());
@@ -1054,6 +1156,12 @@ where
                         }
                     }
                 }
+                tracing::debug!(
+                    "{} : {} took {:?}",
+                    migration.app(),
+                    migration.name(),
+                    start_instant.elapsed()
+                );
             }
             Ok(())
         }
@@ -1140,6 +1248,12 @@ impl<DB> Migrator<DB> {
     ///
     /// When set, the table name will be formatted as `{schema}.{table_name}`.
     /// Schema name can only contain [a-z0-9_] and begin with [a-z_]
+    ///
+    /// For Postgres the schema is created automatically (`CREATE SCHEMA IF
+    /// NOT EXISTS`) when the migration table is ensured, so it does not need
+    /// to exist beforehand. For MySQL the schema refers to a database which
+    /// must already exist. SQLite has no schema support (other than attached
+    /// databases), so setting a schema is not useful there.
     ///
     /// # Examples
     /// ```rust

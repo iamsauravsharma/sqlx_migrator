@@ -235,9 +235,3 @@ impl AppliedMigrationSqlRow {
         &self.applied_time
     }
 }
-
-impl<DB> PartialEq<Box<dyn Migration<DB>>> for AppliedMigrationSqlRow {
-    fn eq(&self, other: &Box<dyn Migration<DB>>) -> bool {
-        self.app == other.app() && self.name == other.name()
-    }
-}

@@ -24,13 +24,20 @@ pub enum Error {
     #[error("operation is irreversible")]
     IrreversibleOperation,
     /// Error for pending migration present
-    #[cfg(feature = "cli")]
-    #[error("pending migrations exists. Apply all using migrate subcommand")]
+    #[error("pending migrations exists. Apply pending migrations first")]
     PendingMigrationPresent,
     /// Error when applied migrations exists
     #[cfg(feature = "cli")]
     #[error("applied migrations exists. Revert all using revert subcommand")]
     AppliedMigrationExists,
+    /// Error when confirmation is required but stdin is not a terminal so no
+    /// confirmation can be asked
+    #[cfg(feature = "cli")]
+    #[error(
+        "confirmation is required but stdin is not a terminal. Use --force flag to run \
+         non-interactively"
+    )]
+    ConfirmationRequired,
     /// Error when unsupported database is used as any database
     #[error("unsupported database")]
     UnsupportedDatabase,
