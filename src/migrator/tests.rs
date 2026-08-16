@@ -217,13 +217,17 @@ async fn make_conn() -> sqlx::pool::PoolConnection<Sqlite> {
         .unwrap()
 }
 
-/// Runs `generate_migration_plan` with the given `plan` against `migrator`.
+/// Generates a migration plan for the given `plan` against `migrator` by
+/// fetching applied rows and passing them to
+/// `generate_migration_plan`.
 async fn apply_plan<'a>(
     migrator: &'a CustomMigrator,
     conn: &mut <Sqlite as Database>::Connection,
     plan: Plan,
 ) -> Result<Vec<&'a Box<dyn Migration<Sqlite>>>, Error> {
-    migrator.generate_migration_plan(conn, Some(&plan)).await
+    migrator.ensure_migration_table_exists(conn).await?;
+    let applied_rows = migrator.fetch_applied_migration_from_db(conn).await?;
+    migrator.generate_migration_plan(Some(&plan), &applied_rows)
 }
 
 /// Adds all `migration_list` entries to `migrator`, then returns the full
@@ -645,13 +649,9 @@ async fn apply_name_for_replacer_includes_transitive_replace_parents() {
     migrator.add_migrations(vec_box!(A, B, C, D)).unwrap();
     let mut conn = make_conn().await;
 
-    let plan = apply_plan(
-        &migrator,
-        &mut conn,
-        Plan::apply_name("test", &Some("d".to_string())),
-    )
-    .await
-    .unwrap();
+    let plan = apply_plan(&migrator, &mut conn, Plan::apply_name("test", Some("d")))
+        .await
+        .unwrap();
     // A must be included: D needs it through the replace chain (B→C→D).
     assert_eq!(plan_names(&plan), vec!["a", "d"]);
 }
@@ -682,13 +682,9 @@ async fn revert_name_for_parent_includes_transitive_replace_dependents() {
     migrator.add_applied_migrations(vec_box!(A, D)).unwrap();
     let mut conn = make_conn().await;
 
-    let plan = apply_plan(
-        &migrator,
-        &mut conn,
-        Plan::revert_name("test", &Some("a".to_string())),
-    )
-    .await
-    .unwrap();
+    let plan = apply_plan(&migrator, &mut conn, Plan::revert_name("test", Some("a")))
+        .await
+        .unwrap();
     // D must be reverted before A (D depends on A through the replace chain).
     assert_eq!(plan_names(&plan), vec!["d", "a"]);
 }
@@ -1123,8 +1119,7 @@ async fn apply_plan_diamond_topology_respects_branches() {
     let mut conn = sqlite.acquire().await.unwrap();
 
     // Full apply plan: all seven migrations in topological order.
-    let full_plan = migrator
-        .generate_migration_plan(&mut conn, Some(&Plan::apply_all()))
+    let full_plan = apply_plan(&migrator, &mut conn, Plan::apply_all())
         .await
         .unwrap();
     assert_eq!(
@@ -1133,21 +1128,13 @@ async fn apply_plan_diamond_topology_respects_branches() {
     );
 
     // Targeted apply up to F: only the F-branch (A→B→D→F).
-    let plan_till_f = migrator
-        .generate_migration_plan(
-            &mut conn,
-            Some(&Plan::apply_name("test", &Some("f".to_string()))),
-        )
+    let plan_till_f = apply_plan(&migrator, &mut conn, Plan::apply_name("test", Some("f")))
         .await
         .unwrap();
     assert_eq!(plan_names(&plan_till_f), vec!["a", "b", "d", "f"]);
 
     // Targeted apply up to G: only the G-branch (A→B→C→E→G).
-    let plan_till_g = migrator
-        .generate_migration_plan(
-            &mut conn,
-            Some(&Plan::apply_name("test", &Some("g".to_string()))),
-        )
+    let plan_till_g = apply_plan(&migrator, &mut conn, Plan::apply_name("test", Some("g")))
         .await
         .unwrap();
     assert_eq!(plan_names(&plan_till_g), vec!["a", "b", "c", "e", "g"]);
@@ -1223,8 +1210,7 @@ async fn revert_plan_diamond_topology_reverses_correctly() {
     let mut conn = sqlite.acquire().await.unwrap();
 
     // Full revert: reverse of apply order.
-    let revert_plan = migrator
-        .generate_migration_plan(&mut conn, Some(&Plan::revert_all()))
+    let revert_plan = apply_plan(&migrator, &mut conn, Plan::revert_all())
         .await
         .unwrap();
     assert_eq!(
@@ -1233,21 +1219,13 @@ async fn revert_plan_diamond_topology_reverses_correctly() {
     );
 
     // Targeted revert of F only (leaf — no dependents to pull in).
-    let plan_till_f = migrator
-        .generate_migration_plan(
-            &mut conn,
-            Some(&Plan::revert_name("test", &Some("f".to_string()))),
-        )
+    let plan_till_f = apply_plan(&migrator, &mut conn, Plan::revert_name("test", Some("f")))
         .await
         .unwrap();
     assert_eq!(plan_names(&plan_till_f), vec!["f"]);
 
     // Targeted revert down to B: must revert all B-descendants first.
-    let plan_till_b = migrator
-        .generate_migration_plan(
-            &mut conn,
-            Some(&Plan::revert_name("test", &Some("b".to_string()))),
-        )
+    let plan_till_b = apply_plan(&migrator, &mut conn, Plan::revert_name("test", Some("b")))
         .await
         .unwrap();
     assert_eq!(plan_names(&plan_till_b), vec!["g", "f", "e", "d", "c", "b"]);
@@ -1287,7 +1265,7 @@ async fn revert_app_name_reverts_all_for_app() {
     let mut conn = make_conn().await;
 
     // revert_name with no specific migration → revert entire app
-    let plan = apply_plan(&migrator, &mut conn, Plan::revert_name("test", &None))
+    let plan = apply_plan(&migrator, &mut conn, Plan::revert_name("test", None))
         .await
         .unwrap();
     let names = plan_names(&plan);
@@ -1505,13 +1483,9 @@ async fn apply_name_run_before_pulls_in_required_parents() {
     migrator.add_migrations(vec_box!(M, N, T)).unwrap();
     let mut conn = make_conn().await;
 
-    let plan = apply_plan(
-        &migrator,
-        &mut conn,
-        Plan::apply_name("test", &Some("t".to_string())),
-    )
-    .await
-    .unwrap();
+    let plan = apply_plan(&migrator, &mut conn, Plan::apply_name("test", Some("t")))
+        .await
+        .unwrap();
 
     let names = plan_names(&plan);
     // M must come before N; N must come before T
@@ -1547,13 +1521,9 @@ async fn revert_name_includes_all_dependent_children() {
     migrator.add_applied_migrations(vec_box!(M, N, T)).unwrap();
     let mut conn = make_conn().await;
 
-    let plan = apply_plan(
-        &migrator,
-        &mut conn,
-        Plan::revert_name("test", &Some("m".to_string())),
-    )
-    .await
-    .unwrap();
+    let plan = apply_plan(&migrator, &mut conn, Plan::revert_name("test", Some("m")))
+        .await
+        .unwrap();
 
     let names = plan_names(&plan);
     // N must be reverted before M (N depends on M as parent).
@@ -1635,7 +1605,7 @@ async fn apply_by_app_name_only() {
     let mut conn = make_conn().await;
 
     // apply_name with no specific migration name → apply all for that app
-    let plan = apply_plan(&migrator, &mut conn, Plan::apply_name("test", &None))
+    let plan = apply_plan(&migrator, &mut conn, Plan::apply_name("test", None))
         .await
         .unwrap();
     let names = plan_names(&plan);
@@ -1657,7 +1627,7 @@ async fn apply_name_nonexistent_app_is_error() {
     let err = apply_plan(
         &migrator,
         &mut conn,
-        Plan::apply_name("nonexistent_app", &None),
+        Plan::apply_name("nonexistent_app", None),
     )
     .await
     .err()
@@ -1682,14 +1652,14 @@ async fn apply_name_nonexistent_migration_is_error() {
     let err = apply_plan(
         &migrator,
         &mut conn,
-        Plan::apply_name("test", &Some("no_such_migration".to_string())),
+        Plan::apply_name("test", Some("no_such_migration")),
     )
     .await
     .err()
     .expect("nonexistent migration name must return an error");
     assert_eq!(
         err.to_string(),
-        "plan error: migration test:no_such_migration doesn't exist for app"
+        "plan error: migration no_such_migration doesn't exist for app test"
     );
 }
 
@@ -1708,7 +1678,7 @@ async fn revert_name_nonexistent_app_is_error() {
     let err = apply_plan(
         &migrator,
         &mut conn,
-        Plan::revert_name("nonexistent_app", &None),
+        Plan::revert_name("nonexistent_app", None),
     )
     .await
     .err()
@@ -1717,6 +1687,158 @@ async fn revert_name_nonexistent_app_is_error() {
         err.to_string(),
         "plan error: app nonexistent_app doesn't exist"
     );
+}
+
+/// Targeting an app whose migrations are all already applied must produce an
+/// empty plan (idempotent apply) instead of an error.
+#[tokio::test]
+async fn apply_name_fully_applied_app_returns_empty_plan() {
+    struct A;
+    migration!(A, "a", vec_box!(), vec_box!(), vec_box!());
+
+    let mut migrator = CustomMigrator::default();
+    migrator.add_migrations(vec_box!(A)).unwrap();
+    migrator.add_applied_migrations(vec_box!(A)).unwrap();
+    let mut conn = make_conn().await;
+
+    let plan = apply_plan(&migrator, &mut conn, Plan::apply_name("test", None))
+        .await
+        .unwrap();
+    assert!(
+        plan.is_empty(),
+        "expected empty plan: {:?}",
+        plan_names(&plan)
+    );
+}
+
+/// Targeting an already applied migration by name must produce an empty plan
+/// (idempotent apply) instead of an error.
+#[tokio::test]
+async fn apply_name_already_applied_migration_returns_empty_plan() {
+    struct A;
+    migration!(A, "a", vec_box!(), vec_box!(), vec_box!());
+
+    let mut migrator = CustomMigrator::default();
+    migrator.add_migrations(vec_box!(A)).unwrap();
+    migrator.add_applied_migrations(vec_box!(A)).unwrap();
+    let mut conn = make_conn().await;
+
+    let plan = apply_plan(&migrator, &mut conn, Plan::apply_name("test", Some("a")))
+        .await
+        .unwrap();
+    assert!(
+        plan.is_empty(),
+        "expected empty plan: {:?}",
+        plan_names(&plan)
+    );
+}
+
+/// Reverting a migration that was never applied must produce an empty plan
+/// (idempotent revert) instead of an error.
+#[tokio::test]
+async fn revert_name_nothing_applied_returns_empty_plan() {
+    struct A;
+    migration!(A, "a", vec_box!(), vec_box!(), vec_box!());
+
+    let mut migrator = CustomMigrator::default();
+    migrator.add_migrations(vec_box!(A)).unwrap();
+    let mut conn = make_conn().await;
+
+    let plan = apply_plan(&migrator, &mut conn, Plan::revert_name("test", Some("a")))
+        .await
+        .unwrap();
+    assert!(
+        plan.is_empty(),
+        "expected empty plan: {:?}",
+        plan_names(&plan)
+    );
+}
+
+/// `check_pending` must error while migrations are pending and pass once
+/// every migration is applied.
+#[tokio::test]
+async fn check_pending_errors_only_when_pending_exists() {
+    struct A;
+    migration!(A, "a", vec_box!(), vec_box!(), vec_box!());
+    struct B;
+    migration!(B, "b", vec_box!(A), vec_box!(), vec_box!());
+
+    let mut migrator = CustomMigrator::default();
+    migrator.add_migrations(vec_box!(A, B)).unwrap();
+    migrator.add_applied_migrations(vec_box!(A)).unwrap();
+    let mut conn = make_conn().await;
+
+    let err = migrator
+        .check_pending(&mut conn)
+        .await
+        .expect_err("pending migration must return an error");
+    assert!(matches!(err, Error::PendingMigrationPresent));
+
+    migrator.add_applied_migrations(vec_box!(B)).unwrap();
+    assert!(migrator.check_pending(&mut conn).await.is_ok());
+}
+
+/// `status` must return every migration in apply order along with its applied
+/// row when applied, and an empty list for a migrator with no migrations.
+#[tokio::test]
+async fn status_returns_applied_state_in_apply_order() {
+    struct A;
+    migration!(A, "a", vec_box!(), vec_box!(), vec_box!());
+    struct B;
+    migration!(B, "b", vec_box!(A), vec_box!(), vec_box!());
+
+    let mut migrator = CustomMigrator::default();
+    migrator.add_migrations(vec_box!(B, A)).unwrap();
+    migrator.add_applied_migrations(vec_box!(A)).unwrap();
+    let mut conn = make_conn().await;
+
+    let rows = migrator
+        .fetch_applied_migration_from_db(&mut conn)
+        .await
+        .unwrap();
+    let status = migrator.status(&rows).unwrap();
+    assert_eq!(status.len(), 2);
+    assert_eq!(status[0].0.name(), "a");
+    assert!(status[0].1.is_some(), "a must be applied");
+    assert_eq!(status[1].0.name(), "b");
+    assert!(status[1].1.is_none(), "b must be pending");
+
+    let empty_migrator = CustomMigrator::default();
+    assert!(empty_migrator.status(&rows).unwrap().is_empty());
+}
+
+/// `prune` must delete applied migration entries which no longer have a
+/// corresponding migration in the migration list while keeping known ones.
+#[tokio::test]
+async fn prune_removes_unknown_applied_migrations() {
+    struct A;
+    migration!(A, "a", vec_box!(), vec_box!(), vec_box!());
+
+    let mut migrator = Migrator::<Sqlite>::new();
+    migrator.add_migrations(vec_box!(A)).unwrap();
+    let mut conn = make_conn().await;
+
+    // record known migration as applied and insert an entry for a migration
+    // which doesn't exist in the migration list
+    migrator
+        .run(&mut conn, &Plan::apply_all().fake(true))
+        .await
+        .unwrap();
+    migrator
+        .add_migration_to_db_table(&mut conn, &("test".to_string(), "removed".to_string()))
+        .await
+        .unwrap();
+
+    let pruned_count = migrator.prune(&mut conn).await.unwrap();
+    assert_eq!(pruned_count, 1);
+
+    let applied = migrator
+        .fetch_applied_migration_from_db(&mut conn)
+        .await
+        .unwrap();
+    assert_eq!(applied.len(), 1);
+    assert_eq!(applied[0].app(), "test");
+    assert_eq!(applied[0].name(), "a");
 }
 
 /// Both the squash migration (replacer) and one of its replaced predecessors
@@ -1748,11 +1870,11 @@ async fn replace_and_replacer_both_applied_is_error() {
     );
 }
 
-/// `generate_migration_plan_with_rows` is the synchronous core of the planner.
-/// It must produce the same result as `generate_migration_plan` when called
-/// with an empty `applied_migration_sql_rows` slice and an `apply_all` plan.
+/// `generate_migration_plan` is the synchronous core of the planner.
+/// Called with an empty `applied_migration_sql_rows` slice and an `apply_all`
+/// plan it must return every migration in apply order.
 #[tokio::test]
-async fn generate_plan_with_rows_matches_apply_all() {
+async fn generate_plan_with_empty_rows_returns_apply_order() {
     struct A;
     migration!(A, "a", vec_box!(), vec_box!(), vec_box!());
     struct B;
@@ -1763,7 +1885,7 @@ async fn generate_plan_with_rows_matches_apply_all() {
 
     // Call the sync variant directly with no applied rows.
     let plan = migrator
-        .generate_migration_plan_with_rows(Some(&Plan::apply_all()), &[])
+        .generate_migration_plan(Some(&Plan::apply_all()), &[])
         .unwrap();
     assert_eq!(plan_names(&plan), vec!["a", "b"]);
 }

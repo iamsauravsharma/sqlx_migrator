@@ -22,7 +22,7 @@
 //! }
 //! ```
 #![expect(clippy::print_stdout, reason = "allow printing to stdout in cli")]
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::io::{IsTerminal as _, Write as _};
 
 use clap::{Parser, Subcommand};
@@ -43,12 +43,13 @@ impl MigrationCommand {
     ///
     /// # Errors
     /// If migration command fails to complete and raise some issue
-    pub async fn parse_and_run<DB>(
+    pub async fn parse_and_run<DB, M>(
         connection: &mut <DB as Database>::Connection,
-        migrator: Box<dyn Migrate<DB>>,
+        migrator: &M,
     ) -> Result<(), Error>
     where
         DB: Database,
+        M: Migrate<DB> + ?Sized,
     {
         let migration_command = Self::parse();
         migration_command.run(connection, migrator).await
@@ -58,13 +59,14 @@ impl MigrationCommand {
     ///
     /// # Errors
     /// If migration command fails to complete and raise some issue
-    pub async fn run<DB>(
+    pub async fn run<DB, M>(
         &self,
         connection: &mut <DB as Database>::Connection,
-        migrator: Box<dyn Migrate<DB>>,
+        migrator: &M,
     ) -> Result<(), Error>
     where
         DB: Database,
+        M: Migrate<DB> + ?Sized,
     {
         self.sub_command
             .handle_subcommand(migrator, connection)
@@ -88,13 +90,14 @@ enum SubCommand {
 }
 
 impl SubCommand {
-    async fn handle_subcommand<DB>(
+    async fn handle_subcommand<DB, M>(
         &self,
-        migrator: Box<dyn Migrate<DB>>,
+        migrator: &M,
         connection: &mut <DB as Database>::Connection,
     ) -> Result<(), Error>
     where
         DB: Database,
+        M: Migrate<DB> + ?Sized,
     {
         match self {
             SubCommand::Apply(apply) => apply.run(connection, migrator).await?,
@@ -106,12 +109,13 @@ impl SubCommand {
     }
 }
 
-async fn drop_migrations<DB>(
+async fn drop_migrations<DB, M>(
     connection: &mut <DB as Database>::Connection,
-    migrator: Box<dyn Migrate<DB>>,
+    migrator: &M,
 ) -> Result<(), Error>
 where
     DB: Database,
+    M: Migrate<DB> + ?Sized,
 {
     migrator.ensure_migration_table_exists(connection).await?;
     // hold lock for dropping migration table to avoid race condition where another
@@ -135,28 +139,27 @@ where
     Ok(())
 }
 
-async fn list_migrations<DB>(
+async fn list_migrations<DB, M>(
     connection: &mut <DB as Database>::Connection,
-    migrator: Box<dyn Migrate<DB>>,
+    migrator: &M,
 ) -> Result<(), Error>
 where
     DB: Database,
+    M: Migrate<DB> + ?Sized,
 {
     migrator.ensure_migration_table_exists(connection).await?;
     let applied_migrations = migrator.fetch_applied_migration_from_db(connection).await?;
-    let migration_plan = migrator.generate_migration_plan_with_rows(None, &[])?;
-    let apply_plan = migrator
-        .generate_migration_plan_with_rows(Some(&Plan::apply_all()), &applied_migrations)?;
+    let status_list = migrator.status(&applied_migrations)?;
 
-    // Index applied rows and the apply plan by (app, name)
-    let applied_by_key = applied_migrations
-        .iter()
-        .map(|row| ((row.app(), row.name()), row))
-        .collect::<HashMap<_, _>>();
-    let apply_plan_keys = apply_plan
-        .iter()
-        .map(|migration| (migration.app(), migration.name()))
-        .collect::<HashSet<_>>();
+    let apply_plan_keys = if status_list.is_empty() {
+        HashSet::new()
+    } else {
+        migrator
+            .generate_migration_plan(Some(&Plan::apply_all()), &applied_migrations)?
+            .iter()
+            .map(|migration| (migration.app(), migration.name()))
+            .collect::<HashSet<_>>()
+    };
 
     let widths = [5, 10, 50, 10, 40];
     let full_width = widths.iter().sum::<usize>() + widths.len() * 3;
@@ -174,12 +177,16 @@ where
     );
 
     println!("{:^full_width$}", "-".repeat(full_width));
-    for migration in migration_plan {
+    let known_keys = status_list
+        .iter()
+        .map(|(migration, _)| (migration.app(), migration.name()))
+        .collect::<HashSet<_>>();
+    for (migration, applied) in &status_list {
         let mut id = String::from("N/A");
         let mut status = "\u{2717}";
         let mut applied_time = String::from("N/A");
 
-        if let Some(sqlx_migration) = applied_by_key.get(&(migration.app(), migration.name())) {
+        if let Some(sqlx_migration) = applied {
             id = sqlx_migration.id().to_string();
             status = "\u{2713}";
             applied_time = sqlx_migration.applied_time().to_string();
@@ -197,6 +204,22 @@ where
             applied_time
         );
     }
+    // show applied migrations which no longer exist in the migration list
+    // (e.g. migration was removed from the codebase) so drift is visible.
+    // Such entries can be removed using apply --prune
+    for row in &applied_migrations {
+        if !known_keys.contains(&(row.app(), row.name())) {
+            println!(
+                "{:^first_width$} | {:^second_width$} | {:^third_width$} | {:^fourth_width$} | \
+                 {:^fifth_width$}",
+                row.id(),
+                row.app(),
+                row.name(),
+                "?",
+                row.applied_time()
+            );
+        }
+    }
     Ok(())
 }
 
@@ -208,7 +231,7 @@ struct Apply {
     #[arg(long)]
     app: Option<String>,
     /// Check for pending migration
-    #[arg(long)]
+    #[arg(long, conflicts_with_all = ["count", "fake", "force", "plan"])]
     check: bool,
     /// Number of migration to apply. Conflicts with app args
     #[arg(long, conflicts_with = "app")]
@@ -225,29 +248,34 @@ struct Apply {
     #[arg(long, requires = "app")]
     migration: Option<String>,
     /// Show plan
-    #[arg(long)]
+    #[arg(long, conflicts_with_all = ["fake", "force"])]
     plan: bool,
+    /// Prune applied migration entries from the migration table which no
+    /// longer exist in the migration list after applying migrations
+    #[arg(long, conflicts_with_all = ["check", "plan"])]
+    prune: bool,
 }
 impl Apply {
-    async fn run<DB>(
+    async fn run<DB, M>(
         &self,
         connection: &mut <DB as Database>::Connection,
-        migrator: Box<dyn Migrate<DB>>,
+        migrator: &M,
     ) -> Result<(), Error>
     where
         DB: Database,
+        M: Migrate<DB> + ?Sized,
     {
         let plan = if let Some(count) = self.count {
             Plan::apply_count(count)
         } else if let Some(app) = &self.app {
-            Plan::apply_name(app, &self.migration)
+            Plan::apply_name(app, self.migration.as_deref())
         } else {
             Plan::apply_all()
         }
         .fake(self.fake);
-        let migrations = migrator
-            .generate_migration_plan(connection, Some(&plan))
-            .await?;
+        migrator.ensure_migration_table_exists(connection).await?;
+        let applied_rows = migrator.fetch_applied_migration_from_db(connection).await?;
+        let migrations = migrator.generate_migration_plan(Some(&plan), &applied_rows)?;
         if self.check {
             if !migrations.is_empty() {
                 return Err(Error::PendingMigrationPresent);
@@ -279,11 +307,7 @@ impl Apply {
                 .collect::<Vec<_>>();
             if !self.force && !destructible_migrations.is_empty() && !self.fake {
                 if !std::io::stdin().is_terminal() {
-                    println!(
-                        "Skipping destructible migration prompt: stdin is not a terminal. Use \
-                         --force to apply non-interactively."
-                    );
-                    return Ok(());
+                    return Err(Error::ConfirmationRequired);
                 }
                 let mut input = String::new();
                 println!(
@@ -309,6 +333,10 @@ impl Apply {
             }
             migrator.run(connection, &plan).await?;
             println!("Successfully applied migrations according to plan");
+            if self.prune {
+                let pruned_count = migrator.prune(connection).await?;
+                println!("Pruned {pruned_count} unknown migrations from migration table");
+            }
         }
         Ok(())
     }
@@ -338,31 +366,32 @@ struct Revert {
     #[arg(long, requires = "app")]
     migration: Option<String>,
     /// Show plan
-    #[arg(long)]
+    #[arg(long, conflicts_with_all = ["fake", "force"])]
     plan: bool,
 }
 impl Revert {
-    async fn run<DB>(
+    async fn run<DB, M>(
         &self,
         connection: &mut <DB as Database>::Connection,
-        migrator: Box<dyn Migrate<DB>>,
+        migrator: &M,
     ) -> Result<(), Error>
     where
         DB: Database,
+        M: Migrate<DB> + ?Sized,
     {
         let plan = if let Some(count) = self.count {
             Plan::revert_count(count)
         } else if let Some(app) = &self.app {
-            Plan::revert_name(app, &self.migration)
+            Plan::revert_name(app, self.migration.as_deref())
         } else if self.all {
             Plan::revert_all()
         } else {
             Plan::revert_count(1)
         }
         .fake(self.fake);
-        let revert_migrations = migrator
-            .generate_migration_plan(connection, Some(&plan))
-            .await?;
+        migrator.ensure_migration_table_exists(connection).await?;
+        let applied_rows = migrator.fetch_applied_migration_from_db(connection).await?;
+        let revert_migrations = migrator.generate_migration_plan(Some(&plan), &applied_rows)?;
 
         if self.plan {
             if revert_migrations.is_empty() {
@@ -384,11 +413,7 @@ impl Revert {
         } else {
             if !self.force && !revert_migrations.is_empty() && !self.fake {
                 if !std::io::stdin().is_terminal() {
-                    println!(
-                        "Skipping revert prompt: stdin is not a terminal. Use --force to revert \
-                         non-interactively."
-                    );
-                    return Ok(());
+                    return Err(Error::ConfirmationRequired);
                 }
                 let mut input = String::new();
                 println!(

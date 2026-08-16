@@ -47,20 +47,14 @@ pub(crate) fn delete_migration_query(table_name: &str) -> AssertSqlSafe<String> 
     ))
 }
 
-/// get current database query
-pub(crate) fn current_database_query() -> &'static str {
-    "SELECT DATABASE()"
-}
+/// current database query
+pub(crate) const CURRENT_DATABASE_QUERY: &str = "SELECT DATABASE()";
 
-/// get lock database query
-pub(crate) fn lock_database_query() -> &'static str {
-    "SELECT GET_LOCK(?, -1)"
-}
+/// lock database query
+pub(crate) const LOCK_DATABASE_QUERY: &str = "SELECT GET_LOCK(?, -1)";
 
-/// get unlock database query
-pub(crate) fn unlock_database_query() -> &'static str {
-    "SELECT RELEASE_LOCK(?)"
-}
+/// unlock database query
+pub(crate) const UNLOCK_DATABASE_QUERY: &str = "SELECT RELEASE_LOCK(?)";
 
 /// generate lock id
 pub(crate) fn get_lock_id(database_name: &str, table_name: &str) -> String {
@@ -128,11 +122,11 @@ impl DatabaseOperation<MySql> for Migrator<MySql> {
     }
 
     async fn lock(&self, connection: &mut <MySql as Database>::Connection) -> Result<(), Error> {
-        let (database_name,): (String,) = sqlx::query_as(current_database_query())
+        let (database_name,): (String,) = sqlx::query_as(CURRENT_DATABASE_QUERY)
             .fetch_one(&mut *connection)
             .await?;
         let lock_id = get_lock_id(&database_name, &self.table_name());
-        sqlx::query(lock_database_query())
+        sqlx::query(LOCK_DATABASE_QUERY)
             .bind(lock_id)
             .execute(connection)
             .await?;
@@ -140,11 +134,11 @@ impl DatabaseOperation<MySql> for Migrator<MySql> {
     }
 
     async fn unlock(&self, connection: &mut <MySql as Database>::Connection) -> Result<(), Error> {
-        let (database_name,): (String,) = sqlx::query_as(current_database_query())
+        let (database_name,): (String,) = sqlx::query_as(CURRENT_DATABASE_QUERY)
             .fetch_one(&mut *connection)
             .await?;
         let lock_id = get_lock_id(&database_name, &self.table_name());
-        sqlx::query(unlock_database_query())
+        sqlx::query(UNLOCK_DATABASE_QUERY)
             .bind(lock_id)
             .execute(connection)
             .await?;
