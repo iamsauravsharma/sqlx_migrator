@@ -1,6 +1,6 @@
 //! Integration test for the tracing spans and events emitted by
-//! `Migrate::run`. Kept in its own binary because it installs a global
-//! subscriber.
+//! `Migrate::run`, including the transactional DDL warning. Kept in its own
+//! binary as a single test because it installs a global subscriber.
 #![cfg(all(test, feature = "sqlite"))]
 
 #[cfg(test)]
@@ -8,8 +8,10 @@ mod tests {
     use std::fmt::Write as _;
     use std::sync::{Arc, Mutex};
 
-    use sqlx::{Connection as _, Sqlite, SqliteConnection};
-    use sqlx_migrator::migrator::{Info as _, Migrate as _, Migrator, Plan};
+    use sqlx::{Connection as _, Database, Sqlite, SqliteConnection};
+    use sqlx_migrator::error::Error;
+    use sqlx_migrator::migration::{AppliedMigrationSqlRow, Migration};
+    use sqlx_migrator::migrator::{DatabaseOperation, Info, Migrate, Migrator, Plan};
     use sqlx_migrator::{sqlite_migration, vec_box};
     use tracing::field::{Field, Visit};
     use tracing::span::{Attributes, Id, Record};
@@ -33,6 +35,87 @@ mod tests {
         vec_box![First],
         vec_box![("CREATE TABLE second (id INTEGER)", "DROP TABLE second")]
     );
+
+    /// Migrator delegating to [`Migrator<Sqlite>`] but reporting that the
+    /// database cannot roll back DDL, like MySQL.
+    struct NoDdlMigrator(Migrator<Sqlite>);
+
+    impl Info<Sqlite> for NoDdlMigrator {
+        fn migrations(&self) -> &[Box<dyn Migration<Sqlite>>] {
+            self.0.migrations()
+        }
+
+        fn migrations_mut(&mut self) -> &mut Vec<Box<dyn Migration<Sqlite>>> {
+            self.0.migrations_mut()
+        }
+    }
+
+    #[async_trait::async_trait]
+    impl DatabaseOperation<Sqlite> for NoDdlMigrator {
+        async fn ensure_migration_table_exists(
+            &self,
+            connection: &mut <Sqlite as Database>::Connection,
+        ) -> Result<(), Error> {
+            self.0.ensure_migration_table_exists(connection).await
+        }
+
+        async fn drop_migration_table_if_exists(
+            &self,
+            connection: &mut <Sqlite as Database>::Connection,
+        ) -> Result<(), Error> {
+            self.0.drop_migration_table_if_exists(connection).await
+        }
+
+        async fn add_migration_to_db_table(
+            &self,
+            connection: &mut <Sqlite as Database>::Connection,
+            migration: &dyn Migration<Sqlite>,
+        ) -> Result<(), Error> {
+            self.0
+                .add_migration_to_db_table(connection, migration)
+                .await
+        }
+
+        async fn delete_migration_from_db_table(
+            &self,
+            connection: &mut <Sqlite as Database>::Connection,
+            migration: &dyn Migration<Sqlite>,
+        ) -> Result<(), Error> {
+            self.0
+                .delete_migration_from_db_table(connection, migration)
+                .await
+        }
+
+        async fn fetch_applied_migration_from_db(
+            &self,
+            connection: &mut <Sqlite as Database>::Connection,
+        ) -> Result<Vec<AppliedMigrationSqlRow>, Error> {
+            self.0.fetch_applied_migration_from_db(connection).await
+        }
+
+        async fn lock(
+            &self,
+            connection: &mut <Sqlite as Database>::Connection,
+        ) -> Result<(), Error> {
+            self.0.lock(connection).await
+        }
+
+        async fn unlock(
+            &self,
+            connection: &mut <Sqlite as Database>::Connection,
+        ) -> Result<(), Error> {
+            self.0.unlock(connection).await
+        }
+
+        fn supports_transactional_ddl(
+            &self,
+            _connection: &<Sqlite as Database>::Connection,
+        ) -> bool {
+            false
+        }
+    }
+
+    impl Migrate<Sqlite> for NoDdlMigrator {}
 
     async fn connection() -> SqliteConnection {
         SqliteConnection::connect("sqlite::memory:").await.unwrap()
@@ -140,5 +223,42 @@ mod tests {
         );
         assert_eq!(info("run finished"), 1, "{events:?}");
         assert!(events.iter().any(|e| e.contains("count=2")), "{events:?}");
+        assert!(
+            !events.iter().any(|e| e.starts_with("WARN:")),
+            "no warning expected on a database with transactional DDL: {events:?}"
+        );
+
+        // second phase: a backend without transactional DDL warns once per
+        // atomic migration, and not for a fake run
+        collector.events.lock().unwrap().clear();
+        let mut no_ddl_connection = SqliteConnection::connect("sqlite::memory:").await.unwrap();
+        let mut no_ddl = NoDdlMigrator(Migrator::<Sqlite>::new());
+        no_ddl.add_migrations(vec_box![First, Second]).unwrap();
+        no_ddl
+            .run(&mut no_ddl_connection, &Plan::apply_all())
+            .await
+            .unwrap();
+        let warnings = collector
+            .events
+            .lock()
+            .unwrap()
+            .iter()
+            .filter(|e| e.starts_with("WARN:") && e.contains("transactional DDL"))
+            .count();
+        assert_eq!(warnings, 2);
+
+        collector.events.lock().unwrap().clear();
+        no_ddl
+            .run(&mut no_ddl_connection, &Plan::revert_all().fake(true))
+            .await
+            .unwrap();
+        let warnings = collector
+            .events
+            .lock()
+            .unwrap()
+            .iter()
+            .filter(|e| e.starts_with("WARN:"))
+            .count();
+        assert_eq!(warnings, 0);
     }
 }

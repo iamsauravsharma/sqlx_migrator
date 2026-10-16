@@ -1,6 +1,6 @@
 use sqlx::{AssertSqlSafe, Database, MySql};
 
-use super::{DatabaseOperation, Migrator};
+use super::{DatabaseOperation, LockStrategy, Migrator};
 use crate::error::Error;
 use crate::migration::{AppliedMigrationSqlRow, Migration};
 
@@ -122,6 +122,9 @@ impl DatabaseOperation<MySql> for Migrator<MySql> {
     }
 
     async fn lock(&self, connection: &mut <MySql as Database>::Connection) -> Result<(), Error> {
+        if self.lock_strategy == LockStrategy::None {
+            return Ok(());
+        }
         let (database_name,): (String,) = sqlx::query_as(CURRENT_DATABASE_QUERY)
             .fetch_one(&mut *connection)
             .await?;
@@ -134,6 +137,9 @@ impl DatabaseOperation<MySql> for Migrator<MySql> {
     }
 
     async fn unlock(&self, connection: &mut <MySql as Database>::Connection) -> Result<(), Error> {
+        if self.lock_strategy == LockStrategy::None {
+            return Ok(());
+        }
         let (database_name,): (String,) = sqlx::query_as(CURRENT_DATABASE_QUERY)
             .fetch_one(&mut *connection)
             .await?;
@@ -143,5 +149,9 @@ impl DatabaseOperation<MySql> for Migrator<MySql> {
             .execute(connection)
             .await?;
         Ok(())
+    }
+
+    fn supports_transactional_ddl(&self, _connection: &<MySql as Database>::Connection) -> bool {
+        false
     }
 }

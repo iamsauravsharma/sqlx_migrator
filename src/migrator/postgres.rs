@@ -1,6 +1,6 @@
 use sqlx::{AssertSqlSafe, Database, Postgres};
 
-use super::{DatabaseOperation, Migrator};
+use super::{DatabaseOperation, LockStrategy, Migrator};
 use crate::error::Error;
 use crate::migration::{AppliedMigrationSqlRow, Migration};
 
@@ -134,6 +134,9 @@ impl DatabaseOperation<Postgres> for Migrator<Postgres> {
     }
 
     async fn lock(&self, connection: &mut <Postgres as Database>::Connection) -> Result<(), Error> {
+        if self.lock_strategy == LockStrategy::None {
+            return Ok(());
+        }
         let (database_name,): (String,) = sqlx::query_as(CURRENT_DATABASE_QUERY)
             .fetch_one(&mut *connection)
             .await?;
@@ -149,6 +152,9 @@ impl DatabaseOperation<Postgres> for Migrator<Postgres> {
         &self,
         connection: &mut <Postgres as Database>::Connection,
     ) -> Result<(), Error> {
+        if self.lock_strategy == LockStrategy::None {
+            return Ok(());
+        }
         let (database_name,): (String,) = sqlx::query_as(CURRENT_DATABASE_QUERY)
             .fetch_one(&mut *connection)
             .await?;
