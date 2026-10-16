@@ -277,6 +277,25 @@ impl Plan {
     }
 }
 
+/// Strategy used by [`Migrator`] to prevent two migrators from running at
+/// the same time.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum LockStrategy {
+    /// Use the database's native locking primitive.
+    ///
+    /// Postgres uses a session level advisory lock, MySQL uses `GET_LOCK` and
+    /// `SQLite` does nothing since it serialises writers itself.
+    #[default]
+    Database,
+    /// Do not lock at all.
+    ///
+    /// Use this when the connection goes through a transaction pooling proxy
+    /// such as `PgBouncer`, where session level locks are not reliable, or
+    /// when only one process ever runs migrations.
+    None,
+}
+
 /// Record of a single migration which was applied or reverted by
 /// [`Migrate::run`].
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -514,6 +533,20 @@ where
 
     /// Unlock locked database
     async fn unlock(&self, connection: &mut <DB as Database>::Connection) -> Result<(), Error>;
+
+    /// Whether the database can roll back DDL statements inside a
+    /// transaction.
+    ///
+    /// MySQL and MariaDB commit implicitly on most DDL statements, so an
+    /// atomic migration on those backends cannot be rolled back as a unit if
+    /// one of its operations fails. When this returns `false` the migrator
+    /// still wraps atomic migrations in a transaction, but logs a warning so
+    /// the limitation is visible.
+    ///
+    /// The default implementation returns `true`.
+    fn supports_transactional_ddl(&self, _connection: &<DB as Database>::Connection) -> bool {
+        true
+    }
 }
 
 /// populate replace hash map recursively
@@ -1232,6 +1265,7 @@ where
     migrator.ensure_migration_table_exists(connection).await?;
     let applied_rows = migrator.fetch_applied_migration_from_db(connection).await?;
     let plan_migrations = migrator.generate_migration_plan(Some(plan), &applied_rows)?;
+    let supports_transactional_ddl = migrator.supports_transactional_ddl(connection);
     let mut report = RunReport {
         apply: matches!(plan.plan_type, PlanType::Apply),
         fake: plan.fake,
@@ -1248,6 +1282,12 @@ where
         );
         let elapsed = async {
             let start_instant = std::time::Instant::now();
+            if migration.is_atomic() && !supports_transactional_ddl && !plan.fake {
+                tracing::warn!(
+                    "database does not support transactional DDL, atomic migration cannot be \
+                     rolled back as a unit if it fails"
+                );
+            }
             match plan.plan_type {
                 PlanType::Apply => {
                     tracing::info!("applying migration");
@@ -1328,6 +1368,7 @@ pub struct Migrator<DB> {
     migrations: Vec<BoxMigration<DB>>,
     table_prefix: Option<String>,
     schema: Option<String>,
+    lock_strategy: LockStrategy,
 }
 
 impl<DB> Migrator<DB> {
@@ -1350,7 +1391,37 @@ impl<DB> Migrator<DB> {
             migrations: Vec::default(),
             table_prefix: None,
             schema: None,
+            lock_strategy: LockStrategy::default(),
         }
+    }
+
+    /// Configures how the migrator locks the database while running.
+    ///
+    /// Defaults to [`LockStrategy::Database`]. See [`LockStrategy`] for when
+    /// another strategy is appropriate.
+    ///
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature="sqlite")]
+    /// # fn main() {
+    /// use sqlx_migrator::migrator::LockStrategy;
+    /// let migrator =
+    ///     sqlx_migrator::Migrator::<sqlx::Sqlite>::new().set_lock_strategy(LockStrategy::None);
+    /// assert_eq!(migrator.lock_strategy(), LockStrategy::None);
+    /// # }
+    /// # #[cfg(not(feature="sqlite"))]
+    /// # fn main() {}
+    /// ```
+    #[must_use]
+    pub fn set_lock_strategy(mut self, strategy: LockStrategy) -> Self {
+        self.lock_strategy = strategy;
+        self
+    }
+
+    /// Returns the configured lock strategy
+    #[must_use]
+    pub fn lock_strategy(&self) -> LockStrategy {
+        self.lock_strategy
     }
 
     /// Configures a prefix for the migrator table name.

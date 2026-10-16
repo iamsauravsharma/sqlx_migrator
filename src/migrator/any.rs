@@ -13,7 +13,7 @@ use super::mysql;
 use super::postgres;
 #[cfg(feature = "sqlite")]
 use super::sqlite;
-use super::{DatabaseOperation, Migrator};
+use super::{DatabaseOperation, LockStrategy, Migrator};
 use crate::error::Error;
 use crate::migration::{AppliedMigrationSqlRow, Migration};
 
@@ -150,6 +150,9 @@ impl DatabaseOperation<Any> for Migrator<Any> {
     }
 
     async fn lock(&self, connection: &mut <Any as Database>::Connection) -> Result<(), Error> {
+        if self.lock_strategy == LockStrategy::None {
+            return Ok(());
+        }
         let database_name = get_database_name(connection).await?;
         if let Some(name) = database_name {
             let mut arguments = AnyArguments::default();
@@ -176,6 +179,9 @@ impl DatabaseOperation<Any> for Migrator<Any> {
     }
 
     async fn unlock(&self, connection: &mut <Any as Database>::Connection) -> Result<(), Error> {
+        if self.lock_strategy == LockStrategy::None {
+            return Ok(());
+        }
         let database_name = get_database_name(connection).await?;
         if let Some(name) = database_name {
             let mut arguments = AnyArguments::default();
@@ -199,5 +205,13 @@ impl DatabaseOperation<Any> for Migrator<Any> {
                 .await?;
         }
         Ok(())
+    }
+
+    fn supports_transactional_ddl(&self, connection: &<Any as Database>::Connection) -> bool {
+        match connection.backend_name() {
+            #[cfg(feature = "mysql")]
+            <MySql as Database>::NAME => false,
+            _ => true,
+        }
     }
 }

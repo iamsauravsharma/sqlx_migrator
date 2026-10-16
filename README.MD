@@ -186,6 +186,25 @@ async fn main() {
 }
 ```
 
+## Locking and transactions
+
+While a plan runs, the migrator holds a database lock so two processes cannot
+migrate at the same time. Postgres uses a session level advisory lock and MySQL uses
+`GET_LOCK`; SQLite serialises writers itself. Session level locks are not reliable
+behind a transaction pooling proxy such as PgBouncer, and are unnecessary when a
+single process runs migrations, so the strategy can be changed:
+
+```rust
+use sqlx_migrator::migrator::LockStrategy;
+let migrator = Migrator::<Postgres>::new().set_lock_strategy(LockStrategy::None);
+```
+
+Atomic migrations run inside a transaction. MySQL and MariaDB commit implicitly on
+most DDL statements, so on those backends a failed atomic migration cannot be rolled
+back as a unit. The migrator reports this through
+`DatabaseOperation::supports_transactional_ddl` and logs a `tracing` warning when an
+atomic migration runs on such a backend.
+
 # Running Migrations
 
 You can run migrations directly or integrate them into a CLI:
