@@ -141,6 +141,7 @@ impl Synchronize<Postgres> for CustomMigrator {}
 use std::collections::{HashMap, HashSet};
 
 use sqlx::{Connection as _, Database};
+use tracing::Instrument as _;
 
 use crate::error::Error;
 use crate::migration::{AppliedMigrationSqlRow, Migration};
@@ -273,6 +274,84 @@ impl Plan {
     #[must_use]
     pub fn revert_count(count: usize) -> Self {
         Self::new(PlanType::Revert, None, Some(count))
+    }
+}
+
+/// Record of a single migration which was applied or reverted by
+/// [`Migrate::run`].
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RunRecord {
+    app: String,
+    name: String,
+    elapsed: std::time::Duration,
+}
+
+impl RunRecord {
+    /// Application name of the migration
+    #[must_use]
+    pub fn app(&self) -> &str {
+        &self.app
+    }
+
+    /// Name of the migration
+    #[must_use]
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    /// Time taken to apply or revert the migration, including updating the
+    /// migration table
+    #[must_use]
+    pub fn elapsed(&self) -> std::time::Duration {
+        self.elapsed
+    }
+}
+
+/// Summary returned by [`Migrate::run`] describing what the run did.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RunReport {
+    apply: bool,
+    fake: bool,
+    records: Vec<RunRecord>,
+}
+
+impl RunReport {
+    /// Returns `true` when the run applied migrations and `false` when it
+    /// reverted them
+    #[must_use]
+    pub fn is_apply(&self) -> bool {
+        self.apply
+    }
+
+    /// Returns `true` when the run was fake, i.e. only the migration table
+    /// was updated and no operation was executed
+    #[must_use]
+    pub fn is_fake(&self) -> bool {
+        self.fake
+    }
+
+    /// Migrations which were applied or reverted, in execution order
+    #[must_use]
+    pub fn records(&self) -> &[RunRecord] {
+        &self.records
+    }
+
+    /// Number of migrations which were applied or reverted
+    #[must_use]
+    pub fn len(&self) -> usize {
+        self.records.len()
+    }
+
+    /// Returns `true` when the run did nothing
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.records.is_empty()
+    }
+
+    /// Total time spent across all migrations
+    #[must_use]
+    pub fn total_elapsed(&self) -> std::time::Duration {
+        self.records.iter().map(RunRecord::elapsed).sum()
     }
 }
 
@@ -1100,94 +1179,145 @@ where
 
     /// Run provided plan migrations
     ///
+    /// Returns a [`RunReport`] listing every migration which was applied or
+    /// reverted along with the time each one took. Progress is emitted as
+    /// `tracing` events at `info` level inside a span per run and per
+    /// migration.
+    ///
     /// # Errors
     /// If failed to run provided plan migrations
     async fn run(
         &self,
         connection: &mut <DB as Database>::Connection,
         plan: &Plan,
-    ) -> Result<(), Error> {
-        tracing::debug!("running plan {:?}", plan);
-        self.lock(connection).await?;
-        // store result of applying migration so that we can unlock lock before
-        // returning result
-        let result = async {
-            self.ensure_migration_table_exists(connection).await?;
-            let applied_rows = self.fetch_applied_migration_from_db(connection).await?;
-            let plan_migrations = self.generate_migration_plan(Some(plan), &applied_rows)?;
-            for migration in plan_migrations {
-                let start_instant = std::time::Instant::now();
-                match plan.plan_type {
-                    PlanType::Apply => {
-                        tracing::debug!("applying {} : {}", migration.app(), migration.name());
-                        let operations = migration.operations();
-                        if migration.is_atomic() {
-                            let mut transaction = connection.begin().await?;
-                            if !plan.fake {
-                                for operation in operations {
-                                    operation.up(&mut transaction).await?;
-                                }
+    ) -> Result<RunReport, Error> {
+        let run_span = tracing::info_span!(
+            "sqlx_migrator_run",
+            plan_type = ?plan.plan_type,
+            fake = plan.fake
+        );
+        async {
+            tracing::debug!("running plan {:?}", plan);
+            self.lock(connection).await?;
+            // store result of applying migration so that we can unlock lock
+            // before returning result
+            let result = run_plan(self, connection, plan).await;
+            // unlock before returning; if both migration and unlock fail, the
+            // migration error takes precedence over the unlock error.
+            let unlock_result = self.unlock(connection).await;
+            let report = result.and_then(|report| unlock_result.map(|()| report))?;
+            tracing::info!(
+                count = report.len(),
+                elapsed_ms = report.total_elapsed().as_millis(),
+                "run finished"
+            );
+            Ok(report)
+        }
+        .instrument(run_span)
+        .await
+    }
+}
+
+/// Runs the plan while the lock is held. Split out of [`Migrate::run`] so
+/// the lock is always released whatever the outcome.
+async fn run_plan<DB, M>(
+    migrator: &M,
+    connection: &mut <DB as Database>::Connection,
+    plan: &Plan,
+) -> Result<RunReport, Error>
+where
+    DB: Database,
+    M: Migrate<DB> + ?Sized,
+{
+    migrator.ensure_migration_table_exists(connection).await?;
+    let applied_rows = migrator.fetch_applied_migration_from_db(connection).await?;
+    let plan_migrations = migrator.generate_migration_plan(Some(plan), &applied_rows)?;
+    let mut report = RunReport {
+        apply: matches!(plan.plan_type, PlanType::Apply),
+        fake: plan.fake,
+        records: Vec::with_capacity(plan_migrations.len()),
+    };
+    if plan_migrations.is_empty() {
+        tracing::info!("no migration to run");
+    }
+    for migration in plan_migrations {
+        let migration_span = tracing::info_span!(
+            "sqlx_migrator_migration",
+            app = migration.app(),
+            name = migration.name()
+        );
+        let elapsed = async {
+            let start_instant = std::time::Instant::now();
+            match plan.plan_type {
+                PlanType::Apply => {
+                    tracing::info!("applying migration");
+                    let operations = migration.operations();
+                    if migration.is_atomic() {
+                        let mut transaction = connection.begin().await?;
+                        if !plan.fake {
+                            for operation in operations {
+                                operation.up(&mut transaction).await?;
                             }
-                            self.add_migration_to_db_table(&mut transaction, migration.as_ref())
-                                .await?;
-                            transaction.commit().await?;
-                        } else {
-                            if !plan.fake {
-                                for operation in operations {
-                                    operation.up(connection).await?;
-                                }
-                            }
-                            self.add_migration_to_db_table(connection, migration.as_ref())
-                                .await?;
                         }
-                    }
-                    PlanType::Revert => {
-                        tracing::debug!("reverting {} : {}", migration.app(), migration.name());
-
-                        // Reverse operation since last applied operation need
-                        // to be reverted first
-                        let mut operations = migration.operations();
-                        operations.reverse();
-
-                        if migration.is_atomic() {
-                            let mut transaction = connection.begin().await?;
-                            if !plan.fake {
-                                for operation in operations {
-                                    operation.down(&mut transaction).await?;
-                                }
-                            }
-                            self.delete_migration_from_db_table(
-                                &mut transaction,
-                                migration.as_ref(),
-                            )
+                        migrator
+                            .add_migration_to_db_table(&mut transaction, migration.as_ref())
                             .await?;
-                            transaction.commit().await?;
-                        } else {
-                            if !plan.fake {
-                                for operation in operations {
-                                    operation.down(connection).await?;
-                                }
+                        transaction.commit().await?;
+                    } else {
+                        if !plan.fake {
+                            for operation in operations {
+                                operation.up(connection).await?;
                             }
-                            self.delete_migration_from_db_table(connection, migration.as_ref())
-                                .await?;
                         }
+                        migrator
+                            .add_migration_to_db_table(connection, migration.as_ref())
+                            .await?;
                     }
                 }
-                tracing::debug!(
-                    "{} : {} took {:?}",
-                    migration.app(),
-                    migration.name(),
-                    start_instant.elapsed()
-                );
+                PlanType::Revert => {
+                    tracing::info!("reverting migration");
+
+                    // Reverse operation since last applied operation need
+                    // to be reverted first
+                    let mut operations = migration.operations();
+                    operations.reverse();
+
+                    if migration.is_atomic() {
+                        let mut transaction = connection.begin().await?;
+                        if !plan.fake {
+                            for operation in operations {
+                                operation.down(&mut transaction).await?;
+                            }
+                        }
+                        migrator
+                            .delete_migration_from_db_table(&mut transaction, migration.as_ref())
+                            .await?;
+                        transaction.commit().await?;
+                    } else {
+                        if !plan.fake {
+                            for operation in operations {
+                                operation.down(connection).await?;
+                            }
+                        }
+                        migrator
+                            .delete_migration_from_db_table(connection, migration.as_ref())
+                            .await?;
+                    }
+                }
             }
-            Ok(())
+            let elapsed = start_instant.elapsed();
+            tracing::info!(elapsed_ms = elapsed.as_millis(), "migration finished");
+            Ok::<_, Error>(elapsed)
         }
-        .await;
-        // unlock before returning; if both migration and unlock fail, the
-        // migration error takes precedence over the unlock error.
-        let unlock_result = self.unlock(connection).await;
-        result.and(unlock_result)
+        .instrument(migration_span)
+        .await?;
+        report.records.push(RunRecord {
+            app: migration.app().to_string(),
+            name: migration.name().to_string(),
+            elapsed,
+        });
     }
+    Ok(report)
 }
 
 const DEFAULT_TABLE_NAME: &str = "_sqlx_migrator_migrations";

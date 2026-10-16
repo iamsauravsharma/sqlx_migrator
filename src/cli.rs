@@ -331,8 +331,12 @@ impl Apply {
                     return Ok(());
                 }
             }
-            migrator.run(connection, &plan).await?;
-            println!("Successfully applied migrations according to plan");
+            let report = migrator.run(connection, &plan).await?;
+            println!(
+                "Successfully applied {} migrations according to plan in {}ms",
+                report.len(),
+                report.total_elapsed().as_millis()
+            );
             if self.prune {
                 let pruned_count = migrator.prune(connection).await?;
                 println!("Pruned {pruned_count} unknown migrations from migration table");
@@ -437,8 +441,12 @@ impl Revert {
                     return Ok(());
                 }
             }
-            migrator.run(connection, &plan).await?;
-            println!("Successfully reverted migrations according to plan");
+            let report = migrator.run(connection, &plan).await?;
+            println!(
+                "Successfully reverted {} migrations according to plan in {}ms",
+                report.len(),
+                report.total_elapsed().as_millis()
+            );
         }
         Ok(())
     }
