@@ -13,7 +13,7 @@ pub use crate::error::Error;
 #[doc(inline)]
 pub use crate::migration::Migration;
 #[doc(inline)]
-pub use crate::migrator::{Info, Migrate, Migrator, Plan};
+pub use crate::migrator::{Info, Migrate, Migrator, Plan, RunRecord, RunReport};
 #[doc(inline)]
 pub use crate::operation::Operation;
 #[doc(inline)]

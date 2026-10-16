@@ -194,11 +194,18 @@ You can run migrations directly or integrate them into a CLI:
 use sqlx_migrator::migrator::Plan;
 let mut conn = pool.acquire().await?;
 // use apply all to apply all pending migration
-migrator.run(&mut *conn, &Plan::apply_all()).await.unwrap();
+let report = migrator.run(&mut *conn, &Plan::apply_all()).await.unwrap();
+// the report lists what ran and how long each migration took
+for record in report.records() {
+    println!("{}:{} took {:?}", record.app(), record.name(), record.elapsed());
+}
 // or use revert all to revert all applied migrations
 migrator.run(&mut *conn, &Plan::revert_all()).await.unwrap();
 // If you need to apply or revert to certain stage then see `Plan` docs
 ```
+
+Progress is emitted through the `tracing` crate at `info` level, with a span per run
+and per migration carrying the app and name, so any `tracing` subscriber can show it.
 
 ## CLI Integration
 To integrate sqlx_migrator into your CLI, you can either use the built-in
