@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/cli.rs`."><title>cli.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../static.files/rustdoc-203241e4.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="sqlx_migrator" data-themes="" data-resource-suffix="" data-rustdoc-version="1.101.0-nightly (7df81381d 2026-10-14)" data-channel="nightly" data-search-js="search-b167f383.js" data-stringdex-js="stringdex-b5109af9.js" data-settings-js="settings-170eb4bf.js" ><script src="../../static.files/storage-41dd4d93.js"></script><script defer src="../../static.files/src-script-813739b1.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-1814ead3.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-9f56287d.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1><div class="sub-heading">sqlx_migrator/</div>cli.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="doccomment">//! Module for creating and running cli with help of migrator
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/cli.rs`."><title>cli.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../static.files/rustdoc-203241e4.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="sqlx_migrator" data-themes="" data-resource-suffix="" data-rustdoc-version="1.101.0-nightly (4ebd25825 2026-10-15)" data-channel="nightly" data-search-js="search-b167f383.js" data-stringdex-js="stringdex-b5109af9.js" data-settings-js="settings-170eb4bf.js" ><script src="../../static.files/storage-41dd4d93.js"></script><script defer src="../../static.files/src-script-813739b1.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-1814ead3.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-9f56287d.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1><div class="sub-heading">sqlx_migrator/</div>cli.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="doccomment">//! Module for creating and running cli with help of migrator
 <a href=#2 id=2 data-nosnippet>2</a>//!
 <a href=#3 id=3 data-nosnippet>3</a>//! CLI Command can directly used or extended
 <a href=#4 id=4 data-nosnippet>4</a>//!
@@ -331,116 +331,124 @@
 <a href=#331 id=331 data-nosnippet>331</a>                    <span class="kw">return </span><span class="prelude-val">Ok</span>(());
 <a href=#332 id=332 data-nosnippet>332</a>                }
 <a href=#333 id=333 data-nosnippet>333</a>            }
-<a href=#334 id=334 data-nosnippet>334</a>            migrator.run(connection, <span class="kw-2">&amp;</span>plan).<span class="kw">await</span><span class="question-mark">?</span>;
-<a href=#335 id=335 data-nosnippet>335</a>            <span class="macro">println!</span>(<span class="string">"Successfully applied migrations according to plan"</span>);
-<a href=#336 id=336 data-nosnippet>336</a>            <span class="kw">if </span><span class="self">self</span>.prune {
-<a href=#337 id=337 data-nosnippet>337</a>                <span class="kw">let </span>pruned_count = migrator.prune(connection).<span class="kw">await</span><span class="question-mark">?</span>;
-<a href=#338 id=338 data-nosnippet>338</a>                <span class="macro">println!</span>(<span class="string">"Pruned {pruned_count} unknown migrations from migration table"</span>);
-<a href=#339 id=339 data-nosnippet>339</a>            }
-<a href=#340 id=340 data-nosnippet>340</a>        }
-<a href=#341 id=341 data-nosnippet>341</a>        <span class="prelude-val">Ok</span>(())
-<a href=#342 id=342 data-nosnippet>342</a>    }
-<a href=#343 id=343 data-nosnippet>343</a>}
-<a href=#344 id=344 data-nosnippet>344</a>
-<a href=#345 id=345 data-nosnippet>345</a><span class="attr">#[derive(Parser, Debug)]
-<a href=#346 id=346 data-nosnippet>346</a>#[expect(clippy::struct_excessive_bools)]
-<a href=#347 id=347 data-nosnippet>347</a></span><span class="kw">struct </span>Revert {
-<a href=#348 id=348 data-nosnippet>348</a>    <span class="doccomment">/// Revert all migration. Conflicts with app args
-<a href=#349 id=349 data-nosnippet>349</a>    </span><span class="attr">#[arg(long, conflicts_with = <span class="string">"app"</span>)]
-<a href=#350 id=350 data-nosnippet>350</a>    </span>all: bool,
-<a href=#351 id=351 data-nosnippet>351</a>    <span class="doccomment">/// Revert migration till app migrations is reverted. If it is present
-<a href=#352 id=352 data-nosnippet>352</a>    /// alongside migration options then only till migration is reverted
-<a href=#353 id=353 data-nosnippet>353</a>    </span><span class="attr">#[arg(long)]
-<a href=#354 id=354 data-nosnippet>354</a>    </span>app: <span class="prelude-ty">Option</span>&lt;String&gt;,
-<a href=#355 id=355 data-nosnippet>355</a>    <span class="doccomment">/// Number of migration to revert. Conflicts with all and app args
-<a href=#356 id=356 data-nosnippet>356</a>    </span><span class="attr">#[arg(long, conflicts_with_all = [<span class="string">"all"</span>, <span class="string">"app"</span>]</span>)]
-<a href=#357 id=357 data-nosnippet>357</a>    count: <span class="prelude-ty">Option</span>&lt;usize&gt;,
-<a href=#358 id=358 data-nosnippet>358</a>    <span class="doccomment">/// Make migration reverted without running revert operation
-<a href=#359 id=359 data-nosnippet>359</a>    </span><span class="attr">#[arg(long)]
-<a href=#360 id=360 data-nosnippet>360</a>    </span>fake: bool,
-<a href=#361 id=361 data-nosnippet>361</a>    <span class="doccomment">/// Force run revert operation without asking question
-<a href=#362 id=362 data-nosnippet>362</a>    </span><span class="attr">#[arg(long)]
-<a href=#363 id=363 data-nosnippet>363</a>    </span>force: bool,
-<a href=#364 id=364 data-nosnippet>364</a>    <span class="doccomment">/// Revert migration till provided migration. Requires app options to be
-<a href=#365 id=365 data-nosnippet>365</a>    /// present
-<a href=#366 id=366 data-nosnippet>366</a>    </span><span class="attr">#[arg(long, requires = <span class="string">"app"</span>)]
-<a href=#367 id=367 data-nosnippet>367</a>    </span>migration: <span class="prelude-ty">Option</span>&lt;String&gt;,
-<a href=#368 id=368 data-nosnippet>368</a>    <span class="doccomment">/// Show plan
-<a href=#369 id=369 data-nosnippet>369</a>    </span><span class="attr">#[arg(long, conflicts_with_all = [<span class="string">"fake"</span>, <span class="string">"force"</span>]</span>)]
-<a href=#370 id=370 data-nosnippet>370</a>    plan: bool,
-<a href=#371 id=371 data-nosnippet>371</a>}
-<a href=#372 id=372 data-nosnippet>372</a><span class="kw">impl </span>Revert {
-<a href=#373 id=373 data-nosnippet>373</a>    <span class="kw">async fn </span>run&lt;DB, M&gt;(
-<a href=#374 id=374 data-nosnippet>374</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
-<a href=#375 id=375 data-nosnippet>375</a>        connection: <span class="kw-2">&amp;mut </span>&lt;DB <span class="kw">as </span>Database&gt;::Connection,
-<a href=#376 id=376 data-nosnippet>376</a>        migrator: <span class="kw-2">&amp;</span>M,
-<a href=#377 id=377 data-nosnippet>377</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt;
-<a href=#378 id=378 data-nosnippet>378</a>    <span class="kw">where
-<a href=#379 id=379 data-nosnippet>379</a>        </span>DB: Database,
-<a href=#380 id=380 data-nosnippet>380</a>        M: Migrate&lt;DB&gt; + <span class="question-mark">?</span>Sized,
-<a href=#381 id=381 data-nosnippet>381</a>    {
-<a href=#382 id=382 data-nosnippet>382</a>        <span class="kw">let </span>plan = <span class="kw">if let </span><span class="prelude-val">Some</span>(count) = <span class="self">self</span>.count {
-<a href=#383 id=383 data-nosnippet>383</a>            Plan::revert_count(count)
-<a href=#384 id=384 data-nosnippet>384</a>        } <span class="kw">else if let </span><span class="prelude-val">Some</span>(app) = <span class="kw-2">&amp;</span><span class="self">self</span>.app {
-<a href=#385 id=385 data-nosnippet>385</a>            Plan::revert_name(app, <span class="self">self</span>.migration.as_deref())
-<a href=#386 id=386 data-nosnippet>386</a>        } <span class="kw">else if </span><span class="self">self</span>.all {
-<a href=#387 id=387 data-nosnippet>387</a>            Plan::revert_all()
-<a href=#388 id=388 data-nosnippet>388</a>        } <span class="kw">else </span>{
-<a href=#389 id=389 data-nosnippet>389</a>            Plan::revert_count(<span class="number">1</span>)
-<a href=#390 id=390 data-nosnippet>390</a>        }
-<a href=#391 id=391 data-nosnippet>391</a>        .fake(<span class="self">self</span>.fake);
-<a href=#392 id=392 data-nosnippet>392</a>        migrator.ensure_migration_table_exists(connection).<span class="kw">await</span><span class="question-mark">?</span>;
-<a href=#393 id=393 data-nosnippet>393</a>        <span class="kw">let </span>applied_rows = migrator.fetch_applied_migration_from_db(connection).<span class="kw">await</span><span class="question-mark">?</span>;
-<a href=#394 id=394 data-nosnippet>394</a>        <span class="kw">let </span>revert_migrations = migrator.generate_migration_plan(<span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>plan), <span class="kw-2">&amp;</span>applied_rows)<span class="question-mark">?</span>;
-<a href=#395 id=395 data-nosnippet>395</a>
-<a href=#396 id=396 data-nosnippet>396</a>        <span class="kw">if </span><span class="self">self</span>.plan {
-<a href=#397 id=397 data-nosnippet>397</a>            <span class="kw">if </span>revert_migrations.is_empty() {
-<a href=#398 id=398 data-nosnippet>398</a>                <span class="macro">println!</span>(<span class="string">"No migration exists for reverting"</span>);
-<a href=#399 id=399 data-nosnippet>399</a>            } <span class="kw">else </span>{
-<a href=#400 id=400 data-nosnippet>400</a>                <span class="kw">let </span>first_width = <span class="number">10</span>;
-<a href=#401 id=401 data-nosnippet>401</a>                <span class="kw">let </span>second_width = <span class="number">50</span>;
-<a href=#402 id=402 data-nosnippet>402</a>                <span class="kw">let </span>full_width = first_width + second_width + <span class="number">3</span>;
-<a href=#403 id=403 data-nosnippet>403</a>                <span class="macro">println!</span>(<span class="string">"{:^first_width$} | {:^second_width$}"</span>, <span class="string">"App"</span>, <span class="string">"Name"</span>);
-<a href=#404 id=404 data-nosnippet>404</a>                <span class="macro">println!</span>(<span class="string">"{:^full_width$}"</span>, <span class="string">"-"</span>.repeat(full_width));
-<a href=#405 id=405 data-nosnippet>405</a>                <span class="kw">for </span>migration <span class="kw">in </span>revert_migrations {
-<a href=#406 id=406 data-nosnippet>406</a>                    <span class="macro">println!</span>(
-<a href=#407 id=407 data-nosnippet>407</a>                        <span class="string">"{:^first_width$} | {:^second_width$}"</span>,
-<a href=#408 id=408 data-nosnippet>408</a>                        migration.app(),
-<a href=#409 id=409 data-nosnippet>409</a>                        migration.name(),
-<a href=#410 id=410 data-nosnippet>410</a>                    );
-<a href=#411 id=411 data-nosnippet>411</a>                }
-<a href=#412 id=412 data-nosnippet>412</a>            }
-<a href=#413 id=413 data-nosnippet>413</a>        } <span class="kw">else </span>{
-<a href=#414 id=414 data-nosnippet>414</a>            <span class="kw">if </span>!<span class="self">self</span>.force &amp;&amp; !revert_migrations.is_empty() &amp;&amp; !<span class="self">self</span>.fake {
-<a href=#415 id=415 data-nosnippet>415</a>                <span class="kw">if </span>!std::io::stdin().is_terminal() {
-<a href=#416 id=416 data-nosnippet>416</a>                    <span class="kw">return </span><span class="prelude-val">Err</span>(Error::ConfirmationRequired);
-<a href=#417 id=417 data-nosnippet>417</a>                }
-<a href=#418 id=418 data-nosnippet>418</a>                <span class="kw">let </span><span class="kw-2">mut </span>input = String::new();
-<a href=#419 id=419 data-nosnippet>419</a>                <span class="macro">println!</span>(
-<a href=#420 id=420 data-nosnippet>420</a>                    <span class="string">"Do you want to revert {} migrations? (y/N)"</span>,
-<a href=#421 id=421 data-nosnippet>421</a>                    revert_migrations.len()
-<a href=#422 id=422 data-nosnippet>422</a>                );
-<a href=#423 id=423 data-nosnippet>423</a>                <span class="kw">for </span>(position, migration) <span class="kw">in </span>revert_migrations.iter().enumerate() {
-<a href=#424 id=424 data-nosnippet>424</a>                    <span class="macro">println!</span>(
-<a href=#425 id=425 data-nosnippet>425</a>                        <span class="string">"{}. {} : {}"</span>,
-<a href=#426 id=426 data-nosnippet>426</a>                        position + <span class="number">1</span>,
-<a href=#427 id=427 data-nosnippet>427</a>                        migration.app(),
-<a href=#428 id=428 data-nosnippet>428</a>                        migration.name()
-<a href=#429 id=429 data-nosnippet>429</a>                    );
-<a href=#430 id=430 data-nosnippet>430</a>                }
-<a href=#431 id=431 data-nosnippet>431</a>                std::io::stdout().flush()<span class="question-mark">?</span>;
-<a href=#432 id=432 data-nosnippet>432</a>                std::io::stdin().read_line(<span class="kw-2">&amp;mut </span>input)<span class="question-mark">?</span>;
-<a href=#433 id=433 data-nosnippet>433</a>                <span class="kw">let </span>input_trimmed = input.trim().to_ascii_lowercase();
-<a href=#434 id=434 data-nosnippet>434</a>                <span class="comment">// If answer is not y or yes then return
-<a href=#435 id=435 data-nosnippet>435</a>                </span><span class="kw">if </span>![<span class="string">"y"</span>, <span class="string">"yes"</span>].contains(<span class="kw-2">&amp;</span>input_trimmed.as_str()) {
-<a href=#436 id=436 data-nosnippet>436</a>                    <span class="macro">println!</span>(<span class="string">"Aborted reverting migrations"</span>);
-<a href=#437 id=437 data-nosnippet>437</a>                    <span class="kw">return </span><span class="prelude-val">Ok</span>(());
-<a href=#438 id=438 data-nosnippet>438</a>                }
-<a href=#439 id=439 data-nosnippet>439</a>            }
-<a href=#440 id=440 data-nosnippet>440</a>            migrator.run(connection, <span class="kw-2">&amp;</span>plan).<span class="kw">await</span><span class="question-mark">?</span>;
-<a href=#441 id=441 data-nosnippet>441</a>            <span class="macro">println!</span>(<span class="string">"Successfully reverted migrations according to plan"</span>);
-<a href=#442 id=442 data-nosnippet>442</a>        }
-<a href=#443 id=443 data-nosnippet>443</a>        <span class="prelude-val">Ok</span>(())
-<a href=#444 id=444 data-nosnippet>444</a>    }
-<a href=#445 id=445 data-nosnippet>445</a>}
+<a href=#334 id=334 data-nosnippet>334</a>            <span class="kw">let </span>report = migrator.run(connection, <span class="kw-2">&amp;</span>plan).<span class="kw">await</span><span class="question-mark">?</span>;
+<a href=#335 id=335 data-nosnippet>335</a>            <span class="macro">println!</span>(
+<a href=#336 id=336 data-nosnippet>336</a>                <span class="string">"Successfully applied {} migrations according to plan in {}ms"</span>,
+<a href=#337 id=337 data-nosnippet>337</a>                report.len(),
+<a href=#338 id=338 data-nosnippet>338</a>                report.total_elapsed().as_millis()
+<a href=#339 id=339 data-nosnippet>339</a>            );
+<a href=#340 id=340 data-nosnippet>340</a>            <span class="kw">if </span><span class="self">self</span>.prune {
+<a href=#341 id=341 data-nosnippet>341</a>                <span class="kw">let </span>pruned_count = migrator.prune(connection).<span class="kw">await</span><span class="question-mark">?</span>;
+<a href=#342 id=342 data-nosnippet>342</a>                <span class="macro">println!</span>(<span class="string">"Pruned {pruned_count} unknown migrations from migration table"</span>);
+<a href=#343 id=343 data-nosnippet>343</a>            }
+<a href=#344 id=344 data-nosnippet>344</a>        }
+<a href=#345 id=345 data-nosnippet>345</a>        <span class="prelude-val">Ok</span>(())
+<a href=#346 id=346 data-nosnippet>346</a>    }
+<a href=#347 id=347 data-nosnippet>347</a>}
+<a href=#348 id=348 data-nosnippet>348</a>
+<a href=#349 id=349 data-nosnippet>349</a><span class="attr">#[derive(Parser, Debug)]
+<a href=#350 id=350 data-nosnippet>350</a>#[expect(clippy::struct_excessive_bools)]
+<a href=#351 id=351 data-nosnippet>351</a></span><span class="kw">struct </span>Revert {
+<a href=#352 id=352 data-nosnippet>352</a>    <span class="doccomment">/// Revert all migration. Conflicts with app args
+<a href=#353 id=353 data-nosnippet>353</a>    </span><span class="attr">#[arg(long, conflicts_with = <span class="string">"app"</span>)]
+<a href=#354 id=354 data-nosnippet>354</a>    </span>all: bool,
+<a href=#355 id=355 data-nosnippet>355</a>    <span class="doccomment">/// Revert migration till app migrations is reverted. If it is present
+<a href=#356 id=356 data-nosnippet>356</a>    /// alongside migration options then only till migration is reverted
+<a href=#357 id=357 data-nosnippet>357</a>    </span><span class="attr">#[arg(long)]
+<a href=#358 id=358 data-nosnippet>358</a>    </span>app: <span class="prelude-ty">Option</span>&lt;String&gt;,
+<a href=#359 id=359 data-nosnippet>359</a>    <span class="doccomment">/// Number of migration to revert. Conflicts with all and app args
+<a href=#360 id=360 data-nosnippet>360</a>    </span><span class="attr">#[arg(long, conflicts_with_all = [<span class="string">"all"</span>, <span class="string">"app"</span>]</span>)]
+<a href=#361 id=361 data-nosnippet>361</a>    count: <span class="prelude-ty">Option</span>&lt;usize&gt;,
+<a href=#362 id=362 data-nosnippet>362</a>    <span class="doccomment">/// Make migration reverted without running revert operation
+<a href=#363 id=363 data-nosnippet>363</a>    </span><span class="attr">#[arg(long)]
+<a href=#364 id=364 data-nosnippet>364</a>    </span>fake: bool,
+<a href=#365 id=365 data-nosnippet>365</a>    <span class="doccomment">/// Force run revert operation without asking question
+<a href=#366 id=366 data-nosnippet>366</a>    </span><span class="attr">#[arg(long)]
+<a href=#367 id=367 data-nosnippet>367</a>    </span>force: bool,
+<a href=#368 id=368 data-nosnippet>368</a>    <span class="doccomment">/// Revert migration till provided migration. Requires app options to be
+<a href=#369 id=369 data-nosnippet>369</a>    /// present
+<a href=#370 id=370 data-nosnippet>370</a>    </span><span class="attr">#[arg(long, requires = <span class="string">"app"</span>)]
+<a href=#371 id=371 data-nosnippet>371</a>    </span>migration: <span class="prelude-ty">Option</span>&lt;String&gt;,
+<a href=#372 id=372 data-nosnippet>372</a>    <span class="doccomment">/// Show plan
+<a href=#373 id=373 data-nosnippet>373</a>    </span><span class="attr">#[arg(long, conflicts_with_all = [<span class="string">"fake"</span>, <span class="string">"force"</span>]</span>)]
+<a href=#374 id=374 data-nosnippet>374</a>    plan: bool,
+<a href=#375 id=375 data-nosnippet>375</a>}
+<a href=#376 id=376 data-nosnippet>376</a><span class="kw">impl </span>Revert {
+<a href=#377 id=377 data-nosnippet>377</a>    <span class="kw">async fn </span>run&lt;DB, M&gt;(
+<a href=#378 id=378 data-nosnippet>378</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
+<a href=#379 id=379 data-nosnippet>379</a>        connection: <span class="kw-2">&amp;mut </span>&lt;DB <span class="kw">as </span>Database&gt;::Connection,
+<a href=#380 id=380 data-nosnippet>380</a>        migrator: <span class="kw-2">&amp;</span>M,
+<a href=#381 id=381 data-nosnippet>381</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt;
+<a href=#382 id=382 data-nosnippet>382</a>    <span class="kw">where
+<a href=#383 id=383 data-nosnippet>383</a>        </span>DB: Database,
+<a href=#384 id=384 data-nosnippet>384</a>        M: Migrate&lt;DB&gt; + <span class="question-mark">?</span>Sized,
+<a href=#385 id=385 data-nosnippet>385</a>    {
+<a href=#386 id=386 data-nosnippet>386</a>        <span class="kw">let </span>plan = <span class="kw">if let </span><span class="prelude-val">Some</span>(count) = <span class="self">self</span>.count {
+<a href=#387 id=387 data-nosnippet>387</a>            Plan::revert_count(count)
+<a href=#388 id=388 data-nosnippet>388</a>        } <span class="kw">else if let </span><span class="prelude-val">Some</span>(app) = <span class="kw-2">&amp;</span><span class="self">self</span>.app {
+<a href=#389 id=389 data-nosnippet>389</a>            Plan::revert_name(app, <span class="self">self</span>.migration.as_deref())
+<a href=#390 id=390 data-nosnippet>390</a>        } <span class="kw">else if </span><span class="self">self</span>.all {
+<a href=#391 id=391 data-nosnippet>391</a>            Plan::revert_all()
+<a href=#392 id=392 data-nosnippet>392</a>        } <span class="kw">else </span>{
+<a href=#393 id=393 data-nosnippet>393</a>            Plan::revert_count(<span class="number">1</span>)
+<a href=#394 id=394 data-nosnippet>394</a>        }
+<a href=#395 id=395 data-nosnippet>395</a>        .fake(<span class="self">self</span>.fake);
+<a href=#396 id=396 data-nosnippet>396</a>        migrator.ensure_migration_table_exists(connection).<span class="kw">await</span><span class="question-mark">?</span>;
+<a href=#397 id=397 data-nosnippet>397</a>        <span class="kw">let </span>applied_rows = migrator.fetch_applied_migration_from_db(connection).<span class="kw">await</span><span class="question-mark">?</span>;
+<a href=#398 id=398 data-nosnippet>398</a>        <span class="kw">let </span>revert_migrations = migrator.generate_migration_plan(<span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>plan), <span class="kw-2">&amp;</span>applied_rows)<span class="question-mark">?</span>;
+<a href=#399 id=399 data-nosnippet>399</a>
+<a href=#400 id=400 data-nosnippet>400</a>        <span class="kw">if </span><span class="self">self</span>.plan {
+<a href=#401 id=401 data-nosnippet>401</a>            <span class="kw">if </span>revert_migrations.is_empty() {
+<a href=#402 id=402 data-nosnippet>402</a>                <span class="macro">println!</span>(<span class="string">"No migration exists for reverting"</span>);
+<a href=#403 id=403 data-nosnippet>403</a>            } <span class="kw">else </span>{
+<a href=#404 id=404 data-nosnippet>404</a>                <span class="kw">let </span>first_width = <span class="number">10</span>;
+<a href=#405 id=405 data-nosnippet>405</a>                <span class="kw">let </span>second_width = <span class="number">50</span>;
+<a href=#406 id=406 data-nosnippet>406</a>                <span class="kw">let </span>full_width = first_width + second_width + <span class="number">3</span>;
+<a href=#407 id=407 data-nosnippet>407</a>                <span class="macro">println!</span>(<span class="string">"{:^first_width$} | {:^second_width$}"</span>, <span class="string">"App"</span>, <span class="string">"Name"</span>);
+<a href=#408 id=408 data-nosnippet>408</a>                <span class="macro">println!</span>(<span class="string">"{:^full_width$}"</span>, <span class="string">"-"</span>.repeat(full_width));
+<a href=#409 id=409 data-nosnippet>409</a>                <span class="kw">for </span>migration <span class="kw">in </span>revert_migrations {
+<a href=#410 id=410 data-nosnippet>410</a>                    <span class="macro">println!</span>(
+<a href=#411 id=411 data-nosnippet>411</a>                        <span class="string">"{:^first_width$} | {:^second_width$}"</span>,
+<a href=#412 id=412 data-nosnippet>412</a>                        migration.app(),
+<a href=#413 id=413 data-nosnippet>413</a>                        migration.name(),
+<a href=#414 id=414 data-nosnippet>414</a>                    );
+<a href=#415 id=415 data-nosnippet>415</a>                }
+<a href=#416 id=416 data-nosnippet>416</a>            }
+<a href=#417 id=417 data-nosnippet>417</a>        } <span class="kw">else </span>{
+<a href=#418 id=418 data-nosnippet>418</a>            <span class="kw">if </span>!<span class="self">self</span>.force &amp;&amp; !revert_migrations.is_empty() &amp;&amp; !<span class="self">self</span>.fake {
+<a href=#419 id=419 data-nosnippet>419</a>                <span class="kw">if </span>!std::io::stdin().is_terminal() {
+<a href=#420 id=420 data-nosnippet>420</a>                    <span class="kw">return </span><span class="prelude-val">Err</span>(Error::ConfirmationRequired);
+<a href=#421 id=421 data-nosnippet>421</a>                }
+<a href=#422 id=422 data-nosnippet>422</a>                <span class="kw">let </span><span class="kw-2">mut </span>input = String::new();
+<a href=#423 id=423 data-nosnippet>423</a>                <span class="macro">println!</span>(
+<a href=#424 id=424 data-nosnippet>424</a>                    <span class="string">"Do you want to revert {} migrations? (y/N)"</span>,
+<a href=#425 id=425 data-nosnippet>425</a>                    revert_migrations.len()
+<a href=#426 id=426 data-nosnippet>426</a>                );
+<a href=#427 id=427 data-nosnippet>427</a>                <span class="kw">for </span>(position, migration) <span class="kw">in </span>revert_migrations.iter().enumerate() {
+<a href=#428 id=428 data-nosnippet>428</a>                    <span class="macro">println!</span>(
+<a href=#429 id=429 data-nosnippet>429</a>                        <span class="string">"{}. {} : {}"</span>,
+<a href=#430 id=430 data-nosnippet>430</a>                        position + <span class="number">1</span>,
+<a href=#431 id=431 data-nosnippet>431</a>                        migration.app(),
+<a href=#432 id=432 data-nosnippet>432</a>                        migration.name()
+<a href=#433 id=433 data-nosnippet>433</a>                    );
+<a href=#434 id=434 data-nosnippet>434</a>                }
+<a href=#435 id=435 data-nosnippet>435</a>                std::io::stdout().flush()<span class="question-mark">?</span>;
+<a href=#436 id=436 data-nosnippet>436</a>                std::io::stdin().read_line(<span class="kw-2">&amp;mut </span>input)<span class="question-mark">?</span>;
+<a href=#437 id=437 data-nosnippet>437</a>                <span class="kw">let </span>input_trimmed = input.trim().to_ascii_lowercase();
+<a href=#438 id=438 data-nosnippet>438</a>                <span class="comment">// If answer is not y or yes then return
+<a href=#439 id=439 data-nosnippet>439</a>                </span><span class="kw">if </span>![<span class="string">"y"</span>, <span class="string">"yes"</span>].contains(<span class="kw-2">&amp;</span>input_trimmed.as_str()) {
+<a href=#440 id=440 data-nosnippet>440</a>                    <span class="macro">println!</span>(<span class="string">"Aborted reverting migrations"</span>);
+<a href=#441 id=441 data-nosnippet>441</a>                    <span class="kw">return </span><span class="prelude-val">Ok</span>(());
+<a href=#442 id=442 data-nosnippet>442</a>                }
+<a href=#443 id=443 data-nosnippet>443</a>            }
+<a href=#444 id=444 data-nosnippet>444</a>            <span class="kw">let </span>report = migrator.run(connection, <span class="kw-2">&amp;</span>plan).<span class="kw">await</span><span class="question-mark">?</span>;
+<a href=#445 id=445 data-nosnippet>445</a>            <span class="macro">println!</span>(
+<a href=#446 id=446 data-nosnippet>446</a>                <span class="string">"Successfully reverted {} migrations according to plan in {}ms"</span>,
+<a href=#447 id=447 data-nosnippet>447</a>                report.len(),
+<a href=#448 id=448 data-nosnippet>448</a>                report.total_elapsed().as_millis()
+<a href=#449 id=449 data-nosnippet>449</a>            );
+<a href=#450 id=450 data-nosnippet>450</a>        }
+<a href=#451 id=451 data-nosnippet>451</a>        <span class="prelude-val">Ok</span>(())
+<a href=#452 id=452 data-nosnippet>452</a>    }
+<a href=#453 id=453 data-nosnippet>453</a>}
 </code></pre></div></section></main></body></html>
