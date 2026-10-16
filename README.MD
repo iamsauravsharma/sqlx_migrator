@@ -131,7 +131,8 @@ sqlx_migrator::postgres_migration!(
 );
 ```
 
-If your up and down queries are simple strings, you can simplify the implementation:
+If your up and down queries are simple strings, you can simplify the implementation.
+A `(up, down)` tuple is a reversible operation and a single string is an irreversible one:
 ```rust
 sqlx_migrator::postgres_migration!(
     FirstMigration,
@@ -142,10 +143,31 @@ sqlx_migrator::postgres_migration!(
         (
             "CREATE TABLE sample (id INTEGER PRIMARY KEY, name TEXT)",
             "DROP TABLE sample"
-        )
+        ),
+        "INSERT INTO sample (id, name) VALUES (1, 'seed')"
     ]
 );
 ```
+
+SQL can also be kept in files next to the migration and embedded at compile time.
+Paths are resolved relative to the invoking file, like `include_str!`. A base path
+expands to `<base>.up.sql` and `<base>.down.sql`; explicit `up:` and `down:` files
+can be given instead, and `up:` alone creates an irreversible operation:
+```rust
+sqlx_migrator::postgres_migration!(
+    FirstMigration,
+    "main",
+    "first_migration",
+    sqlx_migrator::vec_box![],
+    sqlx_migrator::vec_box![
+        sqlx_migrator::include_sql!("sql/0001"),
+        sqlx_migrator::include_sql!(up: "sql/0001_seed.sql"),
+    ]
+);
+```
+
+The macros cover the simple case. For a migration which needs `replaces`, `run_before`
+or `is_atomic`, implement the `Migration` trait by hand as shown above.
 
 Finally, create a migrator to run your migrations:
 
@@ -229,29 +251,32 @@ For each migration in your old system, create an equivalent migration in `sqlx_m
 The `OldMigrator` trait allows you to bridge between your old migration system and `sqlx_migrator`. Here's a implementation example for sqlx sql:
 
 ```rust
-use sqlx_migrator::sync::OldMigator;
-use sqlx::Database
+use sqlx::Postgres;
+use sqlx_migrator::error::Error;
+use sqlx_migrator::migration::Migration;
+use sqlx_migrator::sync::OldMigrator;
 
 struct SqlxMigrator;
 
 #[async_trait::async_trait]
-impl<DB, T> OldMigrator<DB> for SqlxMigrator
-    DB: Database,
-{
+impl OldMigrator<Postgres> for SqlxMigrator {
     async fn applied_migrations(
         &self,
-        connection: &mut <DB as Database>::Connection,
-    ) -> Result<Vec<Box<dyn Migration<DB>>>, Error> {
-        let old_migrations = sqlx::query!(
-            "SELECT version, description FROM _sqlx_migrations ORDER BY version"
+        connection: &mut sqlx::PgConnection,
+    ) -> Result<Vec<Box<dyn Migration<Postgres>>>, Error> {
+        let old_migrations: Vec<(i64, String)> = sqlx::query_as(
+            "SELECT version, description FROM _sqlx_migrations ORDER BY version",
         )
         .fetch_all(connection)
         .await?;
-        let mut migrations = vec![];
+        let mut migrations: Vec<Box<dyn Migration<Postgres>>> = vec![];
         // your custom logic here to map from old migrator to new migration
         // for example for sqlx you may use a migration name as combination of both version
         // and description or only one between them it is your choice
         // and sqlx migrator have no preference between them
+        for (version, description) in old_migrations {
+            migrations.push(Box::new(("main", format!("{version}_{description}"))));
+        }
         Ok(migrations)
     }
 }

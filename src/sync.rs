@@ -78,8 +78,8 @@ where
                 old_migrator.applied_migrations(connection).await?;
             let already_applied_migration =
                 self.fetch_applied_migration_from_db(connection).await?;
-            // Index known migrations and already applied migrations by (app, name) for O(1)
-            // lookup
+            // Index known migrations and already applied migrations by (app,
+            // name) for O(1) lookup
             let known_migrations = self
                 .migrations()
                 .iter()

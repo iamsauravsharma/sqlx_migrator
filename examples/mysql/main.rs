@@ -1,4 +1,3 @@
-#![expect(unused_crate_dependencies)]
 //! Example crate for mysql
 use sqlx::MySql;
 use sqlx_migrator::cli::MigrationCommand;
@@ -12,7 +11,8 @@ async fn main() {
     let pool = sqlx::Pool::<MySql>::connect(&uri).await.unwrap();
     let mut migrator = Migrator::default();
     migrator.add_migrations(migrations::migrations()).unwrap();
-    // There are two way to run migration. Either you can create cli as shown below
+    // There are two way to run migration. Either you can create cli as shown
+    // below
     let mut conn = pool.acquire().await.unwrap();
     MigrationCommand::parse_and_run(&mut *conn, &migrator)
         .await
