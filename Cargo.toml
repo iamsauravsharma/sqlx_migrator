@@ -8,7 +8,7 @@ repository = "https://github.com/iamsauravsharma/sqlx_migrator"
 description = "Migrator for writing sqlx migration using Rust instead of SQL"
 license = "MIT"
 readme = "README.MD"
-keywords = ["sqlx", "sqlx_migrations", "rust_migrations"]
+keywords = ["sqlx", "migration", "database", "postgres", "sqlite"]
 categories = ["database"]
 
 [dependencies]

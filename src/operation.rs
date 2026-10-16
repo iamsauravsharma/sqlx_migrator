@@ -115,3 +115,48 @@ where
         Ok(())
     }
 }
+
+/// An irreversible operation built from a single SQL string.
+///
+/// Only `up` is implemented; reverting a migration containing this operation
+/// fails with [`Error::IrreversibleOperation`]. Use a `(up, down)` tuple for a
+/// reversible operation.
+///
+/// # Warning
+/// The SQL string is executed directly via [`AssertSqlSafe`]. The caller is
+/// responsible for ensuring the string does not contain untrusted or
+/// unsanitised input.
+#[async_trait::async_trait]
+impl<DB> Operation<DB> for &str
+where
+    DB: Database,
+    <DB as Database>::Arguments: sqlx::IntoArguments<DB>,
+    for<'c> &'c mut <DB as Database>::Connection: sqlx::Executor<'c, Database = DB>,
+{
+    async fn up(&self, connection: &mut <DB as Database>::Connection) -> Result<(), Error> {
+        sqlx::query(AssertSqlSafe((*self).to_string()))
+            .execute(connection)
+            .await
+            .map_err(Error::from)?;
+        Ok(())
+    }
+}
+
+/// An irreversible operation built from a single owned SQL string.
+///
+/// See the `&str` implementation for details.
+#[async_trait::async_trait]
+impl<DB> Operation<DB> for String
+where
+    DB: Database,
+    <DB as Database>::Arguments: sqlx::IntoArguments<DB>,
+    for<'c> &'c mut <DB as Database>::Connection: sqlx::Executor<'c, Database = DB>,
+{
+    async fn up(&self, connection: &mut <DB as Database>::Connection) -> Result<(), Error> {
+        sqlx::query(AssertSqlSafe(self.clone()))
+            .execute(connection)
+            .await
+            .map_err(Error::from)?;
+        Ok(())
+    }
+}

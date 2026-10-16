@@ -332,7 +332,8 @@ pub trait Info<DB> {
                 .find(|(_, elem)| elem == &&migration)
             {
                 if found_migration.is_virtual() {
-                    // Replace the placeholder virtual migration with the concrete one
+                    // Replace the placeholder virtual migration with the
+                    // concrete one
                     self.migrations_mut().remove(migration_index);
                 } else if found_migration.parents() != migration.parents()
                     || found_migration.operations().len() != migration.operations().len()
@@ -352,8 +353,8 @@ pub trait Info<DB> {
             }
 
             if !skip_add {
-                // Add this migration and recursively register its parents, replaces,
-                // and run_before migrations
+                // Add this migration and recursively register its parents,
+                // replaces, and run_before migrations
                 let migration_parents = migration.parents();
                 let migration_replaces = migration.replaces();
                 let migration_run_before = migration.run_before();
@@ -515,8 +516,9 @@ fn only_related_migration<DB>(
                             })
                         });
 
-                    // current (or any migration it replaces) is in m's run_before,
-                    // meaning m must precede current.
+                    // current (or any migration it replaces) is in m's
+                    // run_before, meaning m must precede
+                    // current.
                     let is_run_before = m
                         .run_before()
                         .iter()
@@ -547,8 +549,9 @@ fn only_related_migration<DB>(
                             })
                         });
 
-                    // m (or any migration m replaces) is in current's run_before,
-                    // meaning current runs before m, so m must be reverted before current.
+                    // m (or any migration m replaces) is in current's
+                    // run_before, meaning current runs
+                    // before m, so m must be reverted before current.
                     let is_run_before = current_run_before
                         .iter()
                         .any(|rb| rb.as_ref() == m.as_ref())
@@ -762,10 +765,11 @@ where
 
         tracing::debug!("generating {:?} migration plan", plan);
 
-        // Hashmap which contains key as child migration and value as parent migration
-        // Child migration is migration which is replaced by parent migration. One
-        // migration can only be replaced by one migration but one migration can replace
-        // multiple migration so we can have multiple child for one parent but one child
+        // Hashmap which contains key as child migration and value as parent
+        // migration Child migration is migration which is replaced by
+        // parent migration. One migration can only be replaced by one
+        // migration but one migration can replace multiple migration so
+        // we can have multiple child for one parent but one child
         // can only have one parent
         let mut replaces_child_parent_hash_map = HashMap::new();
 
@@ -783,9 +787,9 @@ where
             }
         }
 
-        // Hashmap which contains key as migration and value is vector of migration
-        // which are children of this migration due to replace. One migration can
-        // have multiple children
+        // Hashmap which contains key as migration and value is vector of
+        // migration which are children of this migration due to
+        // replace. One migration can have multiple children
         let mut replace_children = HashMap::<_, Vec<_>>::new();
         // in first loop add direct children of parent due to replace
         for (child, &parent) in &replaces_child_parent_hash_map {
@@ -801,9 +805,9 @@ where
             populate_replace_recursive(&mut replace_children, parent, children_migration)?;
         }
 
-        // Hashmap which contains key as migration and value is vector of migration
-        // which should run before this migration. One migration can have
-        // multiple run before migration
+        // Hashmap which contains key as migration and value is vector of
+        // migration which should run before this migration. One
+        // migration can have multiple run before migration
         let mut run_before_child_parent_hash_map = HashMap::<_, Vec<_>>::new();
 
         for parent_migration in self.migrations() {
@@ -816,24 +820,29 @@ where
         }
 
         let mut migration_list = Vec::new();
-        // HashSet to keep track of migration which are already added to migration list
-        // to avoid adding same migration multiple times to migration list since one
-        // migration can be parent, run before or replace multiple migration
+        // HashSet to keep track of migration which are already added to
+        // migration list to avoid adding same migration multiple times
+        // to migration list since one migration can be parent, run
+        // before or replace multiple migration
         let mut migration_set = HashSet::new();
 
-        // keep looping until all migration are added to migration list. In each loop
-        // check if any migration can be added to migration list or not. A migration
-        // can be added if all its parents are already added to migration list
+        // keep looping until all migration are added to migration list. In each
+        // loop check if any migration can be added to migration list or
+        // not. A migration can be added if all its parents are already
+        // added to migration list
         let original_migration_length = self.migrations().len();
         while migration_list.len() != original_migration_length {
             let loop_initial_migration_list_length = migration_list.len();
             for migration in self.migrations() {
-                // check if all parents and run before migration are already added to
-                // migration list and if it replaces any migration then that migration
-                // should be added to migration list as well before adding this migration
-                // to migration list. Also if this migration have children due to replace
-                // then their parents and run before should be added to migration list
-                // before adding this migration to migration list
+                // check if all parents and run before migration are already
+                // added to migration list and if it replaces
+                // any migration then that migration
+                // should be added to migration list as well before adding this
+                // migration to migration list. Also if this
+                // migration have children due to replace
+                // then their parents and run before should be added to
+                // migration list before adding this migration
+                // to migration list
                 let all_required_added = !migration_set.contains(migration)
                     && migration
                         .parents()
@@ -848,8 +857,10 @@ where
                         .get(migration)
                         .is_none_or(|r| migration_set.contains(r))
                     && replace_children.get(migration).is_none_or(|children| {
-                        // if children are present then their parents and run before should be
-                        // added to migration list before adding replace migration
+                        // if children are present then their parents and run
+                        // before should be
+                        // added to migration list before adding replace
+                        // migration
                         children.iter().all(|&child| {
                             child.parents().iter().all(|p| migration_set.contains(p))
                                 && run_before_child_parent_hash_map
@@ -865,8 +876,8 @@ where
                 }
             }
 
-            // if no migration is added in this loop then it means there is a deadlock
-            // and we cannot proceed further
+            // if no migration is added in this loop then it means there is a
+            // deadlock and we cannot proceed further
             if loop_initial_migration_list_length == migration_list.len() {
                 return Err(Error::PlanError {
                     message: "reached deadlock stage during plan generation".to_string(),
@@ -891,10 +902,11 @@ where
                 }
             }
 
-            // Check if any child migration is applied before its parent migration
-            // according to parents and run before field. If yes then return error.
-            // Iterate `self.migrations()` (not the set) so the reported error is
-            // deterministic when multiple migrations violate the constraint.
+            // Check if any child migration is applied before its parent
+            // migration according to parents and run before field.
+            // If yes then return error. Iterate `self.migrations()`
+            // (not the set) so the reported error is deterministic
+            // when multiple migrations violate the constraint.
             for migration in self.migrations() {
                 if !applied_migrations.contains(&migration) {
                     continue;
@@ -929,8 +941,9 @@ where
                 }
             }
 
-            // Check if any migration and its replaces are applied together or not.
-            // Collect all removals first to avoid cloning migration_list.
+            // Check if any migration and its replaces are applied together or
+            // not. Collect all removals first to avoid cloning
+            // migration_list.
             let mut to_remove_replacers: Vec<&BoxMigration<DB>> = vec![];
             let mut to_remove_replaced: Vec<&BoxMigration<DB>> = vec![];
 
@@ -942,13 +955,15 @@ where
                         .iter()
                         .any(|&replace_migration| applied_migrations.contains(&replace_migration));
 
-                    // If replaces migration is applied then we cannot apply this migration
-                    // If replaces migration is not applied then we can remove all replaced
-                    // migration from migration list since this migration will apply in
-                    // place of them
+                    // If replaces migration is applied then we cannot apply
+                    // this migration If replaces migration
+                    // is not applied then we can remove all replaced
+                    // migration from migration list since this migration will
+                    // apply in place of them
                     if replaces_applied {
-                        // Errors out if this migration is also applied since both
-                        // migration and its replaces cannot be applied together
+                        // Errors out if this migration is also applied since
+                        // both migration and its
+                        // replaces cannot be applied together
                         if applied_migrations.contains(&migration) {
                             return Err(Error::PlanError {
                                 message: format!(
@@ -960,8 +975,9 @@ where
                         }
                         to_remove_replacers.push(migration);
                     } else {
-                        // remove all replaced migration from migration list since this
-                        // migration will apply in place of them
+                        // remove all replaced migration from migration list
+                        // since this migration will
+                        // apply in place of them
                         to_remove_replaced.extend(children);
                     }
                 }
@@ -1128,7 +1144,8 @@ where
                     PlanType::Revert => {
                         tracing::debug!("reverting {} : {}", migration.app(), migration.name());
 
-                        // Reverse operation since last applied operation need to be reverted first
+                        // Reverse operation since last applied operation need
+                        // to be reverted first
                         let mut operations = migration.operations();
                         operations.reverse();
 

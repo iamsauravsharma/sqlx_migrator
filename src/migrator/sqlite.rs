@@ -108,9 +108,10 @@ impl DatabaseOperation<Sqlite> for Migrator<Sqlite> {
     }
 
     async fn lock(&self, _connection: &mut <Sqlite as Database>::Connection) -> Result<(), Error> {
-        // SQLite serialises writes at the engine level. True advisory locking is
-        // not available, so concurrent migrators against the same file are not
-        // protected here. Use a single migrator instance per database file.
+        // SQLite serialises writes at the engine level. True advisory locking
+        // is not available, so concurrent migrators against the same
+        // file are not protected here. Use a single migrator instance
+        // per database file.
         Ok(())
     }
 

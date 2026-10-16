@@ -1,0 +1,1 @@
+CREATE TABLE sample (id INTEGER PRIMARY KEY, name TEXT)

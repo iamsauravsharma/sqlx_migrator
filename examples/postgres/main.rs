@@ -1,4 +1,3 @@
-#![expect(unused_crate_dependencies)]
 //! Example crate for postgres
 use sqlx::Postgres;
 use sqlx_migrator::cli::MigrationCommand;
@@ -16,7 +15,8 @@ async fn main() {
         .set_schema("random_schema_name")
         .unwrap();
     migrator.add_migrations(migrations::migrations()).unwrap();
-    // There are two way to run migration. Either you can create cli as shown below
+    // There are two way to run migration. Either you can create cli as shown
+    // below
     let mut conn = pool.acquire().await.unwrap();
     MigrationCommand::parse_and_run(&mut *conn, &migrator)
         .await

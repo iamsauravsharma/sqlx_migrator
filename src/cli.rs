@@ -118,8 +118,8 @@ where
     M: Migrate<DB> + ?Sized,
 {
     migrator.ensure_migration_table_exists(connection).await?;
-    // hold lock for dropping migration table to avoid race condition where another
-    // process is applying migration and we are dropping the table
+    // hold lock for dropping migration table to avoid race condition where
+    // another process is applying migration and we are dropping the table
     migrator.lock(connection).await?;
     let result = async {
         if !migrator

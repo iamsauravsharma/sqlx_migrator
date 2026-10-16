@@ -465,10 +465,11 @@ async fn linear_dependency_chain_applies_in_order() {
 /// plan.
 #[tokio::test]
 async fn apply_all_with_no_migrations_is_error() {
-    struct _A;
-    migration!(_A, "a", vec_box!(), vec_box!(), vec_box!());
-    struct _B;
-    migration!(_B, "b", vec_box!(_A), vec_box!(), vec_box!());
+    struct A;
+    migration!(A, "a", vec_box!(), vec_box!(), vec_box!());
+    struct B;
+    migration!(B, "b", vec_box!(A), vec_box!(), vec_box!());
+    let _: Vec<Box<dyn Migration<Sqlite>>> = vec_box!(A, B);
     let mut migrator = CustomMigrator::default();
     let plan = generate_apply_all_plan(&mut migrator, vec_box!()).await;
     assert_eq!(
