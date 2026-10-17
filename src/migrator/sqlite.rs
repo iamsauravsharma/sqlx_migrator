@@ -25,10 +25,13 @@ pub(crate) fn drop_table_query(table_name: &str) -> AssertSqlSafe<String> {
 }
 
 /// fetch rows
+///
+/// `applied_time` is cast to `TEXT` because the `Any` driver cannot decode the
+/// `TIMESTAMP` column type the table declares.
 #[must_use]
 pub(crate) fn fetch_rows_query(table_name: &str) -> AssertSqlSafe<String> {
     AssertSqlSafe(format!(
-        "SELECT id, app, name, applied_time FROM {table_name}"
+        "SELECT id, app, name, CAST(applied_time AS TEXT) AS applied_time FROM {table_name}"
     ))
 }
 

@@ -333,7 +333,10 @@ let sqlx_sql_migrator = SqlxMigrator;
 migrator.sync(&mut *conn, &sqlx_sql_migrator).await?;
 ```
 
-You can also implement above functionality for other migrator such as `diesel`, `seaorm` etc as well as for renaming table name of `sqlx_migrator`
+You can also implement above functionality for other migrators such as `diesel` or `seaorm`.
+The implementation may be generic over the database. A `Migrator` is itself an
+`OldMigrator`, which covers renaming the migration table or moving it to another schema:
+build a migrator with the old table prefix or schema and sync from it.
 
 [license_badge]: https://img.shields.io/github/license/iamsauravsharma/sqlx_migrator.svg?style=for-the-badge
 [license_link]: LICENSE
