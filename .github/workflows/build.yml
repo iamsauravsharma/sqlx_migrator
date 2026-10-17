@@ -71,32 +71,9 @@ jobs:
         uses: dtolnay/rust-toolchain@nightly
       - name: Install just
         uses: extractions/setup-just@v3
-      - name: Print cli help message
-        run: |
-          just run-example postgres --help
-          just run-example postgres apply --help
-          just run-example postgres drop --help
-          just run-example postgres list --help
-          just run-example postgres revert --help
-      - name: Run postgres example
-        run: |
-          just run-example postgres apply
-          just run-example postgres list
-          just run-example postgres revert --all --force
-          just run-example postgres list
-          just run-example postgres drop
-      - name: Run sqlite example
+      - name: Run examples against every database
         run: |
           touch db.sqlite3
-          just run-example sqlite apply
-          just run-example sqlite list
-          just run-example sqlite revert --all --force
-          just run-example sqlite list
-          just run-example sqlite drop
-      - name: Run mysql example
-        run: |
-          just run-example mysql apply
-          just run-example mysql list
-          just run-example mysql revert --all --force
-          just run-example mysql list
-          just run-example mysql drop
+          for example in postgres sqlite mysql; do
+            just run-example-flow "$example"
+          done
