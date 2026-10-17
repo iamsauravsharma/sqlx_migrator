@@ -29,6 +29,11 @@ clippy *args="--all-features":
 test *args="--all-features":
     cargo test --workspace {{args}}
 
+# Run the backend tests against real databases. Needs POSTGRES_DATABASE_URL
+# and MYSQL_DATABASE_URL
+test-backend:
+    cargo test --workspace --all-features --test backend -- --include-ignored
+
 # Generate documentation
 doc *args="--all-features":
     cargo doc --workspace --no-deps {{args}}

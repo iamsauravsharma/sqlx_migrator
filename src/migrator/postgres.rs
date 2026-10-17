@@ -55,7 +55,10 @@ pub(crate) fn delete_migration_query(table_name: &str) -> AssertSqlSafe<String> 
 }
 
 /// current database query
-pub(crate) const CURRENT_DATABASE_QUERY: &str = "SELECT CURRENT_DATABASE()";
+///
+/// The result is cast to `TEXT` because `CURRENT_DATABASE()` returns the
+/// `name` type, which the `Any` driver cannot decode.
+pub(crate) const CURRENT_DATABASE_QUERY: &str = "SELECT CURRENT_DATABASE()::TEXT";
 
 /// lock database query
 pub(crate) const LOCK_DATABASE_QUERY: &str = "SELECT pg_advisory_lock($1)";

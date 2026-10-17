@@ -22,8 +22,16 @@ where
     ) -> Result<Vec<Box<dyn Migration<DB>>>, Error>;
 }
 
+/// A [`Migrator`] can act as the old migrator, which covers renaming the
+/// migration table or moving it to another schema: build a migrator with the
+/// old configuration and sync from it.
+///
+/// This is a direct implementation rather than a blanket one for every
+/// [`DatabaseOperation`] type, so downstream types can implement
+/// [`OldMigrator`] generically over the database without a coherence
+/// conflict.
 #[async_trait::async_trait]
-impl<DB, T> OldMigrator<DB> for T
+impl<DB> OldMigrator<DB> for Migrator<DB>
 where
     DB: Database,
     Self: DatabaseOperation<DB> + Send + Sync,

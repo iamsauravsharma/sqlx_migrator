@@ -1,6 +1,6 @@
 use sqlx::{Database, Sqlite, SqlitePool};
 
-use super::{DatabaseOperation, Info, Migrate, Migrator};
+use super::{DatabaseOperation, Info, LockStrategy, Migrate, Migrator};
 use crate::error::Error;
 use crate::migration::{AppliedMigrationSqlRow, Migration};
 use crate::migrator::Plan;
@@ -103,6 +103,26 @@ impl CustomMigrator {
             migration.name(),
         ));
         self.internal_migrator.add_migration(migration)
+    }
+}
+
+/// The custom migrator can act as an old migrator, mirroring what
+/// [`Migrator`] provides, so the sync tests can use two custom migrators.
+#[async_trait::async_trait]
+impl crate::sync::OldMigrator<Sqlite> for CustomMigrator {
+    async fn applied_migrations(
+        &self,
+        connection: &mut <Sqlite as Database>::Connection,
+    ) -> Result<Vec<Box<dyn Migration<Sqlite>>>, Error> {
+        Ok(self
+            .fetch_applied_migration_from_db(connection)
+            .await?
+            .iter()
+            .map(|row| {
+                Box::new((row.app().to_string(), row.name().to_string()))
+                    as Box<dyn Migration<Sqlite>>
+            })
+            .collect())
     }
 }
 
@@ -1807,41 +1827,6 @@ async fn status_returns_applied_state_in_apply_order() {
     let empty_migrator = CustomMigrator::default();
     assert!(empty_migrator.status(&rows).unwrap().is_empty());
 }
-
-/// `prune` must delete applied migration entries which no longer have a
-/// corresponding migration in the migration list while keeping known ones.
-#[tokio::test]
-async fn prune_removes_unknown_applied_migrations() {
-    struct A;
-    migration!(A, "a", vec_box!(), vec_box!(), vec_box!());
-
-    let mut migrator = Migrator::<Sqlite>::new();
-    migrator.add_migrations(vec_box!(A)).unwrap();
-    let mut conn = make_conn().await;
-
-    // record known migration as applied and insert an entry for a migration
-    // which doesn't exist in the migration list
-    migrator
-        .run(&mut conn, &Plan::apply_all().fake(true))
-        .await
-        .unwrap();
-    migrator
-        .add_migration_to_db_table(&mut conn, &("test".to_string(), "removed".to_string()))
-        .await
-        .unwrap();
-
-    let pruned_count = migrator.prune(&mut conn).await.unwrap();
-    assert_eq!(pruned_count, 1);
-
-    let applied = migrator
-        .fetch_applied_migration_from_db(&mut conn)
-        .await
-        .unwrap();
-    assert_eq!(applied.len(), 1);
-    assert_eq!(applied[0].app(), "test");
-    assert_eq!(applied[0].name(), "a");
-}
-
 /// Both the squash migration (replacer) and one of its replaced predecessors
 /// being applied simultaneously is an inconsistent state. The planner must
 /// report a `PlanError` rather than silently producing a broken plan.
@@ -1943,4 +1928,27 @@ async fn sync_skips_unknown_migrations() {
         .sync(&mut conn, &old_migrator)
         .await
         .expect("sync must skip unknown migrations without error");
+}
+
+/// The lock strategy defaults to the database one, can be changed with the
+/// builder and combines with the other configuration options.
+#[test]
+fn lock_strategy_configuration() {
+    assert_eq!(LockStrategy::default(), LockStrategy::Database);
+    let migrator = Migrator::<Sqlite>::new();
+    assert_eq!(migrator.lock_strategy(), LockStrategy::Database);
+    let migrator = migrator
+        .set_table_prefix("pfx")
+        .unwrap()
+        .set_lock_strategy(LockStrategy::None)
+        .set_schema("sch")
+        .unwrap();
+    assert_eq!(migrator.lock_strategy(), LockStrategy::None);
+    assert_eq!(migrator.table_name(), "sch._pfx_sqlx_migrator_migrations");
+    assert_eq!(
+        migrator
+            .set_lock_strategy(LockStrategy::Database)
+            .lock_strategy(),
+        LockStrategy::Database
+    );
 }

@@ -40,8 +40,42 @@ jobs:
         run: |
           just all
 
+  run_integration_tests:
+    name: Run Integration Tests
+    runs-on: "ubuntu-latest"
+    needs: build
+    env:
+      SQLITE_DATABASE_URL: "db.sqlite3"
+      POSTGRES_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+      MYSQL_DATABASE_URL: mysql://root:mysql@127.0.0.1:3306/default_db
+    services:
+      postgres:
+        image: postgres
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+      mysql:
+        image: mysql
+        env:
+          MYSQL_ROOT_PASSWORD: mysql
+          MYSQL_DATABASE: default_db
+        ports:
+          - 3306:3306
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup rust toolchain
+        uses: dtolnay/rust-toolchain@nightly
+      - name: Install just
+        uses: extractions/setup-just@v3
+      - name: Run database integration tests
+        run: |
+          just test-backend
+
   run_example:
-    name: Run Example
+    name: Run Examples
     runs-on: "ubuntu-latest"
     needs: build
     env:
