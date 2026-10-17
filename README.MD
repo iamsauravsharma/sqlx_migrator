@@ -239,6 +239,21 @@ use sqlx_migrator::cli::MigrationCommand;
 MigrationCommand::parse_and_run(&mut *conn, &migrator).await.unwrap();
 ```
 
+The command provides these subcommands:
+
+| Subcommand | Purpose |
+| --- | --- |
+| `apply` | Apply pending migrations. `--plan` shows what would run, `--check` fails when something is pending, `--fake` only records them, `--app` / `--migration` / `--count` limit the plan. |
+| `revert` | Revert the last applied migration by default; `--all`, `--app` / `--migration` or `--count` choose more. Asks for confirmation unless `--force` is passed. |
+| `redo` | Revert the last applied migration and apply it again, handy while developing a migration. |
+| `list` | Show every migration with its status: applied, pending, replaced, or unknown (in the table but no longer in the code). |
+| `prune` | Delete unknown entries from the migration table after migrations were removed from the code. Asks for confirmation unless `--force` is passed. |
+| `drop` | Drop the migration table once every migration is reverted. |
+
+`list`, `apply --plan` and `revert --plan` accept `--format json` for scripting; the
+default is a table sized to its content. Confirmation prompts need a terminal, so pass
+`--force` when running non-interactively.
+
 #### Extending Your Own CLI with Migrator Support
 
 ```rust

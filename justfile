@@ -40,6 +40,22 @@ rustdoc:
 # Run all task
 all: fmt build clippy doc test
 
-# run postgres example
+# Run an example cli with the given arguments (example name doubles as the feature)
 run-example example_name *args="":
     cargo run --example {{example_name}} --features {{example_name}} -- {{args}}
+
+# Run the cli flow of an example against its database (used by CI)
+run-example-flow example_name:
+    just --justfile {{justfile()}} run-example {{example_name}} --help
+    just --justfile {{justfile()}} run-example {{example_name}} apply --plan
+    just --justfile {{justfile()}} run-example {{example_name}} apply --plan --format json
+    just --justfile {{justfile()}} run-example {{example_name}} apply
+    just --justfile {{justfile()}} run-example {{example_name}} apply --check
+    just --justfile {{justfile()}} run-example {{example_name}} list
+    just --justfile {{justfile()}} run-example {{example_name}} list --format json
+    just --justfile {{justfile()}} run-example {{example_name}} redo --force
+    just --justfile {{justfile()}} run-example {{example_name}} prune --force
+    just --justfile {{justfile()}} run-example {{example_name}} revert --plan --format json
+    just --justfile {{justfile()}} run-example {{example_name}} revert --all --force
+    just --justfile {{justfile()}} run-example {{example_name}} list
+    just --justfile {{justfile()}} run-example {{example_name}} drop
