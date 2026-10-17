@@ -1,13 +1,20 @@
 use sqlx::{AssertSqlSafe, Database, MySql};
 
+use super::internal_migration::{self, InternalMigrations};
 use super::{DatabaseOperation, LockStrategy, Migrator};
 use crate::error::Error;
 use crate::migration::{AppliedMigrationSqlRow, Migration};
 
-/// create migrator table query
-#[must_use]
-pub(crate) fn create_migrator_table_query(table_name: &str) -> AssertSqlSafe<String> {
-    AssertSqlSafe(format!(
+/// Internal migrations in order, see [`super::internal_migration`]
+fn internal_migration_steps(table_name: &str) -> Vec<(&'static str, String)> {
+    vec![(
+        "0001_create_migrations_table",
+        create_migrations_table(table_name),
+    )]
+}
+
+fn create_migrations_table(table_name: &str) -> String {
+    format!(
         "CREATE TABLE IF NOT EXISTS {table_name} (
         id INT PRIMARY KEY NOT NULL AUTO_INCREMENT,
         app VARCHAR(384) NOT NULL,
@@ -15,7 +22,23 @@ pub(crate) fn create_migrator_table_query(table_name: &str) -> AssertSqlSafe<Str
         applied_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
         UNIQUE (app, name)
     )"
-    ))
+    )
+}
+
+/// Internal migrations for the given table names
+pub(crate) fn internal_migrations(table_name: &str, meta_table_name: &str) -> InternalMigrations {
+    let create_meta_table = format!(
+        "CREATE TABLE IF NOT EXISTS {meta_table_name} (name VARCHAR(255) PRIMARY KEY NOT NULL, \
+         applied_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP)"
+    );
+    let fetch_applied = format!("SELECT name FROM {meta_table_name}");
+    let insert_applied = format!("INSERT IGNORE INTO {meta_table_name}(name) VALUES (?)");
+    InternalMigrations::new(
+        create_meta_table,
+        fetch_applied,
+        insert_applied,
+        internal_migration_steps(table_name),
+    )
 }
 
 /// Drop table query
@@ -68,10 +91,11 @@ impl DatabaseOperation<MySql> for Migrator<MySql> {
         &self,
         connection: &mut <MySql as Database>::Connection,
     ) -> Result<(), Error> {
-        sqlx::query(create_migrator_table_query(&self.table_name()))
-            .execute(connection)
-            .await?;
-        Ok(())
+        internal_migration::ensure_tables::<MySql>(
+            connection,
+            &internal_migrations(&self.table_name(), &self.meta_table_name()),
+        )
+        .await
     }
 
     async fn drop_migration_table_if_exists(
@@ -79,6 +103,9 @@ impl DatabaseOperation<MySql> for Migrator<MySql> {
         connection: &mut <MySql as Database>::Connection,
     ) -> Result<(), Error> {
         sqlx::query(drop_table_query(&self.table_name()))
+            .execute(&mut *connection)
+            .await?;
+        sqlx::query(drop_table_query(&self.meta_table_name()))
             .execute(connection)
             .await?;
         Ok(())

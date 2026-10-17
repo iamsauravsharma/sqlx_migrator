@@ -1,13 +1,20 @@
 use sqlx::{AssertSqlSafe, Database, Sqlite};
 
+use super::internal_migration::{self, InternalMigrations};
 use super::{DatabaseOperation, Migrator};
 use crate::error::Error;
 use crate::migration::{AppliedMigrationSqlRow, Migration};
 
-/// create migrator table
-#[must_use]
-pub(crate) fn create_migrator_table_query(table_name: &str) -> AssertSqlSafe<String> {
-    AssertSqlSafe(format!(
+/// Internal migrations in order, see [`super::internal_migration`]
+fn internal_migration_steps(table_name: &str) -> Vec<(&'static str, String)> {
+    vec![(
+        "0001_create_migrations_table",
+        create_migrations_table(table_name),
+    )]
+}
+
+fn create_migrations_table(table_name: &str) -> String {
+    format!(
         "CREATE TABLE IF NOT EXISTS {table_name} (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         app TEXT NOT NULL,
@@ -15,7 +22,24 @@ pub(crate) fn create_migrator_table_query(table_name: &str) -> AssertSqlSafe<Str
         applied_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
         UNIQUE (app, name)
     )"
-    ))
+    )
+}
+
+/// Internal migrations for the given table names
+pub(crate) fn internal_migrations(table_name: &str, meta_table_name: &str) -> InternalMigrations {
+    let create_meta_table = format!(
+        "CREATE TABLE IF NOT EXISTS {meta_table_name} (name TEXT PRIMARY KEY NOT NULL, \
+         applied_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP)"
+    );
+    let fetch_applied = format!("SELECT name FROM {meta_table_name}");
+    let insert_applied =
+        format!("INSERT INTO {meta_table_name}(name) VALUES ($1) ON CONFLICT (name) DO NOTHING");
+    InternalMigrations::new(
+        create_meta_table,
+        fetch_applied,
+        insert_applied,
+        internal_migration_steps(table_name),
+    )
 }
 
 /// Drop table
@@ -57,10 +81,11 @@ impl DatabaseOperation<Sqlite> for Migrator<Sqlite> {
         &self,
         connection: &mut <Sqlite as Database>::Connection,
     ) -> Result<(), Error> {
-        sqlx::query(create_migrator_table_query(&self.table_name()))
-            .execute(connection)
-            .await?;
-        Ok(())
+        internal_migration::ensure_tables::<Sqlite>(
+            connection,
+            &internal_migrations(&self.table_name(), &self.meta_table_name()),
+        )
+        .await
     }
 
     async fn drop_migration_table_if_exists(
@@ -68,6 +93,9 @@ impl DatabaseOperation<Sqlite> for Migrator<Sqlite> {
         connection: &mut <Sqlite as Database>::Connection,
     ) -> Result<(), Error> {
         sqlx::query(drop_table_query(&self.table_name()))
+            .execute(&mut *connection)
+            .await?;
+        sqlx::query(drop_table_query(&self.meta_table_name()))
             .execute(connection)
             .await?;
         Ok(())

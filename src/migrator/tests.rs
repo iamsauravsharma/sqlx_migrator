@@ -1952,3 +1952,156 @@ fn lock_strategy_configuration() {
         LockStrategy::Database
     );
 }
+
+// ── Internal migrations of the migration table ───────────────────────────────
+
+/// Runs a raw statement on the connection, for setting up legacy or tampered
+/// states the public API cannot produce.
+async fn raw(conn: &mut <Sqlite as Database>::Connection, sql: String) {
+    sqlx::query(sqlx::AssertSqlSafe(sql))
+        .execute(conn)
+        .await
+        .unwrap();
+}
+
+async fn sqlite_table_exists(conn: &mut <Sqlite as Database>::Connection, table: &str) -> bool {
+    sqlx::query(sqlx::AssertSqlSafe(format!(
+        "SELECT 1 FROM {table} WHERE 1 = 0"
+    )))
+    .execute(conn)
+    .await
+    .is_ok()
+}
+
+#[test]
+fn meta_table_name_follows_prefix_and_schema() {
+    let migrator = Migrator::<Sqlite>::new();
+    assert_eq!(migrator.meta_table_name(), "_sqlx_migrator_meta");
+    let migrator = Migrator::<Sqlite>::new()
+        .set_table_prefix("pfx")
+        .unwrap()
+        .set_schema("sch")
+        .unwrap();
+    assert_eq!(migrator.meta_table_name(), "sch._pfx_sqlx_migrator_meta");
+    assert_eq!(migrator.table_name(), "sch._pfx_sqlx_migrator_migrations");
+}
+
+/// A fresh install creates both tables and records the internal migration;
+/// ensuring again is a no-op.
+#[tokio::test]
+async fn fresh_install_creates_both_tables() {
+    let migrator = Migrator::<Sqlite>::new();
+    let mut conn = make_conn().await;
+    migrator
+        .ensure_migration_table_exists(&mut conn)
+        .await
+        .unwrap();
+    assert!(sqlite_table_exists(&mut conn, &migrator.table_name()).await);
+    assert!(sqlite_table_exists(&mut conn, &migrator.meta_table_name()).await);
+    let (count,): (i64,) = sqlx::query_as(sqlx::AssertSqlSafe(format!(
+        "SELECT COUNT(*) FROM {}",
+        migrator.meta_table_name()
+    )))
+    .fetch_one(&mut *conn)
+    .await
+    .unwrap();
+    assert_eq!(count, 1);
+    migrator
+        .ensure_migration_table_exists(&mut conn)
+        .await
+        .unwrap();
+}
+
+/// A migration table created before the meta table existed is kept, rows
+/// included, since the internal migrations are safe to rerun.
+#[tokio::test]
+async fn legacy_install_keeps_existing_rows() {
+    let migrator = Migrator::<Sqlite>::new();
+    let mut conn = make_conn().await;
+    let first_layout =
+        super::sqlite::internal_migrations(&migrator.table_name(), &migrator.meta_table_name())
+            .steps()[0]
+            .1
+            .clone();
+    raw(&mut conn, first_layout).await;
+    raw(
+        &mut conn,
+        format!(
+            "INSERT INTO {}(app, name) VALUES ('legacy', 'row')",
+            migrator.table_name()
+        ),
+    )
+    .await;
+
+    migrator
+        .ensure_migration_table_exists(&mut conn)
+        .await
+        .unwrap();
+    let rows = migrator
+        .fetch_applied_migration_from_db(&mut conn)
+        .await
+        .unwrap();
+    assert_eq!(rows.len(), 1);
+    assert_eq!(rows[0].app(), "legacy");
+}
+
+/// An internal migration recorded by a newer release is rejected rather than
+/// ignored.
+#[tokio::test]
+async fn unknown_internal_migration_is_rejected() {
+    let migrator = Migrator::<Sqlite>::new();
+    let mut conn = make_conn().await;
+    migrator
+        .ensure_migration_table_exists(&mut conn)
+        .await
+        .unwrap();
+    raw(
+        &mut conn,
+        format!(
+            "INSERT INTO {}(name) VALUES ('9999_from_the_future')",
+            migrator.meta_table_name()
+        ),
+    )
+    .await;
+    for result in [
+        migrator.ensure_migration_table_exists(&mut conn).await,
+        migrator
+            .run(&mut conn, &Plan::apply_all())
+            .await
+            .map(|_| ()),
+    ] {
+        assert!(
+            matches!(
+                &result,
+                Err(Error::UnknownInternalMigration { name }) if name == "9999_from_the_future"
+            ),
+            "{result:?}"
+        );
+    }
+    let error = migrator
+        .ensure_migration_table_exists(&mut conn)
+        .await
+        .unwrap_err();
+    assert_eq!(
+        error.to_string(),
+        "migration table was changed by internal migration 9999_from_the_future which this \
+         version of sqlx_migrator does not know, upgrade sqlx_migrator"
+    );
+}
+
+/// Dropping the migration table drops the meta table as well.
+#[tokio::test]
+async fn drop_removes_meta_table() {
+    let migrator = Migrator::<Sqlite>::new();
+    let mut conn = make_conn().await;
+    migrator
+        .ensure_migration_table_exists(&mut conn)
+        .await
+        .unwrap();
+    migrator
+        .drop_migration_table_if_exists(&mut conn)
+        .await
+        .unwrap();
+    assert!(!sqlite_table_exists(&mut conn, &migrator.table_name()).await);
+    assert!(!sqlite_table_exists(&mut conn, &migrator.meta_table_name()).await);
+}

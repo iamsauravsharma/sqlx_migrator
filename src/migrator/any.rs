@@ -7,6 +7,7 @@ use sqlx::Sqlite;
 use sqlx::any::AnyArguments;
 use sqlx::{Any, Arguments as _, Database};
 
+use super::internal_migration::{self, InternalMigrations};
 #[cfg(feature = "mysql")]
 use super::mysql;
 #[cfg(feature = "postgres")]
@@ -40,6 +41,25 @@ async fn get_database_name(
     Ok(None)
 }
 
+/// Internal migrations of the backend behind the connection
+fn internal_migrations(
+    connection: &<Any as Database>::Connection,
+    table_name: &str,
+    meta_table_name: &str,
+) -> Result<InternalMigrations, Error> {
+    match connection.backend_name() {
+        #[cfg(feature = "postgres")]
+        <Postgres as Database>::NAME => {
+            Ok(postgres::internal_migrations(table_name, meta_table_name))
+        }
+        #[cfg(feature = "sqlite")]
+        <Sqlite as Database>::NAME => Ok(sqlite::internal_migrations(table_name, meta_table_name)),
+        #[cfg(feature = "mysql")]
+        <MySql as Database>::NAME => Ok(mysql::internal_migrations(table_name, meta_table_name)),
+        _ => Err(Error::UnsupportedDatabase),
+    }
+}
+
 #[async_trait::async_trait]
 impl DatabaseOperation<Any> for Migrator<Any> {
     async fn ensure_migration_table_exists(
@@ -54,35 +74,27 @@ impl DatabaseOperation<Any> for Migrator<Any> {
                 .execute(&mut *connection)
                 .await?;
         }
-        let sql_query = match connection.backend_name() {
-            #[cfg(feature = "postgres")]
-            <Postgres as Database>::NAME => {
-                postgres::create_migrator_table_query(&self.table_name())
-            }
-            #[cfg(feature = "sqlite")]
-            <Sqlite as Database>::NAME => sqlite::create_migrator_table_query(&self.table_name()),
-            #[cfg(feature = "mysql")]
-            <MySql as Database>::NAME => mysql::create_migrator_table_query(&self.table_name()),
-            _ => return Err(Error::UnsupportedDatabase),
-        };
-        sqlx::query(sql_query).execute(connection).await?;
-        Ok(())
+        let internal =
+            internal_migrations(connection, &self.table_name(), &self.meta_table_name())?;
+        internal_migration::ensure_tables::<Any>(connection, &internal).await
     }
 
     async fn drop_migration_table_if_exists(
         &self,
         connection: &mut <Any as Database>::Connection,
     ) -> Result<(), Error> {
-        let sql_query = match connection.backend_name() {
-            #[cfg(feature = "postgres")]
-            <Postgres as Database>::NAME => postgres::drop_table_query(&self.table_name()),
-            #[cfg(feature = "sqlite")]
-            <Sqlite as Database>::NAME => sqlite::drop_table_query(&self.table_name()),
-            #[cfg(feature = "mysql")]
-            <MySql as Database>::NAME => mysql::drop_table_query(&self.table_name()),
-            _ => return Err(Error::UnsupportedDatabase),
-        };
-        sqlx::query(sql_query).execute(connection).await?;
+        for table in [self.table_name(), self.meta_table_name()] {
+            let sql_query = match connection.backend_name() {
+                #[cfg(feature = "postgres")]
+                <Postgres as Database>::NAME => postgres::drop_table_query(&table),
+                #[cfg(feature = "sqlite")]
+                <Sqlite as Database>::NAME => sqlite::drop_table_query(&table),
+                #[cfg(feature = "mysql")]
+                <MySql as Database>::NAME => mysql::drop_table_query(&table),
+                _ => return Err(Error::UnsupportedDatabase),
+            };
+            sqlx::query(sql_query).execute(&mut *connection).await?;
+        }
         Ok(())
     }
 

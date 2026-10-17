@@ -153,6 +153,9 @@ use crate::migration::{AppliedMigrationSqlRow, Migration};
 ))]
 mod any;
 
+/// Module for the migrator's own migrations of its migration table
+mod internal_migration;
+
 /// Module for mysql
 #[cfg(feature = "mysql")]
 mod mysql;
@@ -1361,6 +1364,7 @@ where
 }
 
 const DEFAULT_TABLE_NAME: &str = "_sqlx_migrator_migrations";
+const DEFAULT_META_TABLE_NAME: &str = "_sqlx_migrator_meta";
 
 /// A struct that stores migration-related metadata, including the list of
 /// migrations and configuration such as table and schema name
@@ -1536,7 +1540,33 @@ impl<DB> Migrator<DB> {
     /// ```
     #[must_use]
     pub fn table_name(&self) -> String {
-        let mut table_name = DEFAULT_TABLE_NAME.to_string();
+        self.qualified_name(DEFAULT_TABLE_NAME)
+    }
+
+    /// Get name of the meta table which records the migrator's internal
+    /// migrations. It follows the same prefix and schema rules as
+    /// [`Migrator::table_name`].
+    ///
+    /// # Examples
+    /// ```rust
+    /// # #[cfg(feature="sqlite")]
+    /// # fn main() {
+    /// let migrator = sqlx_migrator::Migrator::<sqlx::Sqlite>::new()
+    ///     .set_table_prefix("v1")
+    ///     .unwrap();
+    /// assert_eq!(&migrator.meta_table_name(), "_v1_sqlx_migrator_meta");
+    /// # }
+    /// # #[cfg(not(feature="sqlite"))]
+    /// # fn main() {}
+    /// ```
+    #[must_use]
+    pub fn meta_table_name(&self) -> String {
+        self.qualified_name(DEFAULT_META_TABLE_NAME)
+    }
+
+    /// Applies the configured prefix and schema to a base table name
+    fn qualified_name(&self, base: &str) -> String {
+        let mut table_name = base.to_string();
         if let Some(prefix) = &self.table_prefix {
             table_name = format!("_{prefix}{table_name}");
         }
