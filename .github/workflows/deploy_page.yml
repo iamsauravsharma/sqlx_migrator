@@ -13,11 +13,11 @@ jobs:
     name: Deploy Github page
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Setup rust toolchain
         uses: dtolnay/rust-toolchain@nightly
       - name: Install just
-        uses: extractions/setup-just@v3
+        uses: extractions/setup-just@v4
       - name: Generate documentation
         run: |
           just rustdoc
