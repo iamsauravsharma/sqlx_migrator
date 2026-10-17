@@ -47,21 +47,24 @@ fn every_subcommand_parses() {
 
 #[test]
 fn apply_argument_rules() {
-    let SubCommand::Apply(apply) = parse(&["apply", "--plan", "--format", "json"])
-        .unwrap()
-        .sub_command
-    else {
-        unreachable!()
-    };
-    assert!(apply.plan);
-    assert_eq!(apply.format, OutputFormat::Json);
+    #[cfg(feature = "json")]
+    {
+        let SubCommand::Apply(apply) = parse(&["apply", "--plan", "--format", "json"])
+            .unwrap()
+            .sub_command
+        else {
+            unreachable!()
+        };
+        assert!(apply.plan);
+        assert_eq!(apply.format, OutputFormat::Json);
+    }
 
     let SubCommand::Apply(apply) = parse(&["apply"]).unwrap().sub_command else {
         unreachable!()
     };
     assert_eq!(apply.format, OutputFormat::Table);
 
-    // format requires plan
+    // format requires plan (and json is rejected entirely without the feature)
     assert!(parse(&["apply", "--format", "json"]).is_err());
     // check conflicts with count, fake, force and plan
     for flag in [
@@ -95,6 +98,7 @@ fn revert_argument_rules() {
     assert!(parse(&["revert", "--migration", "first"]).is_err());
     assert!(parse(&["revert", "--plan", "--fake"]).is_err());
     assert!(parse(&["revert", "--format", "json"]).is_err());
+    #[cfg(feature = "json")]
     assert!(parse(&["revert", "--plan", "--format", "json"]).is_ok());
     assert!(parse(&["revert", "--all", "--force"]).is_ok());
 }
@@ -105,10 +109,14 @@ fn list_format_argument() {
         unreachable!()
     };
     assert_eq!(list.format, OutputFormat::Table);
-    let SubCommand::List(list) = parse(&["list", "--format", "json"]).unwrap().sub_command else {
-        unreachable!()
-    };
-    assert_eq!(list.format, OutputFormat::Json);
+    #[cfg(feature = "json")]
+    {
+        let SubCommand::List(list) = parse(&["list", "--format", "json"]).unwrap().sub_command
+        else {
+            unreachable!()
+        };
+        assert_eq!(list.format, OutputFormat::Json);
+    }
     assert!(parse(&["list", "--format", "yaml"]).is_err());
 }
 
@@ -247,6 +255,7 @@ mod with_sqlite {
             .await
             .unwrap();
         run(&["list"], &mut connection, &migrator).await.unwrap();
+        #[cfg(feature = "json")]
         run(&["list", "--format", "json"], &mut connection, &migrator)
             .await
             .unwrap();
@@ -346,7 +355,7 @@ mod with_sqlite {
     }
 
     #[tokio::test]
-    async fn list_entries_and_json_rendering() {
+    async fn list_entries_and_rendering() {
         let mut connection = connection().await;
         let mut migrator = migrator();
         migrator.add_migration(Box::new(Replacer)).unwrap();
@@ -375,19 +384,22 @@ mod with_sqlite {
         assert_eq!(status_of("second"), ListStatus::Replaced);
         assert_eq!(status_of("replacer"), ListStatus::Pending);
 
-        let json: serde_json::Value =
-            serde_json::from_str(&render_list(&entries, OutputFormat::Json).unwrap()).unwrap();
-        let items = json.as_array().unwrap();
-        assert_eq!(items.len(), 3);
-        let item = |name: &str| items.iter().find(|item| item["name"] == name).unwrap();
-        assert_eq!(item("first")["status"], "applied");
-        assert_eq!(item("first")["app"], "main");
-        assert!(item("first")["id"].is_number());
-        assert!(item("first")["applied_time"].is_string());
-        assert_eq!(item("second")["status"], "replaced");
-        assert!(item("second")["id"].is_null());
-        assert!(item("second")["applied_time"].is_null());
-        assert_eq!(item("replacer")["status"], "pending");
+        #[cfg(feature = "json")]
+        {
+            let json: serde_json::Value =
+                serde_json::from_str(&render_list(&entries, OutputFormat::Json).unwrap()).unwrap();
+            let items = json.as_array().unwrap();
+            assert_eq!(items.len(), 3);
+            let item = |name: &str| items.iter().find(|item| item["name"] == name).unwrap();
+            assert_eq!(item("first")["status"], "applied");
+            assert_eq!(item("first")["app"], "main");
+            assert!(item("first")["id"].is_number());
+            assert!(item("first")["applied_time"].is_string());
+            assert_eq!(item("second")["status"], "replaced");
+            assert!(item("second")["id"].is_null());
+            assert!(item("second")["applied_time"].is_null());
+            assert_eq!(item("replacer")["status"], "pending");
+        }
 
         let table = render_list(&entries, OutputFormat::Table).unwrap();
         assert!(table.contains("\u{2713}"));
@@ -413,11 +425,14 @@ mod with_sqlite {
             .unwrap();
 
         let as_dyn = || plan.iter().map(AsRef::as_ref);
-        let json: serde_json::Value =
-            serde_json::from_str(&render_plan(as_dyn(), OutputFormat::Json, "empty").unwrap())
-                .unwrap();
-        assert_eq!(json[0]["name"], "first");
-        assert_eq!(json[1]["name"], "second");
+        #[cfg(feature = "json")]
+        {
+            let json: serde_json::Value =
+                serde_json::from_str(&render_plan(as_dyn(), OutputFormat::Json, "empty").unwrap())
+                    .unwrap();
+            assert_eq!(json[0]["name"], "first");
+            assert_eq!(json[1]["name"], "second");
+        }
 
         let table = render_plan(as_dyn(), OutputFormat::Table, "empty").unwrap();
         let header = table.lines().next().unwrap();
@@ -430,25 +445,27 @@ mod with_sqlite {
             render_plan(empty(), OutputFormat::Table, "empty").unwrap(),
             "empty"
         );
-        assert_eq!(
-            render_plan(empty(), OutputFormat::Json, "empty").unwrap(),
-            "[]"
-        );
-
-        run(
-            &["apply", "--plan", "--format", "json"],
-            &mut connection,
-            &migrator,
-        )
-        .await
-        .unwrap();
-        run(
-            &["revert", "--plan", "--format", "json"],
-            &mut connection,
-            &migrator,
-        )
-        .await
-        .unwrap();
+        #[cfg(feature = "json")]
+        {
+            assert_eq!(
+                render_plan(empty(), OutputFormat::Json, "empty").unwrap(),
+                "[]"
+            );
+            run(
+                &["apply", "--plan", "--format", "json"],
+                &mut connection,
+                &migrator,
+            )
+            .await
+            .unwrap();
+            run(
+                &["revert", "--plan", "--format", "json"],
+                &mut connection,
+                &migrator,
+            )
+            .await
+            .unwrap();
+        }
         // reverting the last migration with nothing applied is a no-op,
         // an explicit count is still an error
         run(&["revert", "--force"], &mut connection, &migrator)

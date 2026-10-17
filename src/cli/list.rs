@@ -3,6 +3,7 @@
 use std::collections::HashSet;
 
 use clap::Parser;
+#[cfg(feature = "json")]
 use serde::Serialize;
 use sqlx::Database;
 
@@ -12,8 +13,8 @@ use crate::migration::AppliedMigrationSqlRow;
 use crate::migrator::{Migrate, Plan};
 
 /// Status of a migration as shown by `list`
-#[derive(Serialize, Clone, Copy, Debug, PartialEq, Eq)]
-#[serde(rename_all = "lowercase")]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "json", derive(Serialize), serde(rename_all = "lowercase"))]
 pub(super) enum ListStatus {
     /// Applied and recorded in the migration table
     Applied,
@@ -39,7 +40,7 @@ impl ListStatus {
 }
 
 /// A row of the `list` command
-#[derive(Serialize)]
+#[cfg_attr(feature = "json", derive(Serialize))]
 pub(super) struct ListEntry<'a> {
     pub(super) id: Option<i32>,
     pub(super) app: &'a str,
@@ -122,11 +123,19 @@ where
 }
 
 /// Render list entries in the requested format
+#[cfg_attr(
+    not(feature = "json"),
+    expect(
+        clippy::unnecessary_wraps,
+        reason = "only JSON serialization can fail; keep one signature"
+    )
+)]
 pub(super) fn render_list(
     entries: &[ListEntry<'_>],
     format: OutputFormat,
 ) -> Result<String, Error> {
     match format {
+        #[cfg(feature = "json")]
         OutputFormat::Json => Ok(serde_json::to_string_pretty(entries)?),
         OutputFormat::Table => {
             let rows = entries

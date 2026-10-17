@@ -47,7 +47,7 @@ all: fmt build clippy doc test
 
 # Run an example cli with the given arguments (example name doubles as the feature)
 run-example example_name *args="":
-    cargo run --example {{example_name}} --features {{example_name}} -- {{args}}
+    cargo run --example {{example_name}} --features {{example_name}},json -- {{args}}
 
 # Run the cli flow of an example against its database (used by CI)
 run-example-flow example_name:

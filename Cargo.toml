@@ -26,7 +26,8 @@ sqlx = { version = "0.9.0", features = ["runtime-tokio", "tls-rustls"] }
 
 [features]
 default = ["cli"]
-cli = ["dep:clap", "dep:serde", "dep:serde_json"]
+cli = ["dep:clap"]
+json = ["cli", "dep:serde", "dep:serde_json"]
 postgres = ["sqlx/postgres", "dep:crc32fast"]
 sqlite = ["sqlx/sqlite"]
 mysql = ["sqlx/mysql", "dep:crc32fast"]

@@ -3,6 +3,7 @@
 use std::io::{IsTerminal as _, Write as _};
 
 use clap::ValueEnum;
+#[cfg(feature = "json")]
 use serde::Serialize;
 
 use crate::error::Error;
@@ -14,7 +15,9 @@ pub(super) enum OutputFormat {
     /// Human readable table
     #[default]
     Table,
-    /// JSON array, one object per migration
+    /// JSON array, one object per migration. Available with the `json`
+    /// feature
+    #[cfg(feature = "json")]
     Json,
 }
 
@@ -54,7 +57,7 @@ pub(super) fn render_table(headers: &[&str], rows: &[Vec<String>]) -> String {
 }
 
 /// A migration in a plan, as printed by `apply --plan` and `revert --plan`
-#[derive(Serialize)]
+#[cfg_attr(feature = "json", derive(Serialize))]
 struct PlanEntry<'a> {
     app: &'a str,
     name: &'a str,
@@ -62,6 +65,13 @@ struct PlanEntry<'a> {
 
 /// Render a plan in the requested format. `empty_message` is used for the
 /// table format when the plan has no migration.
+#[cfg_attr(
+    not(feature = "json"),
+    expect(
+        clippy::unnecessary_wraps,
+        reason = "only JSON serialization can fail; keep one signature"
+    )
+)]
 pub(super) fn render_plan<'migration, DB>(
     migrations: impl IntoIterator<Item = &'migration dyn Migration<DB>>,
     format: OutputFormat,
@@ -80,6 +90,7 @@ where
         })
         .collect::<Vec<_>>();
     match format {
+        #[cfg(feature = "json")]
         OutputFormat::Json => Ok(serde_json::to_string_pretty(&entries)?),
         OutputFormat::Table if entries.is_empty() => Ok(empty_message.to_string()),
         OutputFormat::Table => {

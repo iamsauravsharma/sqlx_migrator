@@ -250,9 +250,15 @@ The command provides these subcommands:
 | `prune` | Delete unknown entries from the migration table after migrations were removed from the code. Asks for confirmation unless `--force` is passed. |
 | `drop` | Drop the migration table once every migration is reverted. |
 
-`list`, `apply --plan` and `revert --plan` accept `--format json` for scripting; the
-default is a table sized to its content. Confirmation prompts need a terminal, so pass
-`--force` when running non-interactively.
+The default output is a table sized to its content. With the optional `json` feature
+enabled, `list`, `apply --plan` and `revert --plan` also accept `--format json` for
+scripting:
+
+```toml
+sqlx_migrator = { version = "0.19.0", features=["postgres", "json"] }
+```
+
+Confirmation prompts need a terminal, so pass `--force` when running non-interactively.
 
 #### Extending Your Own CLI with Migrator Support
 

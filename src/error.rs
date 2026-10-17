@@ -15,7 +15,7 @@ pub enum Error {
     #[error(transparent)]
     StdIo(#[from] std::io::Error),
     /// Error type created when cli output cannot be serialized as JSON
-    #[cfg(feature = "cli")]
+    #[cfg(feature = "json")]
     #[error(transparent)]
     Json(#[from] serde_json::Error),
     /// Error generated during planning state
