@@ -186,6 +186,18 @@ async fn main() {
 }
 ```
 
+## Migration table
+
+Applied migrations are recorded in `_sqlx_migrator_migrations`, with an optional prefix
+and schema (see `Migrator::set_table_prefix` and `Migrator::set_schema`). The table is
+created and changed by the migrator's own internal migrations, a numbered list of SQL
+statements per database. A small meta table next to it, `_sqlx_migrator_meta`,
+records the name of every internal migration which has run. When a release adds an internal
+migration, older databases run it the next time migrations run; a database changed by
+an internal migration this release does not know is refused rather than guessed at.
+Each internal migration is safe to rerun, so databases created before the meta table
+existed simply catch up.
+
 ## Locking and transactions
 
 While a plan runs, the migrator holds a database lock so two processes cannot

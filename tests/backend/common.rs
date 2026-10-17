@@ -105,12 +105,13 @@ where
 }
 
 /// Tables a test may leave behind, to be dropped by `Harness::setup`.
-pub(crate) fn tables(test: &str) -> [String; 4] {
+pub(crate) fn tables(test: &str) -> [String; 5] {
     [
         format!("{test}_first"),
         format!("{test}_second"),
         format!("{test}_failed"),
         format!("_{test}_sqlx_migrator_migrations"),
+        format!("_{test}_sqlx_migrator_meta"),
     ]
 }
 
@@ -198,8 +199,8 @@ where
         .collect()
 }
 
-/// Applies the chain, checks the ledger from a second connection, reverts
-/// everything and drops the migration table.
+/// Applies the chain, checks the migration table from a second connection,
+/// reverts everything and drops the migration table.
 pub(crate) async fn apply_and_revert<H>(harness: &H, test: &str)
 where
     H: Harness,
@@ -274,8 +275,8 @@ where
     harness.teardown(test);
 }
 
-/// A failing atomic migration never records a ledger row. Whether its DDL
-/// survives depends on the backend, which is what
+/// A failing atomic migration never records a migration table row. Whether its
+/// DDL survives depends on the backend, which is what
 /// `supports_transactional_ddl` reports.
 pub(crate) async fn failed_atomic_migration<H>(harness: &H, test: &str)
 where
@@ -448,8 +449,8 @@ where
     harness.teardown(test);
 }
 
-/// Prune removes ledger rows without a matching migration and nothing
-/// else, and the ledger rejects duplicate rows.
+/// Prune removes migration table rows without a matching migration and
+/// nothing else, and the table rejects duplicate rows.
 pub(crate) async fn prune<H>(harness: &H, test: &str)
 where
     H: Harness,
@@ -479,6 +480,74 @@ where
             .await,
         Err(Error::Sqlx(_))
     ));
+    harness.teardown(test);
+}
+
+/// The meta table is created, rejects names this crate does not know,
+/// a migration table created before the meta table existed keeps its rows,
+/// and both tables are dropped together.
+pub(crate) async fn internal_migrations<H>(harness: &H, test: &str)
+where
+    H: Harness,
+    (String, String): Operation<H::Db>,
+    Migrator<H::Db>: Migrate<H::Db>,
+    for<'c> &'c mut <H::Db as Database>::Connection: sqlx::Executor<'c, Database = H::Db>,
+{
+    let mut connection = harness.setup(test).await;
+    let migrator = harness.migrator(test);
+    let meta_table = migrator.meta_table_name();
+    let raw = |sql: String| sqlx::query(AssertSqlSafe(sql));
+
+    migrator
+        .ensure_migration_table_exists(&mut connection)
+        .await
+        .unwrap();
+    assert!(table_exists::<H::Db>(&mut connection, &meta_table).await);
+
+    // a name from a newer release is rejected until it is removed
+    raw(format!(
+        "INSERT INTO {meta_table}(name) VALUES ('9999_from_the_future')"
+    ))
+    .execute(&mut connection)
+    .await
+    .unwrap();
+    assert!(matches!(
+        migrator.run(&mut connection, &Plan::apply_all()).await,
+        Err(Error::UnknownInternalMigration { name }) if name == "9999_from_the_future"
+    ));
+
+    // without a meta table an existing migration table keeps its rows
+    migrator
+        .add_migration_to_db_table(&mut connection, &("legacy", "row"))
+        .await
+        .unwrap();
+    raw(format!("DROP TABLE {meta_table}"))
+        .execute(&mut connection)
+        .await
+        .unwrap();
+    migrator
+        .ensure_migration_table_exists(&mut connection)
+        .await
+        .unwrap();
+    assert_eq!(applied(&mut connection, &migrator).await, vec!["row"]);
+    migrator
+        .delete_migration_from_db_table(&mut connection, &("legacy", "row"))
+        .await
+        .unwrap();
+
+    migrator
+        .run(&mut connection, &Plan::apply_all())
+        .await
+        .unwrap();
+    migrator
+        .run(&mut connection, &Plan::revert_all())
+        .await
+        .unwrap();
+    migrator
+        .drop_migration_table_if_exists(&mut connection)
+        .await
+        .unwrap();
+    assert!(!table_exists::<H::Db>(&mut connection, &meta_table).await);
     harness.teardown(test);
 }
 
@@ -548,6 +617,14 @@ macro_rules! backend_tests {
         async fn prune() {
             for harness in $harnesses {
                 crate::common::prune(&harness, concat!($prefix, "_prune")).await;
+            }
+        }
+
+        $(#[$ignore])?
+        #[tokio::test]
+        async fn internal_migrations() {
+            for harness in $harnesses {
+                crate::common::internal_migrations(&harness, concat!($prefix, "_tables")).await;
             }
         }
     };

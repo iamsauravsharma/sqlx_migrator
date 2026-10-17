@@ -64,4 +64,15 @@ pub enum Error {
     /// invalid if it has any fields present except app name and migration name
     #[error("invalid virtual migration")]
     InvalidVirtualMigration,
+    /// Error raised when the meta table records an internal migration this
+    /// version of the crate does not know, meaning the migration table was
+    /// changed by a newer release
+    #[error(
+        "migration table was changed by internal migration {name} which this version of \
+         sqlx_migrator does not know, upgrade sqlx_migrator"
+    )]
+    UnknownInternalMigration {
+        /// Name of the internal migration recorded in the database
+        name: String,
+    },
 }
