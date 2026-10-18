@@ -61,16 +61,28 @@
 <a href=#61 id=61 data-nosnippet>61</a>    /// invalid if it has any fields present except app name and migration name
 <a href=#62 id=62 data-nosnippet>62</a>    </span><span class="attr">#[error(<span class="string">"invalid virtual migration"</span>)]
 <a href=#63 id=63 data-nosnippet>63</a>    </span>InvalidVirtualMigration,
-<a href=#64 id=64 data-nosnippet>64</a>    <span class="doccomment">/// Error raised when the meta table records an internal migration this
-<a href=#65 id=65 data-nosnippet>65</a>    /// version of the crate does not know, meaning the migration table was
-<a href=#66 id=66 data-nosnippet>66</a>    /// changed by a newer release
-<a href=#67 id=67 data-nosnippet>67</a>    </span><span class="attr">#[error(
-<a href=#68 id=68 data-nosnippet>68</a>        <span class="string">"migration table was changed by internal migration {name} which this version of \
-<a href=#69 id=69 data-nosnippet>69</a>         sqlx_migrator does not know, upgrade sqlx_migrator"
-<a href=#70 id=70 data-nosnippet>70</a>    </span>)]
-<a href=#71 id=71 data-nosnippet>71</a>    </span>UnknownInternalMigration {
-<a href=#72 id=72 data-nosnippet>72</a>        <span class="doccomment">/// Name of the internal migration recorded in the database
-<a href=#73 id=73 data-nosnippet>73</a>        </span>name: String,
-<a href=#74 id=74 data-nosnippet>74</a>    },
-<a href=#75 id=75 data-nosnippet>75</a>}
+<a href=#64 id=64 data-nosnippet>64</a>    <span class="doccomment">/// Error raised when a non atomic migration started running and never
+<a href=#65 id=65 data-nosnippet>65</a>    /// finished, so the database may be partly migrated
+<a href=#66 id=66 data-nosnippet>66</a>    </span><span class="attr">#[error(
+<a href=#67 id=67 data-nosnippet>67</a>        <span class="string">"migration {app} - {name} failed and left the database partly migrated. Fix the database \
+<a href=#68 id=68 data-nosnippet>68</a>         by hand and repair the migration table"
+<a href=#69 id=69 data-nosnippet>69</a>    </span>)]
+<a href=#70 id=70 data-nosnippet>70</a>    </span>FailedMigration {
+<a href=#71 id=71 data-nosnippet>71</a>        <span class="doccomment">/// Migration application name
+<a href=#72 id=72 data-nosnippet>72</a>        </span>app: String,
+<a href=#73 id=73 data-nosnippet>73</a>        <span class="doccomment">/// Migration name
+<a href=#74 id=74 data-nosnippet>74</a>        </span>name: String,
+<a href=#75 id=75 data-nosnippet>75</a>    },
+<a href=#76 id=76 data-nosnippet>76</a>    <span class="doccomment">/// Error raised when the meta table records an internal migration this
+<a href=#77 id=77 data-nosnippet>77</a>    /// version of the crate does not know, meaning the migration table was
+<a href=#78 id=78 data-nosnippet>78</a>    /// changed by a newer release
+<a href=#79 id=79 data-nosnippet>79</a>    </span><span class="attr">#[error(
+<a href=#80 id=80 data-nosnippet>80</a>        <span class="string">"migration table was changed by internal migration {name} which this version of \
+<a href=#81 id=81 data-nosnippet>81</a>         sqlx_migrator does not know, upgrade sqlx_migrator"
+<a href=#82 id=82 data-nosnippet>82</a>    </span>)]
+<a href=#83 id=83 data-nosnippet>83</a>    </span>UnknownInternalMigration {
+<a href=#84 id=84 data-nosnippet>84</a>        <span class="doccomment">/// Name of the internal migration recorded in the database
+<a href=#85 id=85 data-nosnippet>85</a>        </span>name: String,
+<a href=#86 id=86 data-nosnippet>86</a>    },
+<a href=#87 id=87 data-nosnippet>87</a>}
 </code></pre></div></section></main></body></html>
