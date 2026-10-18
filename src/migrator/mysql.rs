@@ -1,6 +1,6 @@
 use sqlx::MySql;
 
-use super::dialect::{Lock, Names, Sql};
+use super::dialect::{Lock, Names, RowLock, Sql};
 use super::internal_migration::InternalMigrations;
 use super::{Dialect, Migrator};
 
@@ -113,6 +113,18 @@ fn delete_failed_migrations_query(table_name: &str) -> String {
     format!("DELETE FROM {table_name} WHERE success = FALSE")
 }
 
+/// Row lock statements for the given lock table name
+fn row_lock(lock_table: &str) -> RowLock {
+    RowLock {
+        create_table: format!(
+            "CREATE TABLE IF NOT EXISTS {lock_table} (name VARCHAR(384) PRIMARY KEY NOT NULL, \
+             locked_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP)"
+        ),
+        acquire: format!("INSERT INTO {lock_table}(name) VALUES (?)"),
+        release: format!("DELETE FROM {lock_table} WHERE name = ?"),
+    }
+}
+
 /// Built in SQL, see [`Dialect::mysql`]
 fn sql(names: &Names) -> Sql {
     // lock names are server wide and at most 64 characters, so the database
@@ -136,6 +148,9 @@ fn sql(names: &Names) -> Sql {
         delete_migration: delete_migration_query(&names.table()),
         delete_failed_migrations: delete_failed_migrations_query(&names.table()),
         lock: Some(lock),
+        row_lock: row_lock(&names.lock_table()),
+        transaction_locks: None,
+        drop_lock_table: drop_table_query(&names.lock_table()),
     }
 }
 

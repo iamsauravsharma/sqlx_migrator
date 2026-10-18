@@ -114,13 +114,14 @@ where
 }
 
 /// Tables a test may leave behind, to be dropped by `Harness::setup`.
-pub(crate) fn tables(test: &str) -> [String; 5] {
+pub(crate) fn tables(test: &str) -> [String; 6] {
     [
         format!("{test}_first"),
         format!("{test}_second"),
         format!("{test}_failed"),
         format!("_{test}_sqlx_migrator_migrations"),
         format!("_{test}_sqlx_migrator_meta"),
+        format!("_{test}_sqlx_migrator_lock"),
     ]
 }
 
@@ -171,6 +172,9 @@ pub(crate) trait Harness: Send + Sync + 'static {
     /// Migrator whose migration table is unique to `test`.
     fn migrator(&self, test: &str) -> Migrator<Self::Db>;
 
+    /// Migrator like `migrator` which locks with a row in a lock table.
+    fn row_lock_migrator(&self, test: &str) -> Migrator<Self::Db>;
+
     /// Migration table name `migrator` is expected to use.
     fn table_name(&self, test: &str) -> String {
         format!("_{test}_sqlx_migrator_migrations")
@@ -188,7 +192,10 @@ pub(crate) trait Harness: Send + Sync + 'static {
     fn transactional_ddl(&self) -> bool;
 }
 
-async fn table_exists<DB: SupportedDatabase>(connection: &mut DB::Connection, table: &str) -> bool {
+pub(crate) async fn table_exists<DB: SupportedDatabase>(
+    connection: &mut DB::Connection,
+    table: &str,
+) -> bool {
     DB::execute(connection, &format!("SELECT 1 FROM {table} WHERE 1 = 0"))
         .await
         .is_ok()
@@ -208,7 +215,10 @@ async fn insert_row<DB: SupportedDatabase>(
     .await
 }
 
-async fn applied<DB>(connection: &mut DB::Connection, migrator: &Migrator<DB>) -> Vec<String>
+pub(crate) async fn applied<DB>(
+    connection: &mut DB::Connection,
+    migrator: &Migrator<DB>,
+) -> Vec<String>
 where
     DB: SupportedDatabase,
 {
@@ -619,6 +629,42 @@ where
     harness.teardown(test);
 }
 
+/// A lock row left in the lock table makes a run fail until it is deleted, and
+/// a run deletes its own row when it is done.
+pub(crate) async fn row_lock<H>(harness: &H, test: &str)
+where
+    H: Harness,
+    (String, String): Operation<H::Db>,
+{
+    let mut connection = harness.setup(test).await;
+    let migrator = harness.row_lock_migrator(test);
+    let lock_table = migrator.dialect().lock_table_name();
+    let hold = format!(
+        "INSERT INTO {lock_table}(name) VALUES ('{}')",
+        migrator.table_name()
+    );
+    let release = format!("DELETE FROM {lock_table}");
+
+    // a run creates the lock table and deletes its row, so the row can be
+    // inserted by hand afterwards
+    migrator
+        .run(&mut connection, &Plan::apply_count(1))
+        .await
+        .unwrap();
+    H::Db::execute(&mut connection, &hold).await.unwrap();
+    assert!(matches!(
+        migrator.run(&mut connection, &Plan::apply_all()).await,
+        Err(Error::LockHeld { .. })
+    ));
+    H::Db::execute(&mut connection, &release).await.unwrap();
+    let report = migrator
+        .run(&mut connection, &Plan::apply_all())
+        .await
+        .unwrap();
+    assert_eq!(report.len(), 1);
+    harness.teardown(test);
+}
+
 /// Declares one test per scenario, running it against `$harness` and
 /// prefixing test names (and so table names) with `$prefix`.
 /// With `ignore = "reason"` the tests are marked `#[ignore]` and only run
@@ -653,6 +699,12 @@ macro_rules! backend_tests {
         #[tokio::test(flavor = "multi_thread")]
         async fn lock() {
             crate::common::lock(&$harness, concat!($prefix, "_lock")).await;
+        }
+
+        $(#[$ignore])?
+        #[tokio::test(flavor = "multi_thread")]
+        async fn row_lock() {
+            crate::common::row_lock(&$harness, concat!($prefix, "_rowlock")).await;
         }
 
         $(#[$ignore])?

@@ -37,10 +37,87 @@ pub(crate) struct Sql {
     pub(crate) delete_failed_migrations: String,
     /// Statements of the advisory lock, `None` on backends without one
     pub(crate) lock: Option<Lock>,
+    /// Statements of the lock which is a row in a lock table
+    pub(crate) row_lock: RowLock,
+    /// Statements of the locks held until the end of a transaction, `None` on
+    /// backends without them
+    pub(crate) transaction_locks: Option<TransactionLocks>,
+    /// Drops the lock table if it exists
+    pub(crate) drop_lock_table: String,
+}
+
+/// Statements of the locks held until the end of a transaction
+#[derive(Debug, Clone)]
+pub(crate) struct TransactionLocks {
+    /// Advisory lock. Binds the migration table name
+    pub(crate) advisory: String,
+    /// Run right after the lock is taken. A transaction which waited for the
+    /// lock would otherwise still use what it looked up before, and not see
+    /// what the run which held the lock created
+    pub(crate) after_lock: String,
+    /// Locks the migration table so that no other transaction locks it the
+    /// same way
+    pub(crate) share_update_exclusive: String,
+    /// Locks the migration table against everything, reads included
+    pub(crate) access_exclusive: String,
+}
+
+/// Statements of the lock which is a row in a lock table
+#[derive(Debug, Clone)]
+pub(crate) struct RowLock {
+    /// Creates the lock table if missing
+    pub(crate) create_table: String,
+    /// Inserts the row, failing with a unique violation while it exists. Binds
+    /// the migration table name
+    pub(crate) acquire: String,
+    /// Deletes the row of the lock. Binds the migration table name
+    pub(crate) release: String,
+}
+
+/// How the migrator keeps two processes from migrating at the same time
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum LockStrategy {
+    /// Nothing is locked
+    None,
+    /// A database advisory lock held by the connection
+    Advisory,
+    /// A row in a lock table, which needs no session. A run which finds the
+    /// row fails with [`Error::LockHeld`]. A crashed run leaves its row, delete
+    /// it by hand
+    Row,
+    /// Postgres only. An advisory lock held until the end of the transaction
+    /// which holds the whole plan, so it needs no session
+    TransactionAdvisory,
+    /// Postgres only. `LOCK TABLE` on the migration table in `SHARE UPDATE
+    /// EXCLUSIVE` mode, held with the advisory lock until the end of the
+    /// transaction which holds the whole plan. Other transactions can still
+    /// read the table
+    TableShareUpdateExclusive,
+    /// Postgres only. `LOCK TABLE` on the migration table in `ACCESS
+    /// EXCLUSIVE` mode, held with the advisory lock until the end of the
+    /// transaction which holds the whole plan. Other transactions cannot even
+    /// read the table
+    TableAccessExclusive,
+}
+
+impl LockStrategy {
+    /// Whether the plan runs in one transaction which holds the lock, so the
+    /// plan is applied entirely or not at all and every migration of it has
+    /// to be atomic
+    pub(crate) fn in_transaction(self) -> bool {
+        matches!(
+            self,
+            Self::TransactionAdvisory
+                | Self::TableShareUpdateExclusive
+                | Self::TableAccessExclusive
+        )
+    }
 }
 
 const DEFAULT_TABLE_NAME: &str = "_sqlx_migrator_migrations";
 const DEFAULT_META_TABLE_NAME: &str = "_sqlx_migrator_meta";
+const DEFAULT_LOCK_TABLE_NAME: &str = "_sqlx_migrator_lock";
 
 /// Validated table prefix and schema the SQL of a backend is built for
 #[derive(Debug, Clone, Default)]
@@ -104,6 +181,11 @@ impl Names {
     pub(crate) fn meta_table(&self) -> String {
         self.qualified(DEFAULT_META_TABLE_NAME)
     }
+
+    /// Name of the lock table
+    pub(crate) fn lock_table(&self) -> String {
+        self.qualified(DEFAULT_LOCK_TABLE_NAME)
+    }
 }
 
 /// Advisory lock held while a plan runs.
@@ -146,7 +228,7 @@ impl Lock {
 pub struct Dialect<DB> {
     names: Names,
     sql: Sql,
-    lock: bool,
+    lock_strategy: LockStrategy,
     create_schema: bool,
     database: PhantomData<DB>,
 }
@@ -156,7 +238,7 @@ impl<DB> Clone for Dialect<DB> {
         Self {
             names: self.names.clone(),
             sql: self.sql.clone(),
-            lock: self.lock,
+            lock_strategy: self.lock_strategy,
             create_schema: self.create_schema,
             database: PhantomData,
         }
@@ -168,7 +250,7 @@ impl<DB> fmt::Debug for Dialect<DB> {
         f.debug_struct("Dialect")
             .field("names", &self.names)
             .field("sql", &self.sql)
-            .field("lock", &self.lock)
+            .field("lock_strategy", &self.lock_strategy)
             .field("create_schema", &self.create_schema)
             .finish()
     }
@@ -178,10 +260,15 @@ impl<DB> Dialect<DB> {
     /// Dialect for `names` whose SQL is built once by `build_sql`
     pub(crate) fn new(names: Names, build_sql: fn(&Names) -> Sql) -> Self {
         let sql = build_sql(&names);
+        let lock_strategy = if sql.lock.is_some() {
+            LockStrategy::Advisory
+        } else {
+            LockStrategy::None
+        };
         Self {
             names,
             sql,
-            lock: true,
+            lock_strategy,
             create_schema: true,
             database: PhantomData,
         }
@@ -192,9 +279,12 @@ impl<DB> Dialect<DB> {
         &self.sql
     }
 
-    /// Lock statements when the lock is enabled and the backend has one
-    pub(crate) fn lock_statements(&self) -> Option<&Lock> {
-        self.sql.lock.as_ref().filter(|_| self.lock)
+    /// Advisory lock statements when that is the lock strategy
+    pub(crate) fn advisory_lock(&self) -> Option<&Lock> {
+        self.sql
+            .lock
+            .as_ref()
+            .filter(|_| self.lock_strategy == LockStrategy::Advisory)
     }
 
     /// Statement creating the schema when enabled and the backend has one
@@ -224,6 +314,38 @@ impl<DB> Dialect<DB> {
         self.names.meta_table()
     }
 
+    /// Name of the lock table of [`LockStrategy::Row`]
+    #[must_use]
+    pub fn lock_table_name(&self) -> String {
+        self.names.lock_table()
+    }
+
+    /// How the migrator keeps two processes from migrating at the same time
+    #[must_use]
+    pub fn lock_strategy(&self) -> LockStrategy {
+        self.lock_strategy
+    }
+
+    /// Sets how the migrator keeps two processes from migrating at the same
+    /// time
+    ///
+    /// # Errors
+    /// When the database does not have the lock of the strategy
+    pub fn set_lock_strategy(mut self, strategy: LockStrategy) -> Result<Self, Error> {
+        let supported = match strategy {
+            LockStrategy::None | LockStrategy::Row => true,
+            LockStrategy::Advisory => self.sql.lock.is_some(),
+            LockStrategy::TransactionAdvisory
+            | LockStrategy::TableShareUpdateExclusive
+            | LockStrategy::TableAccessExclusive => self.sql.transaction_locks.is_some(),
+        };
+        if !supported {
+            return Err(Error::UnsupportedLockStrategy { strategy });
+        }
+        self.lock_strategy = strategy;
+        Ok(self)
+    }
+
     /// Name of the schema the tables live in, if any
     #[must_use]
     pub fn schema(&self) -> Option<&str> {
@@ -236,34 +358,6 @@ impl<DB> Dialect<DB> {
         self.names.table_prefix()
     }
 }
-
-/// Advisory lock option of databases which have advisory locks
-#[cfg(any(feature = "postgres", feature = "mysql"))]
-macro_rules! lock_option {
-    ($database:ty) => {
-        impl Dialect<$database> {
-            /// Whether the advisory lock is held while a plan runs
-            #[must_use]
-            pub fn lock(&self) -> bool {
-                self.lock
-            }
-
-            /// Sets whether the advisory lock is held while a plan runs. Use
-            /// `false` behind a transaction pooling proxy such as `PgBouncer`
-            #[must_use]
-            pub fn set_lock(mut self, lock: bool) -> Self {
-                self.lock = lock;
-                self
-            }
-        }
-    };
-}
-
-#[cfg(feature = "postgres")]
-lock_option!(sqlx::Postgres);
-
-#[cfg(feature = "mysql")]
-lock_option!(sqlx::MySql);
 
 #[cfg(feature = "postgres")]
 impl Dialect<sqlx::Postgres> {

@@ -202,16 +202,23 @@ leave a failed entry.
 
 ## Locking and transactions
 
-While a plan runs, the migrator holds a database lock so two processes cannot
-migrate at the same time. Postgres uses a session level advisory lock and MySQL uses
-`GET_LOCK`; SQLite serialises writers itself. Session level locks are not reliable
-behind a transaction pooling proxy such as PgBouncer, and are unnecessary when a
-single process runs migrations, so the lock can be removed from the dialect
-(see "Custom SQL" below):
+While a plan runs the migrator locks, so two processes cannot migrate at once. Choose the
+lock with `Dialect::set_lock_strategy`, which fails for a lock the database does not have:
+
+| `LockStrategy` | Use |
+| --- | --- |
+| `Advisory` | A lock held by the connection, the default on Postgres and MySQL. Not reliable behind a transaction pooling proxy such as PgBouncer. |
+| `None` | No lock, for a single process. The default on SQLite, which serialises writers. |
+| `Row` | A row in a `_sqlx_migrator_lock` table, on every database. A run which finds the row fails with `Error::LockHeld`. A crashed run leaves its row, delete it by hand. |
+| `TransactionAdvisory` | Postgres only. An advisory lock held until the end of one transaction which holds the whole plan, so it works behind PgBouncer, the plan is applied entirely or not at all and every migration must be atomic. |
+| `TableShareUpdateExclusive` | Postgres only. Like `TransactionAdvisory`, and also `LOCK TABLE` on the migration table in `SHARE UPDATE EXCLUSIVE` mode, which other transactions can still read. |
+| `TableAccessExclusive` | Postgres only. Like `TransactionAdvisory`, and also `LOCK TABLE` in `ACCESS EXCLUSIVE` mode, which blocks reads of the migration table too. |
 
 ```rust
+use sqlx_migrator::migrator::LockStrategy;
 use sqlx_migrator::{Dialect, Migrator};
-let migrator = Migrator::<Postgres>::new(Dialect::postgres().set_lock(false));
+let dialect = Dialect::postgres().set_lock_strategy(LockStrategy::TransactionAdvisory).unwrap();
+let migrator = Migrator::<Postgres>::new(dialect);
 ```
 
 Atomic migrations run inside a transaction. MySQL and MariaDB commit implicitly on
@@ -223,13 +230,15 @@ back as a unit.
 A migrator is configured by a `Dialect` value holding the table prefix, schema and advisory lock
 options, plus the SQL built from them. `Migrator::default` uses the built in
 `Dialect::postgres`, `Dialect::mysql` or `Dialect::sqlite`. The table prefix and schema are arguments of the `_with`
-constructors, for example `Dialect::postgres_with(Some("prefix"), Some("schema"))`. Adjust a built in dialect with `set_lock` and `set_create_schema` where the database has them, and pass it to `Migrator::new`:
+constructors, for example `Dialect::postgres_with(Some("prefix"), Some("schema"))`. Adjust a built in dialect with `set_lock_strategy` and `set_create_schema` where the database has it, and pass it to `Migrator::new`:
 
 ```rust
 use sqlx::Postgres;
+use sqlx_migrator::migrator::LockStrategy;
 use sqlx_migrator::{Dialect, Migrator};
 
-let migrator = Migrator::<Postgres>::new(Dialect::postgres().set_lock(false));
+let dialect = Dialect::postgres().set_lock_strategy(LockStrategy::None).unwrap();
+let migrator = Migrator::<Postgres>::new(dialect);
 ```
 
 Generic code over the database uses `SupportedDatabase`, which every sqlx database the

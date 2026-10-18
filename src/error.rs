@@ -61,6 +61,22 @@ pub enum Error {
     /// invalid if it has any fields present except app name and migration name
     #[error("invalid virtual migration")]
     InvalidVirtualMigration,
+    /// Error raised when the database does not have the lock of a lock
+    /// strategy
+    #[error("lock strategy {strategy:?} is not supported by this database")]
+    UnsupportedLockStrategy {
+        /// The strategy which was asked for
+        strategy: crate::migrator::LockStrategy,
+    },
+    /// Error raised when the lock row of the lock table is held by another run
+    #[error(
+        "migration lock in {table} is held by another run. If a previous run crashed, delete its \
+         row from the lock table"
+    )]
+    LockHeld {
+        /// Name of the lock table
+        table: String,
+    },
     /// Error raised when a non atomic migration started running and never
     /// finished, so the database may be partly migrated
     #[error(

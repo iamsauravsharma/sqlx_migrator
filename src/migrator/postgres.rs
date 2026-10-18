@@ -1,6 +1,6 @@
 use sqlx::Postgres;
 
-use super::dialect::{Lock, Names, Sql};
+use super::dialect::{Lock, Names, RowLock, Sql, TransactionLocks};
 use super::internal_migration::InternalMigrations;
 use super::{Dialect, Migrator};
 
@@ -124,6 +124,24 @@ fn delete_failed_migrations_query(table_name: &str) -> String {
     format!("DELETE FROM {table_name} WHERE success = FALSE")
 }
 
+/// Row lock statements for the given lock table name
+fn row_lock(lock_table: &str) -> RowLock {
+    RowLock {
+        create_table: format!(
+            "CREATE TABLE IF NOT EXISTS {lock_table} (name TEXT PRIMARY KEY NOT NULL, locked_at \
+             TIMESTAMPTZ NOT NULL DEFAULT now())"
+        ),
+        acquire: format!("INSERT INTO {lock_table}(name) VALUES ($1)"),
+        release: format!("DELETE FROM {lock_table} WHERE name = $1"),
+    }
+}
+
+/// Lock table query, holds the lock until the transaction ends
+#[must_use]
+fn lock_table_query(table_name: &str, mode: &str) -> String {
+    format!("LOCK TABLE {table_name} IN {mode} MODE")
+}
+
 /// Built in SQL, see [`Dialect::postgres`]
 fn sql(names: &Names) -> Sql {
     // advisory locks are scoped to the connected database already
@@ -146,6 +164,16 @@ fn sql(names: &Names) -> Sql {
         delete_migration: delete_migration_query(&names.table()),
         delete_failed_migrations: delete_failed_migrations_query(&names.table()),
         lock: Some(lock),
+        row_lock: row_lock(&names.lock_table()),
+        transaction_locks: Some(TransactionLocks {
+            advisory: "SELECT pg_advisory_xact_lock(hashtext($1))".to_string(),
+            // reading a catalog table makes the session take in what was
+            // committed while it waited
+            after_lock: "SELECT 1 FROM pg_catalog.pg_namespace LIMIT 1".to_string(),
+            share_update_exclusive: lock_table_query(&names.table(), "SHARE UPDATE EXCLUSIVE"),
+            access_exclusive: lock_table_query(&names.table(), "ACCESS EXCLUSIVE"),
+        }),
+        drop_lock_table: drop_table_query(&names.lock_table()),
     }
 }
 

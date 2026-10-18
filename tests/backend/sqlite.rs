@@ -3,6 +3,7 @@
 
 use sqlx::sqlite::SqliteConnectOptions;
 use sqlx::{ConnectOptions as _, Sqlite, SqliteConnection};
+use sqlx_migrator::migrator::LockStrategy;
 use sqlx_migrator::{Dialect, Migrator};
 
 use crate::common::{Harness, backend_tests, chain, sqlite_path};
@@ -37,6 +38,16 @@ impl Harness for Lite {
 
     fn migrator(&self, test: &str) -> Migrator<Sqlite> {
         let mut migrator = Migrator::<Sqlite>::new(Dialect::sqlite_with(Some(test), None).unwrap());
+        migrator.add_migrations(chain(test)).unwrap();
+        migrator
+    }
+
+    fn row_lock_migrator(&self, test: &str) -> Migrator<Sqlite> {
+        let dialect = Dialect::sqlite_with(Some(test), None)
+            .unwrap()
+            .set_lock_strategy(LockStrategy::Row)
+            .unwrap();
+        let mut migrator = Migrator::<Sqlite>::new(dialect);
         migrator.add_migrations(chain(test)).unwrap();
         migrator
     }
