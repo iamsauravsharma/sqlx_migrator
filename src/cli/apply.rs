@@ -5,7 +5,7 @@ use sqlx::Database;
 
 use super::output::{OutputFormat, confirm, render_plan};
 use crate::error::Error;
-use crate::migrator::{Migrate, Plan};
+use crate::migrator::{Migrator, Plan, SupportedDatabase};
 
 #[derive(Parser, Debug)]
 #[expect(clippy::struct_excessive_bools)]
@@ -40,14 +40,13 @@ pub(super) struct Apply {
 }
 
 impl Apply {
-    pub(super) async fn run<DB, M>(
+    pub(super) async fn run<DB>(
         &self,
         connection: &mut <DB as Database>::Connection,
-        migrator: &M,
+        migrator: &Migrator<DB>,
     ) -> Result<(), Error>
     where
-        DB: Database,
-        M: Migrate<DB> + ?Sized,
+        DB: SupportedDatabase,
     {
         let plan = if let Some(count) = self.count {
             Plan::apply_count(count)
@@ -57,7 +56,6 @@ impl Apply {
             Plan::apply_all()
         }
         .fake(self.fake);
-        migrator.ensure_migration_table_exists(connection).await?;
         let applied_rows = migrator.fetch_applied_migration_from_db(connection).await?;
         let migrations = migrator.generate_migration_plan(Some(&plan), &applied_rows)?;
         if self.check {

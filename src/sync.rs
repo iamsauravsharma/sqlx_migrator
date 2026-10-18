@@ -1,15 +1,13 @@
 //! Module which is used to sync a external migration schema to `sqlx_migrator`
 //! sqlx migration
 
-use std::collections::HashSet;
-
 use sqlx::Database;
 
-use crate::migrator::DatabaseOperation;
-use crate::{Error, Info, Migration, Migrator};
+use crate::migrator::SupportedDatabase;
+use crate::{Error, Migration, Migrator};
 
 /// Trait which is implemented for syncing a migration from old migrator to
-/// new migrator
+/// new migrator with [`Migrator::sync`]
 #[async_trait::async_trait]
 pub trait OldMigrator<DB>: Send + Sync
 where
@@ -25,16 +23,10 @@ where
 /// A [`Migrator`] can act as the old migrator, which covers renaming the
 /// migration table or moving it to another schema: build a migrator with the
 /// old configuration and sync from it.
-///
-/// This is a direct implementation rather than a blanket one for every
-/// [`DatabaseOperation`] type, so downstream types can implement
-/// [`OldMigrator`] generically over the database without a coherence
-/// conflict.
 #[async_trait::async_trait]
 impl<DB> OldMigrator<DB> for Migrator<DB>
 where
-    DB: Database,
-    Self: DatabaseOperation<DB> + Send + Sync,
+    DB: SupportedDatabase,
 {
     async fn applied_migrations(
         &self,
@@ -49,76 +41,4 @@ where
         }
         Ok(applied_list)
     }
-}
-
-/// Trait which is implemented for syncing a migration from old migrator to new
-/// migrator for a specific database
-#[async_trait::async_trait]
-pub trait Synchronize<DB>: Info<DB> + DatabaseOperation<DB>
-where
-    DB: Database,
-{
-    /// Syncs the applied migrations from an old migrator to the current
-    /// migrator
-    ///
-    /// This function serves two primary purposes:
-    /// 1. Migrating from external migrations to`sqlx_migrator` migration
-    /// 2. Handling table renames
-    ///
-    /// Note: Migration timestamps are not preserved - the current time is used
-    /// for entries
-    ///
-    /// # Errors
-    /// If sync cannot be completed
-    async fn sync<O>(
-        &self,
-        connection: &mut <DB as Database>::Connection,
-        old_migrator: &O,
-    ) -> Result<(), Error>
-    where
-        O: OldMigrator<DB>,
-    {
-        tracing::debug!("syncing old migrator");
-        self.lock(connection).await?;
-        // Use a block to ensure the lock is released before returning
-        let result = async {
-            let old_migrator_applied_migrations =
-                old_migrator.applied_migrations(connection).await?;
-            let already_applied_migration =
-                self.fetch_applied_migration_from_db(connection).await?;
-            // Index known migrations and already applied migrations by (app,
-            // name) for O(1) lookup
-            let known_migrations = self
-                .migrations()
-                .iter()
-                .map(|migration| (migration.app(), migration.name()))
-                .collect::<HashSet<_>>();
-            let already_applied = already_applied_migration
-                .iter()
-                .map(|row| (row.app(), row.name()))
-                .collect::<HashSet<_>>();
-            for migration in old_migrator_applied_migrations {
-                // Only add migration if it exists in the full migration list
-                // and has not already been applied in the new migrator
-                let key = (migration.app(), migration.name());
-                if known_migrations.contains(&key) && !already_applied.contains(&key) {
-                    self.add_migration_to_db_table(connection, migration.as_ref())
-                        .await?;
-                }
-            }
-            Ok(())
-        }
-        .await;
-        // unlock before returning; if both sync and unlock fail, the sync
-        // error takes precedence over the unlock error.
-        let unlock_result = self.unlock(connection).await;
-        result.and(unlock_result)
-    }
-}
-
-impl<DB> Synchronize<DB> for Migrator<DB>
-where
-    DB: Database,
-    Self: DatabaseOperation<DB>,
-{
 }

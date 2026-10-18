@@ -9,11 +9,13 @@
 
 use std::collections::HashSet;
 
-use sqlx::{AssertSqlSafe, Database, Executor, IntoArguments};
+use sqlx::Database;
 
+use super::dialect::SupportedDatabase;
 use crate::error::Error;
 
 /// Internal migrations of a backend with table names filled in
+#[derive(Debug, Clone)]
 pub(crate) struct InternalMigrations {
     create_meta_table: String,
     fetch_applied: String,
@@ -57,15 +59,9 @@ pub(crate) async fn ensure_tables<DB>(
     internal: &InternalMigrations,
 ) -> Result<(), Error>
 where
-    DB: Database,
-    DB::Arguments: IntoArguments<DB>,
-    for<'c> &'c mut DB::Connection: Executor<'c, Database = DB>,
-    for<'q> String: sqlx::Encode<'q, DB> + sqlx::Type<DB>,
-    for<'r> (String,): sqlx::FromRow<'r, DB::Row>,
+    DB: Database + SupportedDatabase,
 {
-    sqlx::raw_sql(AssertSqlSafe(internal.create_meta_table.clone()))
-        .execute(&mut *connection)
-        .await?;
+    DB::execute(connection, &internal.create_meta_table).await?;
 
     let applied: HashSet<String> = fetch_applied::<DB>(connection, internal)
         .await?
@@ -78,13 +74,8 @@ where
 
     for (name, sql) in pending {
         tracing::info!(name, "running internal migration");
-        sqlx::raw_sql(AssertSqlSafe(sql.clone()))
-            .execute(&mut *connection)
-            .await?;
-        sqlx::query(AssertSqlSafe(internal.insert_applied.clone()))
-            .bind((*name).to_string())
-            .execute(&mut *connection)
-            .await?;
+        DB::execute(connection, sql).await?;
+        DB::execute_bound(connection, &internal.insert_applied, &[name]).await?;
     }
     Ok(())
 }
@@ -98,15 +89,9 @@ pub(crate) async fn fetch_applied<DB>(
     internal: &InternalMigrations,
 ) -> Result<Vec<String>, Error>
 where
-    DB: Database,
-    DB::Arguments: IntoArguments<DB>,
-    for<'c> &'c mut DB::Connection: Executor<'c, Database = DB>,
-    for<'r> (String,): sqlx::FromRow<'r, DB::Row>,
+    DB: Database + SupportedDatabase,
 {
-    let rows: Vec<(String,)> = sqlx::query_as(AssertSqlSafe(internal.fetch_applied.clone()))
-        .fetch_all(connection)
-        .await?;
-    let mut applied: Vec<String> = rows.into_iter().map(|(name,)| name).collect();
+    let mut applied = DB::fetch_text(connection, &internal.fetch_applied).await?;
     applied.sort();
 
     let known = internal.names();

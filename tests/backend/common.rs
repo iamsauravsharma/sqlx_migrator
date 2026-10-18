@@ -4,14 +4,12 @@
 use std::sync::Arc;
 use std::time::Duration;
 
-use sqlx::{AssertSqlSafe, Database};
+use sqlx::Database;
 use sqlx_migrator::error::Error;
 use sqlx_migrator::migration::Migration;
-use sqlx_migrator::migrator::{
-    DatabaseOperation as _, Info as _, LockStrategy, Migrate, Migrator, Plan,
-};
+use sqlx_migrator::migrator::{Migrator, Plan, SupportedDatabase};
 use sqlx_migrator::operation::Operation;
-use sqlx_migrator::sync::{OldMigrator, Synchronize as _};
+use sqlx_migrator::sync::OldMigrator;
 
 /// Returns the connection url from `variable`. Tests needing one are marked
 /// `#[ignore]` and only run with `--include-ignored`, so a missing variable is
@@ -148,7 +146,7 @@ pub(crate) fn sqlite_path(test: &str) -> std::path::PathBuf {
 /// What a backend has to provide for the shared scenarios to run against it.
 #[async_trait::async_trait]
 pub(crate) trait Harness: Send + Sync + 'static {
-    type Db: Database<Arguments: sqlx::IntoArguments<Self::Db>, Connection: Send>;
+    type Db: SupportedDatabase;
 
     /// Connects and removes everything a previous run of `test` left behind.
     async fn setup(&self, test: &str) -> <Self::Db as Database>::Connection;
@@ -167,28 +165,37 @@ pub(crate) trait Harness: Send + Sync + 'static {
         format!("_{test}_sqlx_migrator_migrations")
     }
 
-    /// Whether `lock` makes a second connection wait.
-    fn locks(&self) -> bool;
+    /// Statements which take and release the advisory lock, binding the
+    /// migration table name, `None` when the backend does not lock.
+    fn lock_statements(&self) -> Option<(&'static str, &'static str)>;
 
     /// Whether DDL is rolled back with the transaction.
     fn transactional_ddl(&self) -> bool;
 }
 
-async fn table_exists<DB>(connection: &mut DB::Connection, table: &str) -> bool
-where
-    DB: Database<Arguments: sqlx::IntoArguments<DB>>,
-    for<'c> &'c mut DB::Connection: sqlx::Executor<'c, Database = DB>,
-{
-    sqlx::query(AssertSqlSafe(format!("SELECT 1 FROM {table} WHERE 1 = 0")))
-        .execute(connection)
+async fn table_exists<DB: SupportedDatabase>(connection: &mut DB::Connection, table: &str) -> bool {
+    DB::execute(connection, &format!("SELECT 1 FROM {table} WHERE 1 = 0"))
         .await
         .is_ok()
 }
 
+/// Inserts a migration table row directly, bypassing the migrator
+async fn insert_row<DB: SupportedDatabase>(
+    connection: &mut DB::Connection,
+    table: &str,
+    app: &str,
+    name: &str,
+) -> Result<(), Error> {
+    DB::execute(
+        connection,
+        &format!("INSERT INTO {table}(app, name) VALUES ('{app}', '{name}')"),
+    )
+    .await
+}
+
 async fn applied<DB>(connection: &mut DB::Connection, migrator: &Migrator<DB>) -> Vec<String>
 where
-    DB: Database,
-    Migrator<DB>: Migrate<DB>,
+    DB: SupportedDatabase,
 {
     migrator
         .fetch_applied_migration_from_db(connection)
@@ -205,8 +212,6 @@ pub(crate) async fn apply_and_revert<H>(harness: &H, test: &str)
 where
     H: Harness,
     (String, String): Operation<H::Db>,
-    Migrator<H::Db>: Migrate<H::Db>,
-    for<'c> &'c mut <H::Db as Database>::Connection: sqlx::Executor<'c, Database = H::Db>,
 {
     let mut connection = harness.setup(test).await;
     let migrator = harness.migrator(test);
@@ -257,8 +262,6 @@ pub(crate) async fn fake_apply<H>(harness: &H, test: &str)
 where
     H: Harness,
     (String, String): Operation<H::Db>,
-    Migrator<H::Db>: Migrate<H::Db>,
-    for<'c> &'c mut <H::Db as Database>::Connection: sqlx::Executor<'c, Database = H::Db>,
 {
     let mut connection = harness.setup(test).await;
     let migrator = harness.migrator(test);
@@ -276,14 +279,11 @@ where
 }
 
 /// A failing atomic migration never records a migration table row. Whether its
-/// DDL survives depends on the backend, which is what
-/// `supports_transactional_ddl` reports.
+/// DDL survives depends on the backend.
 pub(crate) async fn failed_atomic_migration<H>(harness: &H, test: &str)
 where
     H: Harness,
     (String, String): Operation<H::Db>,
-    Migrator<H::Db>: Migrate<H::Db>,
-    for<'c> &'c mut <H::Db as Database>::Connection: sqlx::Executor<'c, Database = H::Db>,
 {
     let mut connection = harness.setup(test).await;
     let migrator = harness.migrator(test);
@@ -311,60 +311,41 @@ where
         applied(&mut connection, &migrator).await,
         vec!["first", "second"]
     );
-    assert_eq!(
-        migrator.supports_transactional_ddl(&connection),
-        harness.transactional_ddl()
-    );
     harness.teardown(test);
 }
 
-/// With the database strategy a second connection waits for the lock on
-/// backends which lock, and never waits with `LockStrategy::None`.
+/// While the dialect's lock is held by one connection a run on a second
+/// connection waits on backends which lock, and never waits on the others.
 pub(crate) async fn lock<H>(harness: &H, test: &str)
 where
     H: Harness,
     (String, String): Operation<H::Db>,
-    Migrator<H::Db>: Migrate<H::Db>,
-    for<'c> &'c mut <H::Db as Database>::Connection: sqlx::Executor<'c, Database = H::Db>,
 {
     let mut connection = harness.setup(test).await;
-    let migrator = harness.migrator(test);
-    let migrator = Arc::new(migrator);
+    let migrator = Arc::new(harness.migrator(test));
     let mut second = harness.connect(test).await;
-    migrator.lock(&mut connection).await.unwrap();
-    if harness.locks() {
-        let waiting = {
-            let migrator = Arc::clone(&migrator);
-            tokio::spawn(async move {
-                migrator.lock(&mut second).await.unwrap();
-                migrator.unlock(&mut second).await.unwrap();
-            })
-        };
-        tokio::time::sleep(Duration::from_secs(1)).await;
-        assert!(!waiting.is_finished(), "second lock should wait");
-        migrator.unlock(&mut connection).await.unwrap();
-        tokio::time::timeout(Duration::from_secs(10), waiting)
-            .await
-            .expect("second lock should proceed once the first is released")
-            .unwrap();
-    } else {
-        tokio::time::timeout(Duration::from_secs(5), migrator.lock(&mut second))
-            .await
-            .expect("lock should not block")
-            .unwrap();
-        migrator.unlock(&mut second).await.unwrap();
-        migrator.unlock(&mut connection).await.unwrap();
-    }
-
-    let migrator = harness.migrator(test).set_lock_strategy(LockStrategy::None);
-    let mut second = harness.connect(test).await;
-    migrator.lock(&mut connection).await.unwrap();
-    tokio::time::timeout(Duration::from_secs(5), migrator.lock(&mut second))
+    let Some((acquire, release)) = harness.lock_statements() else {
+        return;
+    };
+    let table_name = migrator.table_name();
+    H::Db::execute_bound(&mut connection, acquire, &[&table_name])
         .await
-        .expect("lock should not block")
         .unwrap();
-    migrator.unlock(&mut second).await.unwrap();
-    migrator.unlock(&mut connection).await.unwrap();
+    let waiting = {
+        let migrator = Arc::clone(&migrator);
+        tokio::spawn(async move { migrator.run(&mut second, &Plan::apply_all()).await })
+    };
+    tokio::time::sleep(Duration::from_secs(1)).await;
+    assert!(!waiting.is_finished(), "run should wait for the lock");
+    H::Db::execute_bound(&mut connection, release, &[&table_name])
+        .await
+        .unwrap();
+    let report = tokio::time::timeout(Duration::from_secs(10), waiting)
+        .await
+        .expect("run should proceed once the lock is released")
+        .unwrap()
+        .unwrap();
+    assert_eq!(report.len(), 2);
     harness.teardown(test);
 }
 
@@ -376,19 +357,14 @@ pub(crate) async fn concurrent_runs<H>(harness: &H, test: &str)
 where
     H: Harness,
     (String, String): Operation<H::Db>,
-    Migrator<H::Db>: Migrate<H::Db>,
-    for<'c> &'c mut <H::Db as Database>::Connection: sqlx::Executor<'c, Database = H::Db>,
 {
     let mut connection = harness.setup(test).await;
     let migrator = harness.migrator(test);
     let migrator = Arc::new(migrator);
     let mut second = harness.connect(test).await;
     // both runs must find the migration table, otherwise they race on
-    // creating it
-    migrator
-        .ensure_migration_table_exists(&mut connection)
-        .await
-        .unwrap();
+    // creating it; fetching creates it
+    applied(&mut connection, &migrator).await;
     let a = {
         let migrator = Arc::clone(&migrator);
         tokio::spawn(async move { migrator.run(&mut connection, &Plan::apply_all()).await })
@@ -398,7 +374,7 @@ where
         tokio::spawn(async move { migrator.run(&mut second, &Plan::apply_all()).await })
     };
     let results = [a.await.unwrap(), b.await.unwrap()];
-    if harness.locks() {
+    if harness.lock_statements().is_some() {
         let lengths = results
             .iter()
             .map(|r| r.as_ref().unwrap().len())
@@ -424,15 +400,9 @@ pub(crate) async fn sync<H>(harness: &H, test: &str)
 where
     H: Harness,
     (String, String): Operation<H::Db>,
-    Migrator<H::Db>: Migrate<H::Db>,
-    for<'c> &'c mut <H::Db as Database>::Connection: sqlx::Executor<'c, Database = H::Db>,
 {
     let mut connection = harness.setup(test).await;
     let migrator = harness.migrator(test);
-    migrator
-        .ensure_migration_table_exists(&mut connection)
-        .await
-        .unwrap();
     let old = OldMigratorStub(vec![
         ("main".to_string(), "first".to_string()),
         ("main".to_string(), "unknown".to_string()),
@@ -455,8 +425,6 @@ pub(crate) async fn prune<H>(harness: &H, test: &str)
 where
     H: Harness,
     (String, String): Operation<H::Db>,
-    Migrator<H::Db>: Migrate<H::Db>,
-    for<'c> &'c mut <H::Db as Database>::Connection: sqlx::Executor<'c, Database = H::Db>,
 {
     let mut connection = harness.setup(test).await;
     let migrator = harness.migrator(test);
@@ -464,8 +432,7 @@ where
         .run(&mut connection, &Plan::apply_all().fake(true))
         .await
         .unwrap();
-    migrator
-        .add_migration_to_db_table(&mut connection, &("ghost", "removed"))
+    insert_row::<H::Db>(&mut connection, &migrator.table_name(), "ghost", "removed")
         .await
         .unwrap();
     assert_eq!(migrator.prune(&mut connection).await.unwrap(), 1);
@@ -475,9 +442,7 @@ where
         vec!["first", "second"]
     );
     assert!(matches!(
-        migrator
-            .add_migration_to_db_table(&mut connection, &("main", "first"))
-            .await,
+        insert_row::<H::Db>(&mut connection, &migrator.table_name(), "main", "first").await,
         Err(Error::Sqlx(_))
     ));
     harness.teardown(test);
@@ -490,25 +455,23 @@ pub(crate) async fn internal_migrations<H>(harness: &H, test: &str)
 where
     H: Harness,
     (String, String): Operation<H::Db>,
-    Migrator<H::Db>: Migrate<H::Db>,
-    for<'c> &'c mut <H::Db as Database>::Connection: sqlx::Executor<'c, Database = H::Db>,
 {
     let mut connection = harness.setup(test).await;
     let migrator = harness.migrator(test);
     let meta_table = migrator.meta_table_name();
-    let raw = |sql: String| sqlx::query(AssertSqlSafe(sql));
 
-    migrator
-        .ensure_migration_table_exists(&mut connection)
-        .await
-        .unwrap();
+    // fetching creates both tables
+    assert_eq!(
+        applied(&mut connection, &migrator).await,
+        Vec::<String>::new()
+    );
     assert!(table_exists::<H::Db>(&mut connection, &meta_table).await);
 
     // a name from a newer release is rejected until it is removed
-    raw(format!(
-        "INSERT INTO {meta_table}(name) VALUES ('9999_from_the_future')"
-    ))
-    .execute(&mut connection)
+    H::Db::execute(
+        &mut connection,
+        &format!("INSERT INTO {meta_table}(name) VALUES ('9999_from_the_future')"),
+    )
     .await
     .unwrap();
     assert!(matches!(
@@ -517,23 +480,19 @@ where
     ));
 
     // without a meta table an existing migration table keeps its rows
-    migrator
-        .add_migration_to_db_table(&mut connection, &("legacy", "row"))
+    insert_row::<H::Db>(&mut connection, &migrator.table_name(), "legacy", "row")
         .await
         .unwrap();
-    raw(format!("DROP TABLE {meta_table}"))
-        .execute(&mut connection)
-        .await
-        .unwrap();
-    migrator
-        .ensure_migration_table_exists(&mut connection)
+    H::Db::execute(&mut connection, &format!("DROP TABLE {meta_table}"))
         .await
         .unwrap();
     assert_eq!(applied(&mut connection, &migrator).await, vec!["row"]);
-    migrator
-        .delete_migration_from_db_table(&mut connection, &("legacy", "row"))
-        .await
-        .unwrap();
+    H::Db::execute(
+        &mut connection,
+        &format!("DELETE FROM {} WHERE app = 'legacy'", migrator.table_name()),
+    )
+    .await
+    .unwrap();
 
     migrator
         .run(&mut connection, &Plan::apply_all())
@@ -551,81 +510,64 @@ where
     harness.teardown(test);
 }
 
-/// Declares one test per scenario, running it against every harness in
-/// `$harnesses` and prefixing test names (and so table names) with `$prefix`.
+/// Declares one test per scenario, running it against `$harness` and
+/// prefixing test names (and so table names) with `$prefix`.
 /// With `ignore = "reason"` the tests are marked `#[ignore]` and only run
 /// with `--include-ignored`, for backends which need an external database.
 macro_rules! backend_tests {
-    ($harnesses:expr, $prefix:literal) => {
-        crate::common::backend_tests!(@tests $harnesses, $prefix, );
+    ($harness:expr, $prefix:literal) => {
+        crate::common::backend_tests!(@tests $harness, $prefix, );
     };
-    ($harnesses:expr, $prefix:literal, ignore = $reason:literal) => {
-        crate::common::backend_tests!(@tests $harnesses, $prefix, #[ignore = $reason]);
+    ($harness:expr, $prefix:literal, ignore = $reason:literal) => {
+        crate::common::backend_tests!(@tests $harness, $prefix, #[ignore = $reason]);
     };
-    (@tests $harnesses:expr, $prefix:literal, $(#[$ignore:meta])?) => {
+    (@tests $harness:expr, $prefix:literal, $(#[$ignore:meta])?) => {
         $(#[$ignore])?
         #[tokio::test]
         async fn apply_and_revert() {
-            for harness in $harnesses {
-                crate::common::apply_and_revert(&harness, concat!($prefix, "_apply")).await;
-            }
+            crate::common::apply_and_revert(&$harness, concat!($prefix, "_apply")).await;
         }
 
         $(#[$ignore])?
         #[tokio::test]
         async fn fake_apply() {
-            for harness in $harnesses {
-                crate::common::fake_apply(&harness, concat!($prefix, "_fake")).await;
-            }
+            crate::common::fake_apply(&$harness, concat!($prefix, "_fake")).await;
         }
 
         $(#[$ignore])?
         #[tokio::test]
         async fn failed_atomic_migration() {
-            for harness in $harnesses {
-                crate::common::failed_atomic_migration(&harness, concat!($prefix, "_failed"))
-                    .await;
-            }
+            crate::common::failed_atomic_migration(&$harness, concat!($prefix, "_failed")).await;
         }
 
         $(#[$ignore])?
         #[tokio::test(flavor = "multi_thread")]
         async fn lock() {
-            for harness in $harnesses {
-                crate::common::lock(&harness, concat!($prefix, "_lock")).await;
-            }
+            crate::common::lock(&$harness, concat!($prefix, "_lock")).await;
         }
 
         $(#[$ignore])?
         #[tokio::test(flavor = "multi_thread")]
         async fn concurrent_runs() {
-            for harness in $harnesses {
-                crate::common::concurrent_runs(&harness, concat!($prefix, "_concurrent")).await;
-            }
+            crate::common::concurrent_runs(&$harness, concat!($prefix, "_concurrent")).await;
         }
 
         $(#[$ignore])?
         #[tokio::test]
         async fn sync() {
-            for harness in $harnesses {
-                crate::common::sync(&harness, concat!($prefix, "_sync")).await;
-            }
+            crate::common::sync(&$harness, concat!($prefix, "_sync")).await;
         }
 
         $(#[$ignore])?
         #[tokio::test]
         async fn prune() {
-            for harness in $harnesses {
-                crate::common::prune(&harness, concat!($prefix, "_prune")).await;
-            }
+            crate::common::prune(&$harness, concat!($prefix, "_prune")).await;
         }
 
         $(#[$ignore])?
         #[tokio::test]
         async fn internal_migrations() {
-            for harness in $harnesses {
-                crate::common::internal_migrations(&harness, concat!($prefix, "_tables")).await;
-            }
+            crate::common::internal_migrations(&$harness, concat!($prefix, "_tables")).await;
         }
     };
 }

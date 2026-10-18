@@ -1,122 +1,116 @@
+use std::ops::{Deref, DerefMut};
+
 use sqlx::{Database, Sqlite, SqlitePool};
 
-use super::{DatabaseOperation, Info, LockStrategy, Migrate, Migrator};
+use super::{Dialect, MigrationVecResult, Migrator};
 use crate::error::Error;
 use crate::migration::{AppliedMigrationSqlRow, Migration};
 use crate::migrator::Plan;
 use crate::operation::Operation;
-use crate::sync::Synchronize;
+use crate::sync::OldMigrator;
 use crate::vec_box;
 
-/// Verifies that `set_table_prefix` accepts valid identifiers (lowercase,
-/// digits, underscores) and rejects invalid ones (uppercase, special chars,
+/// Verifies that the table prefix is accepted when it holds lowercase,
+/// digits and underscores and rejected otherwise (uppercase, special chars,
 /// empty string).
 #[test]
 fn table_name() {
-    assert!(Migrator::<Sqlite>::new().set_table_prefix("abc").is_ok());
-    assert!(Migrator::<Sqlite>::new().set_table_prefix("aBc").is_err());
-    assert!(Migrator::<Sqlite>::new().set_table_prefix("ab1").is_ok());
-    assert!(
-        Migrator::<Sqlite>::new()
-            .set_table_prefix("abc___123")
-            .is_ok()
-    );
-    assert!(Migrator::<Sqlite>::new().set_table_prefix("_123").is_ok());
-    assert!(
-        Migrator::<Sqlite>::new()
-            .set_table_prefix("1@_2_3")
-            .is_err()
-    );
-    assert!(Migrator::<Sqlite>::new().set_table_prefix("").is_err());
+    for valid in ["abc", "ab1", "abc___123", "_123"] {
+        assert!(Dialect::sqlite_with(Some(valid), None).is_ok(), "{valid}");
+    }
+    for invalid in ["aBc", "1@_2_3", ""] {
+        assert!(
+            Dialect::sqlite_with(Some(invalid), None).is_err(),
+            "{invalid}"
+        );
+    }
 }
 
-/// Verifies that `set_schema` accepts valid schema names (must start with a
-/// lowercase letter or underscore) and rejects invalid ones.
+/// Verifies that schema names must start with a lowercase letter or
+/// underscore and hold only lowercase, digits and underscores.
 #[test]
 fn schema_name() {
-    assert!(Migrator::<Sqlite>::new().set_schema("abc").is_ok());
-    assert!(Migrator::<Sqlite>::new().set_schema("aBc").is_err());
-    assert!(Migrator::<Sqlite>::new().set_schema("1abc").is_err());
-    assert!(Migrator::<Sqlite>::new().set_schema("ab1").is_ok());
-    assert!(Migrator::<Sqlite>::new().set_schema("abc___123").is_ok());
-    assert!(Migrator::<Sqlite>::new().set_schema("_123").is_ok());
-    assert!(Migrator::<Sqlite>::new().set_schema("1@_2_3").is_err());
-    assert!(Migrator::<Sqlite>::new().set_schema("").is_err());
-    assert!(Migrator::<Sqlite>::new().set_schema("!").is_err());
+    for valid in ["abc", "ab1", "abc___123", "_123"] {
+        assert!(Dialect::sqlite_with(None, Some(valid)).is_ok(), "{valid}");
+    }
+    for invalid in ["aBc", "1abc", "1@_2_3", "", "!"] {
+        assert!(
+            Dialect::sqlite_with(None, Some(invalid)).is_err(),
+            "{invalid}"
+        );
+    }
 }
 
 /// Verifies that `table_name()` produces the correct string in all four
 /// configurations: default, prefix-only, schema-only, and both.
 #[test]
 fn table_name_format() {
-    // Default: no prefix or schema
+    let name = |prefix, schema| {
+        Migrator::<Sqlite>::new(Dialect::sqlite_with(prefix, schema).unwrap()).table_name()
+    };
+    assert_eq!(name(None, None), "_sqlx_migrator_migrations");
     assert_eq!(
-        Migrator::<Sqlite>::new().table_name(),
-        "_sqlx_migrator_migrations"
+        name(Some("myprefix"), None),
+        "_myprefix_sqlx_migrator_migrations"
     );
-
-    // With prefix only
-    let m = Migrator::<Sqlite>::new()
-        .set_table_prefix("myprefix")
-        .unwrap();
-    assert_eq!(m.table_name(), "_myprefix_sqlx_migrator_migrations");
-
-    // With schema only
-    let m = Migrator::<Sqlite>::new().set_schema("myschema").unwrap();
-    assert_eq!(m.table_name(), "myschema._sqlx_migrator_migrations");
-
-    // With both prefix and schema
-    let m = Migrator::<Sqlite>::new()
-        .set_table_prefix("pfx")
-        .unwrap()
-        .set_schema("sch")
-        .unwrap();
-    assert_eq!(m.table_name(), "sch._pfx_sqlx_migrator_migrations");
+    assert_eq!(
+        name(None, Some("myschema")),
+        "myschema._sqlx_migrator_migrations"
+    );
+    assert_eq!(
+        name(Some("pfx"), Some("sch")),
+        "sch._pfx_sqlx_migrator_migrations"
+    );
 }
 
+/// Migrator with an in memory list of applied rows, so the planner tests
+/// run without a database.
 #[derive(Default)]
-struct CustomMigrator {
-    internal_migrator: Migrator<Sqlite>,
-    migrations: Vec<Box<dyn Migration<Sqlite>>>,
+struct TestMigrator {
+    migrator: Migrator<Sqlite>,
     applied_migrations: Vec<AppliedMigrationSqlRow>,
 }
 
-impl CustomMigrator {
-    fn add_applied_migrations(
-        &mut self,
-        migrations: Vec<Box<dyn Migration<Sqlite>>>,
-    ) -> Result<(), Error> {
-        for migration in migrations {
-            self.add_applied_migration(migration)?;
-        }
-        Ok(())
-    }
+impl Deref for TestMigrator {
+    type Target = Migrator<Sqlite>;
 
-    fn add_applied_migration(
-        &mut self,
-        migration: Box<dyn Migration<Sqlite>>,
-    ) -> Result<(), Error> {
-        let current_length = self.migrations.len();
-        self.applied_migrations.push(AppliedMigrationSqlRow::new(
-            i32::try_from(current_length).unwrap(),
-            migration.app(),
-            migration.name(),
-        ));
-        self.internal_migrator.add_migration(migration)
+    fn deref(&self) -> &Self::Target {
+        &self.migrator
     }
 }
 
-/// The custom migrator can act as an old migrator, mirroring what
-/// [`Migrator`] provides, so the sync tests can use two custom migrators.
+impl DerefMut for TestMigrator {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.migrator
+    }
+}
+
+impl TestMigrator {
+    fn add_applied_migrations(&mut self, migrations: Vec<Box<dyn Migration<Sqlite>>>) {
+        for migration in migrations {
+            self.add_applied_migration(migration.as_ref());
+        }
+    }
+
+    fn add_applied_migration(&mut self, migration: &dyn Migration<Sqlite>) {
+        let id = i32::try_from(self.applied_migrations.len()).unwrap();
+        self.applied_migrations.push(AppliedMigrationSqlRow::new(
+            id,
+            migration.app(),
+            migration.name(),
+        ));
+    }
+}
+
+/// The in memory rows double as an old migrator for the sync tests.
 #[async_trait::async_trait]
-impl crate::sync::OldMigrator<Sqlite> for CustomMigrator {
+impl OldMigrator<Sqlite> for TestMigrator {
     async fn applied_migrations(
         &self,
-        connection: &mut <Sqlite as Database>::Connection,
+        _connection: &mut <Sqlite as Database>::Connection,
     ) -> Result<Vec<Box<dyn Migration<Sqlite>>>, Error> {
         Ok(self
-            .fetch_applied_migration_from_db(connection)
-            .await?
+            .applied_migrations
             .iter()
             .map(|row| {
                 Box::new((row.app().to_string(), row.name().to_string()))
@@ -125,72 +119,6 @@ impl crate::sync::OldMigrator<Sqlite> for CustomMigrator {
             .collect())
     }
 }
-
-impl Info<Sqlite> for CustomMigrator {
-    fn migrations(&self) -> &[Box<dyn Migration<Sqlite>>] {
-        &self.migrations
-    }
-
-    fn migrations_mut(&mut self) -> &mut Vec<Box<dyn Migration<Sqlite>>> {
-        &mut self.migrations
-    }
-}
-
-#[async_trait::async_trait]
-impl DatabaseOperation<Sqlite> for CustomMigrator {
-    async fn ensure_migration_table_exists(
-        &self,
-        _connection: &mut <Sqlite as Database>::Connection,
-    ) -> Result<(), Error> {
-        Ok(())
-    }
-
-    async fn drop_migration_table_if_exists(
-        &self,
-        _connection: &mut <Sqlite as Database>::Connection,
-    ) -> Result<(), Error> {
-        Ok(())
-    }
-
-    async fn add_migration_to_db_table(
-        &self,
-        _connection: &mut <Sqlite as Database>::Connection,
-        _migration: &dyn Migration<Sqlite>,
-    ) -> Result<(), Error> {
-        Ok(())
-    }
-
-    async fn delete_migration_from_db_table(
-        &self,
-        _connection: &mut <Sqlite as Database>::Connection,
-        _migration: &dyn Migration<Sqlite>,
-    ) -> Result<(), Error> {
-        Ok(())
-    }
-
-    async fn fetch_applied_migration_from_db(
-        &self,
-        _connection: &mut <Sqlite as Database>::Connection,
-    ) -> Result<Vec<AppliedMigrationSqlRow>, Error> {
-        Ok(self.applied_migrations.clone())
-    }
-
-    async fn lock(&self, _connection: &mut <Sqlite as Database>::Connection) -> Result<(), Error> {
-        Ok(())
-    }
-
-    async fn unlock(
-        &self,
-        _connection: &mut <Sqlite as Database>::Connection,
-    ) -> Result<(), Error> {
-        Ok(())
-    }
-}
-
-impl Migrate<Sqlite> for CustomMigrator {}
-
-/// Allow custom migrator to be used as a sync source in sync tests.
-impl Synchronize<Sqlite> for CustomMigrator {}
 
 /// Convenience macro for implementing `Migration<Sqlite>` for a test struct.
 ///
@@ -237,28 +165,20 @@ async fn make_conn() -> sqlx::pool::PoolConnection<Sqlite> {
         .unwrap()
 }
 
-/// Generates a migration plan for the given `plan` against `migrator` by
-/// fetching applied rows and passing them to
-/// `generate_migration_plan`.
-async fn apply_plan<'a>(
-    migrator: &'a CustomMigrator,
-    conn: &mut <Sqlite as Database>::Connection,
-    plan: Plan,
-) -> Result<Vec<&'a Box<dyn Migration<Sqlite>>>, Error> {
-    migrator.ensure_migration_table_exists(conn).await?;
-    let applied_rows = migrator.fetch_applied_migration_from_db(conn).await?;
-    migrator.generate_migration_plan(Some(&plan), &applied_rows)
+/// Generates a migration plan for the given `plan` against `migrator` and
+/// its in memory applied rows.
+fn apply_plan<'a>(migrator: &'a TestMigrator, plan: &Plan) -> MigrationVecResult<'a, Sqlite> {
+    migrator.generate_migration_plan(Some(plan), &migrator.applied_migrations)
 }
 
 /// Adds all `migration_list` entries to `migrator`, then returns the full
 /// apply-all plan. This is the most common setup pattern for plan tests.
-async fn generate_apply_all_plan(
-    migrator: &mut CustomMigrator,
+fn generate_apply_all_plan(
+    migrator: &mut TestMigrator,
     migration_list: Vec<Box<dyn Migration<Sqlite>>>,
-) -> Result<Vec<&Box<dyn Migration<Sqlite>>>, Error> {
+) -> MigrationVecResult<'_, Sqlite> {
     migrator.add_migrations(migration_list)?;
-    let mut conn = make_conn().await;
-    apply_plan(migrator, &mut conn, Plan::apply_all()).await
+    apply_plan(migrator, &Plan::apply_all())
 }
 
 /// Extracts the `name()` of every migration in a plan into a `Vec<&str>`.
@@ -378,7 +298,7 @@ fn add_migration_duplicate_consistent_is_ok() {
     struct A;
     migration!(A, "a", vec_box!(), vec_box!(), vec_box!());
 
-    let mut migrator = CustomMigrator::default();
+    let mut migrator = TestMigrator::default();
     assert!(migrator.add_migration(Box::new(A)).is_ok());
     assert!(
         migrator.add_migration(Box::new(A)).is_ok(),
@@ -421,7 +341,7 @@ fn add_invalid_virtual_migration_is_error() {
         }
     }
 
-    let mut migrator = CustomMigrator::default();
+    let mut migrator = TestMigrator::default();
     let result = migrator.add_migration(Box::new(BadVirtual));
     assert!(
         matches!(result, Err(Error::InvalidVirtualMigration)),
@@ -465,33 +385,31 @@ fn error_display_messages() {
 
 /// Verifies the happy-path ordering for a simple linear dependency chain
 /// A → B → C. The plan must apply A first, then B, then C.
-#[tokio::test]
-async fn linear_dependency_chain_applies_in_order() {
+#[test]
+fn linear_dependency_chain_applies_in_order() {
     struct A;
     migration!(A, "a", vec_box!(), vec_box!(), vec_box!());
     struct B;
     migration!(B, "b", vec_box!(A), vec_box!(), vec_box!());
     struct C;
     migration!(C, "c", vec_box!(B), vec_box!(), vec_box!());
-    let mut migrator = CustomMigrator::default();
-    let plan = generate_apply_all_plan(&mut migrator, vec_box!(A, B, C))
-        .await
-        .unwrap();
+    let mut migrator = TestMigrator::default();
+    let plan = generate_apply_all_plan(&mut migrator, vec_box!(A, B, C)).unwrap();
     assert_eq!(plan_names(&plan), vec!["a", "b", "c"]);
 }
 
 /// Generating a plan when no migrations have been registered must return a
 /// `PlanError` with a clear message rather than silently producing an empty
 /// plan.
-#[tokio::test]
-async fn apply_all_with_no_migrations_is_error() {
+#[test]
+fn apply_all_with_no_migrations_is_error() {
     struct A;
     migration!(A, "a", vec_box!(), vec_box!(), vec_box!());
     struct B;
     migration!(B, "b", vec_box!(A), vec_box!(), vec_box!());
     let _: Vec<Box<dyn Migration<Sqlite>>> = vec_box!(A, B);
-    let mut migrator = CustomMigrator::default();
-    let plan = generate_apply_all_plan(&mut migrator, vec_box!()).await;
+    let mut migrator = TestMigrator::default();
+    let plan = generate_apply_all_plan(&mut migrator, vec_box!());
     assert_eq!(
         plan.err().map(|e| e.to_string()),
         Some("plan error: no migrations are added to the migration list".to_string())
@@ -501,8 +419,8 @@ async fn apply_all_with_no_migrations_is_error() {
 /// Adding two migrations with the same (app, name) but different definitions
 /// (e.g. different parents) must return `Error::InconsistentMigration` so that
 /// accidental duplicates are caught at registration time.
-#[tokio::test]
-async fn inconsistent_duplicate_migration_name_is_error() {
+#[test]
+fn inconsistent_duplicate_migration_name_is_error() {
     struct A;
     migration!(A, "a", vec_box!(), vec_box!(), vec_box!());
     struct B;
@@ -512,8 +430,8 @@ async fn inconsistent_duplicate_migration_name_is_error() {
     // D has the same name "b" as B but different parents → inconsistent.
     struct D;
     migration!(D, "b", vec_box!(C), vec_box!(), vec_box!());
-    let mut migrator = CustomMigrator::default();
-    let plan = generate_apply_all_plan(&mut migrator, vec_box!(A, B, C, D)).await;
+    let mut migrator = TestMigrator::default();
+    let plan = generate_apply_all_plan(&mut migrator, vec_box!(A, B, C, D));
     assert_eq!(
         plan.err().map(|e| e.to_string()),
         Some("inconsistent migration found for test - b".to_string())
@@ -522,14 +440,14 @@ async fn inconsistent_duplicate_migration_name_is_error() {
 
 /// A circular parent chain (A depends on B, B depends on A) must fail with a
 /// deadlock error — the planner cannot find a valid ordering.
-#[tokio::test]
-async fn circular_parent_dependency_deadlocks() {
+#[test]
+fn circular_parent_dependency_deadlocks() {
     struct A;
     migration!(A, "a", vec_box!(B), vec_box!(), vec_box!());
     struct B;
     migration!(B, "b", vec_box!(A), vec_box!(), vec_box!());
-    let mut migrator = CustomMigrator::default();
-    let plan = generate_apply_all_plan(&mut migrator, vec_box!(A, B)).await;
+    let mut migrator = TestMigrator::default();
+    let plan = generate_apply_all_plan(&mut migrator, vec_box!(A, B));
     assert_eq!(
         plan.err().map(|e| e.to_string()),
         Some("plan error: reached deadlock stage during plan generation".to_string())
@@ -539,15 +457,15 @@ async fn circular_parent_dependency_deadlocks() {
 /// A mutual `replaces` relationship (A replaces B and B replaces A) must return
 /// a "two migrations replace each other" error. (Previously misnamed as
 /// `run_before_interrelated_test`.)
-#[tokio::test]
-async fn replaces_interrelated_test() {
+#[test]
+fn replaces_interrelated_test() {
     // macro arg order: parents, replaces, run_before
     struct A;
     migration!(A, "a", vec_box!(), vec_box!(B), vec_box!());
     struct B;
     migration!(B, "b", vec_box!(), vec_box!(A), vec_box!());
-    let mut migrator = CustomMigrator::default();
-    let plan = generate_apply_all_plan(&mut migrator, vec_box!(A, B)).await;
+    let mut migrator = TestMigrator::default();
+    let plan = generate_apply_all_plan(&mut migrator, vec_box!(A, B));
     assert_eq!(
         plan.err().map(|e| e.to_string()),
         Some("plan error: two migrations replace each other".to_string())
@@ -557,15 +475,15 @@ async fn replaces_interrelated_test() {
 /// A mutual `run_before` relationship (A must run before B and B must run
 /// before A) creates an ordering deadlock. (Previously misnamed as
 /// `replace_interrelated_test`.)
-#[tokio::test]
-async fn run_before_interrelated_test() {
+#[test]
+fn run_before_interrelated_test() {
     // macro arg order: parents, replaces, run_before
     struct A;
     migration!(A, "a", vec_box!(), vec_box!(), vec_box!(B));
     struct B;
     migration!(B, "b", vec_box!(), vec_box!(), vec_box!(A));
-    let mut migrator = CustomMigrator::default();
-    let plan = generate_apply_all_plan(&mut migrator, vec_box!(A, B)).await;
+    let mut migrator = TestMigrator::default();
+    let plan = generate_apply_all_plan(&mut migrator, vec_box!(A, B));
     assert_eq!(
         plan.err().map(|e| e.to_string()),
         Some("plan error: reached deadlock stage during plan generation".to_string())
@@ -574,14 +492,14 @@ async fn run_before_interrelated_test() {
 
 /// A migration that lists itself as its own parent creates an unresolvable
 /// dependency and must fail with a deadlock error.
-#[tokio::test]
-async fn self_referencing_parent_deadlocks() {
+#[test]
+fn self_referencing_parent_deadlocks() {
     struct A;
     migration!(A, "a", vec_box!(A), vec_box!(), vec_box!());
     struct B;
     migration!(B, "b", vec_box!(B), vec_box!(), vec_box!());
-    let mut migrator = CustomMigrator::default();
-    let plan = generate_apply_all_plan(&mut migrator, vec_box!(A, B)).await;
+    let mut migrator = TestMigrator::default();
+    let plan = generate_apply_all_plan(&mut migrator, vec_box!(A, B));
     assert_eq!(
         plan.err().map(|e| e.to_string()),
         Some("plan error: reached deadlock stage during plan generation".to_string())
@@ -591,15 +509,15 @@ async fn self_referencing_parent_deadlocks() {
 /// A migration that lists itself in `replaces` (replacing itself) creates a
 /// circular replacement and must fail. (Previously misnamed as
 /// `run_before_depend_on_itself`.)
-#[tokio::test]
-async fn replaces_depend_on_itself() {
+#[test]
+fn replaces_depend_on_itself() {
     // macro arg order: parents, replaces, run_before
     struct A;
     migration!(A, "a", vec_box!(), vec_box!(A), vec_box!());
     struct B;
     migration!(B, "b", vec_box!(), vec_box!(B), vec_box!());
-    let mut migrator = CustomMigrator::default();
-    let plan = generate_apply_all_plan(&mut migrator, vec_box!(A, B)).await;
+    let mut migrator = TestMigrator::default();
+    let plan = generate_apply_all_plan(&mut migrator, vec_box!(A, B));
     assert_eq!(
         plan.err().map(|e| e.to_string()),
         Some("plan error: two migrations replace each other".to_string())
@@ -609,15 +527,15 @@ async fn replaces_depend_on_itself() {
 /// A migration that lists itself in `run_before` (must run before itself)
 /// creates an ordering deadlock and must fail. (Previously misnamed as
 /// `replace_depend_on_itself`.)
-#[tokio::test]
-async fn run_before_depend_on_itself() {
+#[test]
+fn run_before_depend_on_itself() {
     // macro arg order: parents, replaces, run_before
     struct A;
     migration!(A, "a", vec_box!(), vec_box!(), vec_box!(A));
     struct B;
     migration!(B, "b", vec_box!(), vec_box!(), vec_box!(B));
-    let mut migrator = CustomMigrator::default();
-    let plan = generate_apply_all_plan(&mut migrator, vec_box!(A, B)).await;
+    let mut migrator = TestMigrator::default();
+    let plan = generate_apply_all_plan(&mut migrator, vec_box!(A, B));
     assert_eq!(
         plan.err().map(|e| e.to_string()),
         Some("plan error: reached deadlock stage during plan generation".to_string())
@@ -626,8 +544,8 @@ async fn run_before_depend_on_itself() {
 
 /// When C replaces B (which depends on A), and D replaces C, the chain B→C is
 /// collapsed: the plan must contain only A and D (B and C are skipped).
-#[tokio::test]
-async fn replaced_migrations_skipped_in_plan() {
+#[test]
+fn replaced_migrations_skipped_in_plan() {
     struct A;
     migration!(A, "a", vec_box!(), vec_box!(), vec_box!());
     struct B;
@@ -638,10 +556,8 @@ async fn replaced_migrations_skipped_in_plan() {
     // D replaces C (and transitively B)
     struct D;
     migration!(D, "d", vec_box!(), vec_box!(C), vec_box!());
-    let mut migrator = CustomMigrator::default();
-    let plan = generate_apply_all_plan(&mut migrator, vec_box!(A, B, C, D))
-        .await
-        .unwrap();
+    let mut migrator = TestMigrator::default();
+    let plan = generate_apply_all_plan(&mut migrator, vec_box!(A, B, C, D)).unwrap();
     // B and C are superseded by D; only A and D remain.
     assert_eq!(plan_names(&plan), vec!["a", "d"]);
 }
@@ -653,8 +569,8 @@ async fn replaced_migrations_skipped_in_plan() {
 /// [A, D]. A targeted `apply_name("test", "d")` must still include A —
 /// even though D itself declares no direct parents — because D inherits the
 /// dependency on A through the B→C→D replace chain.
-#[tokio::test]
-async fn apply_name_for_replacer_includes_transitive_replace_parents() {
+#[test]
+fn apply_name_for_replacer_includes_transitive_replace_parents() {
     struct A;
     migration!(A, "a", vec_box!(), vec_box!(), vec_box!());
     struct B;
@@ -666,13 +582,10 @@ async fn apply_name_for_replacer_includes_transitive_replace_parents() {
     struct D;
     migration!(D, "d", vec_box!(), vec_box!(C), vec_box!());
 
-    let mut migrator = CustomMigrator::default();
+    let mut migrator = TestMigrator::default();
     migrator.add_migrations(vec_box!(A, B, C, D)).unwrap();
-    let mut conn = make_conn().await;
 
-    let plan = apply_plan(&migrator, &mut conn, Plan::apply_name("test", Some("d")))
-        .await
-        .unwrap();
+    let plan = apply_plan(&migrator, &Plan::apply_name("test", Some("d"))).unwrap();
     // A must be included: D needs it through the replace chain (B→C→D).
     assert_eq!(plan_names(&plan), vec!["a", "d"]);
 }
@@ -684,8 +597,8 @@ async fn apply_name_for_replacer_includes_transitive_replace_parents() {
 /// requires reverting D first — because D was ordered after A in the apply
 /// plan (inherited from B's dependency). A targeted `revert_name("test",
 /// "a")` must therefore include D before A.
-#[tokio::test]
-async fn revert_name_for_parent_includes_transitive_replace_dependents() {
+#[test]
+fn revert_name_for_parent_includes_transitive_replace_dependents() {
     struct A;
     migration!(A, "a", vec_box!(), vec_box!(), vec_box!());
     struct B;
@@ -697,15 +610,12 @@ async fn revert_name_for_parent_includes_transitive_replace_dependents() {
     struct D;
     migration!(D, "d", vec_box!(), vec_box!(C), vec_box!());
 
-    let mut migrator = CustomMigrator::default();
+    let mut migrator = TestMigrator::default();
     migrator.add_migrations(vec_box!(A, B, C, D)).unwrap();
     // A and D are applied (B and C were replaced by D).
-    migrator.add_applied_migrations(vec_box!(A, D)).unwrap();
-    let mut conn = make_conn().await;
+    migrator.add_applied_migrations(vec_box!(A, D));
 
-    let plan = apply_plan(&migrator, &mut conn, Plan::revert_name("test", Some("a")))
-        .await
-        .unwrap();
+    let plan = apply_plan(&migrator, &Plan::revert_name("test", Some("a"))).unwrap();
     // D must be reverted before A (D depends on A through the replace chain).
     assert_eq!(plan_names(&plan), vec!["d", "a"]);
 }
@@ -715,8 +625,8 @@ async fn revert_name_for_parent_includes_transitive_replace_dependents() {
 ///
 /// `run_before` reverses intuition: C runs *before* B even though C is listed
 /// after B in the migration list.
-#[tokio::test]
-async fn run_before_ordering_is_respected() {
+#[test]
+fn run_before_ordering_is_respected() {
     struct A;
     migration!(A, "a", vec_box!(), vec_box!(), vec_box!());
     struct B;
@@ -727,17 +637,15 @@ async fn run_before_ordering_is_respected() {
     // D must run before C
     struct D;
     migration!(D, "d", vec_box!(), vec_box!(), vec_box!(C));
-    let mut migrator = CustomMigrator::default();
-    let plan = generate_apply_all_plan(&mut migrator, vec_box!(A, B, C, D))
-        .await
-        .unwrap();
+    let mut migrator = TestMigrator::default();
+    let plan = generate_apply_all_plan(&mut migrator, vec_box!(A, B, C, D)).unwrap();
     assert_eq!(plan_names(&plan), vec!["a", "d", "c", "b"]);
 }
 
 /// Two migrations (C and D) both replacing the same migration (B) is illegal —
 /// only one migration may replace a given migration.
-#[tokio::test]
-async fn migration_replaced_by_multiple_migrations_is_error() {
+#[test]
+fn migration_replaced_by_multiple_migrations_is_error() {
     struct A;
     migration!(A, "a", vec_box!(), vec_box!(), vec_box!());
     struct B;
@@ -748,8 +656,8 @@ async fn migration_replaced_by_multiple_migrations_is_error() {
     // D also replaces B — conflict!
     struct D;
     migration!(D, "d", vec_box!(), vec_box!(B), vec_box!());
-    let mut migrator = CustomMigrator::default();
-    let plan = generate_apply_all_plan(&mut migrator, vec_box!(A, B, C, D)).await;
+    let mut migrator = TestMigrator::default();
+    let plan = generate_apply_all_plan(&mut migrator, vec_box!(A, B, C, D));
     assert_eq!(
         plan.err().map(|e| e.to_string()),
         Some("plan error: migration test:b replaced multiple times".to_string())
@@ -758,8 +666,8 @@ async fn migration_replaced_by_multiple_migrations_is_error() {
 
 /// C replaces B; D has `run_before(B)`.  Since B is replaced by C, the
 /// `run_before` relationship transfers: D must run before C.  Plan: A, D, C.
-#[tokio::test]
-async fn replaced_migration_run_before_transfers_to_replacer() {
+#[test]
+fn replaced_migration_run_before_transfers_to_replacer() {
     struct A;
     migration!(A, "a", vec_box!(), vec_box!(), vec_box!());
     struct B;
@@ -770,17 +678,15 @@ async fn replaced_migration_run_before_transfers_to_replacer() {
     // D must run before B (which is replaced by C)
     struct D;
     migration!(D, "d", vec_box!(), vec_box!(), vec_box!(B));
-    let mut migrator = CustomMigrator::default();
-    let plan = generate_apply_all_plan(&mut migrator, vec_box!(A, B, C, D))
-        .await
-        .unwrap();
+    let mut migrator = TestMigrator::default();
+    let plan = generate_apply_all_plan(&mut migrator, vec_box!(A, B, C, D)).unwrap();
     assert_eq!(plan_names(&plan), vec!["a", "d", "c"]);
 }
 
 /// Chain: C replaces B (B→A parent), D replaces C, E has `run_before(C)`.
 /// Since C is replaced by D, E must run before D. Plan: A, E, D.
-#[tokio::test]
-async fn chained_replacer_inherits_run_before_constraint() {
+#[test]
+fn chained_replacer_inherits_run_before_constraint() {
     struct A;
     migration!(A, "a", vec_box!(), vec_box!(), vec_box!());
     struct B;
@@ -791,18 +697,16 @@ async fn chained_replacer_inherits_run_before_constraint() {
     migration!(D, "d", vec_box!(), vec_box!(C), vec_box!());
     struct E;
     migration!(E, "e", vec_box!(), vec_box!(), vec_box!(C));
-    let mut migrator = CustomMigrator::default();
-    let plan = generate_apply_all_plan(&mut migrator, vec_box!(A, B, C, D, E))
-        .await
-        .unwrap();
+    let mut migrator = TestMigrator::default();
+    let plan = generate_apply_all_plan(&mut migrator, vec_box!(A, B, C, D, E)).unwrap();
     assert_eq!(plan_names(&plan), vec!["a", "e", "d"]);
 }
 
 /// Similar to `chained_replacer_inherits_run_before_constraint` but E has
 /// `run_before(D)` instead of `run_before(C)`.
 /// D replaces C which replaces B (B→A). E must precede D. Plan: A, E, D.
-#[tokio::test]
-async fn run_before_on_final_replacer_is_respected() {
+#[test]
+fn run_before_on_final_replacer_is_respected() {
     struct A;
     migration!(A, "a", vec_box!(), vec_box!(), vec_box!());
     struct B;
@@ -813,17 +717,15 @@ async fn run_before_on_final_replacer_is_respected() {
     migration!(D, "d", vec_box!(), vec_box!(C), vec_box!());
     struct E;
     migration!(E, "e", vec_box!(), vec_box!(), vec_box!(D));
-    let mut migrator = CustomMigrator::default();
-    let plan = generate_apply_all_plan(&mut migrator, vec_box!(A, B, C, D, E))
-        .await
-        .unwrap();
+    let mut migrator = TestMigrator::default();
+    let plan = generate_apply_all_plan(&mut migrator, vec_box!(A, B, C, D, E)).unwrap();
     assert_eq!(plan_names(&plan), vec!["a", "e", "d"]);
 }
 
 /// D replaces both C and E; E has `run_before(C)`.  Because D absorbs both
 /// replaced migrations (C and E), only A and D appear in the final plan.
-#[tokio::test]
-async fn replacer_absorbing_all_run_before_parties_collapses_plan() {
+#[test]
+fn replacer_absorbing_all_run_before_parties_collapses_plan() {
     struct A;
     migration!(A, "a", vec_box!(), vec_box!(), vec_box!());
     struct B;
@@ -835,17 +737,15 @@ async fn replacer_absorbing_all_run_before_parties_collapses_plan() {
     migration!(D, "d", vec_box!(), vec_box!(C, E), vec_box!());
     struct E;
     migration!(E, "e", vec_box!(), vec_box!(), vec_box!(C));
-    let mut migrator = CustomMigrator::default();
-    let plan = generate_apply_all_plan(&mut migrator, vec_box!(A, B, C, D, E))
-        .await
-        .unwrap();
+    let mut migrator = TestMigrator::default();
+    let plan = generate_apply_all_plan(&mut migrator, vec_box!(A, B, C, D, E)).unwrap();
     assert_eq!(plan_names(&plan), vec!["a", "d"]);
 }
 
 /// D replaces C and also has `run_before(C)`, which is a self-contradictory
 /// circular requirement and must deadlock.
-#[tokio::test]
-async fn replacer_with_run_before_on_replaced_deadlocks() {
+#[test]
+fn replacer_with_run_before_on_replaced_deadlocks() {
     struct A;
     migration!(A, "a", vec_box!(), vec_box!(), vec_box!());
     struct B;
@@ -855,8 +755,8 @@ async fn replacer_with_run_before_on_replaced_deadlocks() {
     // D replaces C AND must run before C — contradiction!
     struct D;
     migration!(D, "d", vec_box!(), vec_box!(C), vec_box!(C));
-    let mut migrator = CustomMigrator::default();
-    let plan = generate_apply_all_plan(&mut migrator, vec_box!(A, B, C, D)).await;
+    let mut migrator = TestMigrator::default();
+    let plan = generate_apply_all_plan(&mut migrator, vec_box!(A, B, C, D));
     assert_eq!(
         plan.err().map(|e| e.to_string()),
         Some("plan error: reached deadlock stage during plan generation".to_string())
@@ -865,8 +765,8 @@ async fn replacer_with_run_before_on_replaced_deadlocks() {
 
 /// D replaces C and E; E replaces D and has `run_before(C)`. This creates a
 /// mutual-replacement cycle between D and E, which must be detected.
-#[tokio::test]
-async fn mutual_replacers_with_run_before_is_error() {
+#[test]
+fn mutual_replacers_with_run_before_is_error() {
     struct A;
     migration!(A, "a", vec_box!(), vec_box!(), vec_box!());
     struct B;
@@ -878,8 +778,8 @@ async fn mutual_replacers_with_run_before_is_error() {
     // E replaces D AND has run_before(C) — D and E replace each other!
     struct E;
     migration!(E, "e", vec_box!(), vec_box!(D), vec_box!(C));
-    let mut migrator = CustomMigrator::default();
-    let plan = generate_apply_all_plan(&mut migrator, vec_box!(A, B, C, D, E)).await;
+    let mut migrator = TestMigrator::default();
+    let plan = generate_apply_all_plan(&mut migrator, vec_box!(A, B, C, D, E));
     assert_eq!(
         plan.err().map(|e| e.to_string()),
         Some("plan error: two migrations replace each other".to_string())
@@ -888,8 +788,8 @@ async fn mutual_replacers_with_run_before_is_error() {
 
 /// C replaces B and has `run_before(D)`; D replaces C. This means C must run
 /// before D and D must come after C, but C is replaced by D — deadlock.
-#[tokio::test]
-async fn replaced_run_before_its_replacer_deadlocks() {
+#[test]
+fn replaced_run_before_its_replacer_deadlocks() {
     struct A;
     migration!(A, "a", vec_box!(), vec_box!(), vec_box!());
     struct B;
@@ -900,8 +800,8 @@ async fn replaced_run_before_its_replacer_deadlocks() {
     // D replaces C — creates the deadlock
     struct D;
     migration!(D, "d", vec_box!(), vec_box!(C), vec_box!());
-    let mut migrator = CustomMigrator::default();
-    let plan = generate_apply_all_plan(&mut migrator, vec_box!(A, B, C, D)).await;
+    let mut migrator = TestMigrator::default();
+    let plan = generate_apply_all_plan(&mut migrator, vec_box!(A, B, C, D));
     assert_eq!(
         plan.err().map(|e| e.to_string()),
         Some("plan error: reached deadlock stage during plan generation".to_string())
@@ -910,15 +810,15 @@ async fn replaced_run_before_its_replacer_deadlocks() {
 
 /// B depends on A and has `run_before(A)`: B must come *after* A (parent) but
 /// *before* A (`run_before`) — an impossible ordering that must deadlock.
-#[tokio::test]
-async fn parent_and_run_before_same_migration_deadlocks() {
+#[test]
+fn parent_and_run_before_same_migration_deadlocks() {
     struct A;
     migration!(A, "a", vec_box!(), vec_box!(), vec_box!());
     // B depends on A as a parent, but also declares `run_before(A)`.
     struct B;
     migration!(B, "b", vec_box!(A), vec_box!(), vec_box!(A));
-    let mut migrator = CustomMigrator::default();
-    let plan = generate_apply_all_plan(&mut migrator, vec_box!(A, B)).await;
+    let mut migrator = TestMigrator::default();
+    let plan = generate_apply_all_plan(&mut migrator, vec_box!(A, B));
     assert_eq!(
         plan.err().map(|e| e.to_string()),
         Some("plan error: reached deadlock stage during plan generation".to_string())
@@ -928,16 +828,16 @@ async fn parent_and_run_before_same_migration_deadlocks() {
 /// If the database records B as applied but A (B's parent) is not applied, the
 /// plan generator must report an integrity error rather than silently producing
 /// an incorrect plan.
-#[tokio::test]
-async fn child_applied_without_parent_is_error() {
+#[test]
+fn child_applied_without_parent_is_error() {
     struct A;
     migration!(A, "a", vec_box!(), vec_box!(), vec_box!());
     struct B;
     migration!(B, "b", vec_box!(A), vec_box!(), vec_box!());
-    let mut migrator = CustomMigrator::default();
+    let mut migrator = TestMigrator::default();
     // Mark B as applied without A — simulates a corrupted migration state.
-    migrator.add_applied_migrations(vec_box!(B)).unwrap();
-    let plan = generate_apply_all_plan(&mut migrator, vec_box!(A, B)).await;
+    migrator.add_applied_migrations(vec_box!(B));
+    let plan = generate_apply_all_plan(&mut migrator, vec_box!(A, B));
     assert_eq!(
         plan.err().map(|e| e.to_string()),
         Some(
@@ -950,8 +850,8 @@ async fn child_applied_without_parent_is_error() {
 /// When the grandchild squash migration D (which transitively replaces B via
 /// C) is already applied together with A, `apply_all` must produce an empty
 /// plan — everything is considered up-to-date.
-#[tokio::test]
-async fn transitive_replacer_fully_applied_gives_empty_plan() {
+#[test]
+fn transitive_replacer_fully_applied_gives_empty_plan() {
     struct A;
     migration!(A, "a", vec_box!(), vec_box!(), vec_box!());
     struct B;
@@ -962,20 +862,18 @@ async fn transitive_replacer_fully_applied_gives_empty_plan() {
     // D replaces C (and therefore transitively replaces B)
     struct D;
     migration!(D, "d", vec_box!(), vec_box!(C), vec_box!());
-    let mut migrator = CustomMigrator::default();
+    let mut migrator = TestMigrator::default();
     // A and D are already applied — no remaining work.
-    migrator.add_applied_migrations(vec_box!(A, D)).unwrap();
-    let plan = generate_apply_all_plan(&mut migrator, vec_box!(D, C, B, A))
-        .await
-        .unwrap();
+    migrator.add_applied_migrations(vec_box!(A, D));
+    let plan = generate_apply_all_plan(&mut migrator, vec_box!(D, C, B, A)).unwrap();
     assert!(plan.is_empty(), "all migrations already applied via squash");
 }
 
 /// When parents and replaces are expressed as virtual (tuple) migrations, the
 /// planner must resolve them to the concrete registered migrations.
 /// C replaces B (B depends on A); D replaces C. Only A and D remain.
-#[tokio::test]
-async fn virtual_references_in_replace_chain_resolves() {
+#[test]
+fn virtual_references_in_replace_chain_resolves() {
     struct A;
     migration!(A, "a", vec_box!(), vec_box!(), vec_box!());
     struct B;
@@ -1002,22 +900,20 @@ async fn virtual_references_in_replace_chain_resolves() {
         vec_box!((C.app(), C.name())),
         vec_box!()
     );
-    let mut migrator = CustomMigrator::default();
-    let plan = generate_apply_all_plan(&mut migrator, vec_box!(B, C, D, A))
-        .await
-        .unwrap();
+    let mut migrator = TestMigrator::default();
+    let plan = generate_apply_all_plan(&mut migrator, vec_box!(B, C, D, A)).unwrap();
     assert_eq!(plan_names(&plan), vec!["a", "d"]);
 }
 
 /// A virtual (tuple) migration that is never replaced by a concrete migration
 /// must cause a `PlanError` — it has no real implementation.
-#[tokio::test]
-async fn unreplaced_virtual_migration_is_error() {
+#[test]
+fn unreplaced_virtual_migration_is_error() {
     struct A;
     migration!(A, "a", vec_box!(), vec_box!(), vec_box!());
-    let mut migrator = CustomMigrator::default();
+    let mut migrator = TestMigrator::default();
     // ("test", "b") is a virtual placeholder with no concrete replacement.
-    let plan = generate_apply_all_plan(&mut migrator, vec_box!(A, ("test", "b"))).await;
+    let plan = generate_apply_all_plan(&mut migrator, vec_box!(A, ("test", "b")));
     assert_eq!(
         plan.err().map(|e| e.to_string()),
         Some("plan error: virtual migration which is not replaced is present".to_string())
@@ -1027,33 +923,30 @@ async fn unreplaced_virtual_migration_is_error() {
 /// A virtual placeholder may appear in the migration list multiple times; it is
 /// deduplicated automatically. Once the concrete migration B is also
 /// registered, the plan must resolve correctly: A then B.
-#[tokio::test]
-async fn virtual_migration_with_concrete_replacement_resolves() {
+#[test]
+fn virtual_migration_with_concrete_replacement_resolves() {
     struct A;
     migration!(A, "a", vec_box!(), vec_box!(), vec_box!());
     struct B;
     migration!(B, "b", vec_box!(A), vec_box!(), vec_box!());
-    let mut migrator = CustomMigrator::default();
+    let mut migrator = TestMigrator::default();
     // The virtual ("test", "b") appears twice; B is its concrete replacement.
     let plan = generate_apply_all_plan(&mut migrator, vec_box!(A, ("test", "b"), B, ("test", "b")))
-        .await
         .unwrap();
     assert_eq!(plan_names(&plan), vec!["a", "b"]);
 }
 
 /// When B's parent is expressed as a virtual (tuple) reference instead of a
 /// direct struct, the dependency must still be resolved correctly — A before B.
-#[tokio::test]
-async fn virtual_parent_reference_resolves_dependency_order() {
+#[test]
+fn virtual_parent_reference_resolves_dependency_order() {
     struct A;
     migration!(A, "a", vec_box!(), vec_box!(), vec_box!());
     // B references A via a virtual (tuple) parent.
     struct B;
     migration!(B, "b", vec_box!(("test", "a")), vec_box!(), vec_box!());
-    let mut migrator = CustomMigrator::default();
-    let plan = generate_apply_all_plan(&mut migrator, vec_box!(B, A))
-        .await
-        .unwrap();
+    let mut migrator = TestMigrator::default();
+    let plan = generate_apply_all_plan(&mut migrator, vec_box!(B, A)).unwrap();
     // A must precede B regardless of registration order.
     assert_eq!(plan.len(), 2, "plan must contain both migrations");
     let names = plan_names(&plan);
@@ -1080,8 +973,8 @@ async fn virtual_parent_reference_resolves_dependency_order() {
 /// - `apply_all` must traverse in dependency order: A B C D E F G.
 /// - `apply_name("test", Some("f"))` must include only the F-branch: A B D F.
 /// - `apply_name("test", Some("g"))` must include only the G-branch: A B C E G.
-#[tokio::test]
-async fn apply_plan_diamond_topology_respects_branches() {
+#[test]
+fn apply_plan_diamond_topology_respects_branches() {
     struct A;
     migration!(A, "a", vec_box!(), vec_box!(), vec_box!());
     struct B;
@@ -1132,32 +1025,23 @@ async fn apply_plan_diamond_topology_respects_branches() {
         vec_box!(),
         vec_box!()
     );
-    let mut migrator = CustomMigrator::default();
+    let mut migrator = TestMigrator::default();
     migrator
         .add_migrations(vec_box!(A, B, C, D, E, F, G))
         .unwrap();
-    let sqlite = SqlitePool::connect("sqlite::memory:").await.unwrap();
-    let mut conn = sqlite.acquire().await.unwrap();
-
     // Full apply plan: all seven migrations in topological order.
-    let full_plan = apply_plan(&migrator, &mut conn, Plan::apply_all())
-        .await
-        .unwrap();
+    let full_plan = apply_plan(&migrator, &Plan::apply_all()).unwrap();
     assert_eq!(
         plan_names(&full_plan),
         vec!["a", "b", "c", "d", "e", "f", "g"]
     );
 
     // Targeted apply up to F: only the F-branch (A→B→D→F).
-    let plan_till_f = apply_plan(&migrator, &mut conn, Plan::apply_name("test", Some("f")))
-        .await
-        .unwrap();
+    let plan_till_f = apply_plan(&migrator, &Plan::apply_name("test", Some("f"))).unwrap();
     assert_eq!(plan_names(&plan_till_f), vec!["a", "b", "d", "f"]);
 
     // Targeted apply up to G: only the G-branch (A→B→C→E→G).
-    let plan_till_g = apply_plan(&migrator, &mut conn, Plan::apply_name("test", Some("g")))
-        .await
-        .unwrap();
+    let plan_till_g = apply_plan(&migrator, &Plan::apply_name("test", Some("g"))).unwrap();
     assert_eq!(plan_names(&plan_till_g), vec!["a", "b", "c", "e", "g"]);
 }
 
@@ -1168,8 +1052,8 @@ async fn apply_plan_diamond_topology_respects_branches() {
 /// - `revert_all` reverses every migration in reverse dependency order.
 /// - `revert_name("test", Some("f"))` reverts only F (leaf with no dependents).
 /// - `revert_name("test", Some("b"))` reverts all descendants of B before B.
-#[tokio::test]
-async fn revert_plan_diamond_topology_reverses_correctly() {
+#[test]
+fn revert_plan_diamond_topology_reverses_correctly() {
     struct A;
     migration!(A, "a", vec_box!(), vec_box!(), vec_box!());
     struct B;
@@ -1220,75 +1104,58 @@ async fn revert_plan_diamond_topology_reverses_correctly() {
         vec_box!(),
         vec_box!()
     );
-    let mut migrator = CustomMigrator::default();
+    let mut migrator = TestMigrator::default();
     migrator
         .add_migrations(vec_box!(A, B, C, D, E, F, G))
         .unwrap();
-    migrator
-        .add_applied_migrations(vec_box!(A, B, C, D, E, F, G))
-        .unwrap();
-    let sqlite = SqlitePool::connect("sqlite::memory:").await.unwrap();
-    let mut conn = sqlite.acquire().await.unwrap();
-
+    migrator.add_applied_migrations(vec_box!(A, B, C, D, E, F, G));
     // Full revert: reverse of apply order.
-    let revert_plan = apply_plan(&migrator, &mut conn, Plan::revert_all())
-        .await
-        .unwrap();
+    let revert_plan = apply_plan(&migrator, &Plan::revert_all()).unwrap();
     assert_eq!(
         plan_names(&revert_plan),
         vec!["g", "f", "e", "d", "c", "b", "a"]
     );
 
     // Targeted revert of F only (leaf — no dependents to pull in).
-    let plan_till_f = apply_plan(&migrator, &mut conn, Plan::revert_name("test", Some("f")))
-        .await
-        .unwrap();
+    let plan_till_f = apply_plan(&migrator, &Plan::revert_name("test", Some("f"))).unwrap();
     assert_eq!(plan_names(&plan_till_f), vec!["f"]);
 
     // Targeted revert down to B: must revert all B-descendants first.
-    let plan_till_b = apply_plan(&migrator, &mut conn, Plan::revert_name("test", Some("b")))
-        .await
-        .unwrap();
+    let plan_till_b = apply_plan(&migrator, &Plan::revert_name("test", Some("b"))).unwrap();
     assert_eq!(plan_names(&plan_till_b), vec!["g", "f", "e", "d", "c", "b"]);
 }
 
 /// When no migrations are applied, `revert_all` must produce an empty plan
 /// rather than erroring.
-#[tokio::test]
-async fn revert_all_no_applied_gives_empty_plan() {
+#[test]
+fn revert_all_no_applied_gives_empty_plan() {
     struct A;
     migration!(A, "a", vec_box!(), vec_box!(), vec_box!());
     struct B;
     migration!(B, "b", vec_box!(A), vec_box!(), vec_box!());
 
-    let mut migrator = CustomMigrator::default();
+    let mut migrator = TestMigrator::default();
     migrator.add_migrations(vec_box!(A, B)).unwrap();
-    let mut conn = make_conn().await;
 
-    let plan = apply_plan(&migrator, &mut conn, Plan::revert_all())
-        .await
-        .unwrap();
+    let plan = apply_plan(&migrator, &Plan::revert_all()).unwrap();
     assert!(plan.is_empty(), "no applied migrations → empty revert plan");
 }
 
 /// `revert_name` with no migration name reverts all applied migrations for the
 /// given app in reverse dependency order.
-#[tokio::test]
-async fn revert_app_name_reverts_all_for_app() {
+#[test]
+fn revert_app_name_reverts_all_for_app() {
     struct A;
     migration!(A, "a", vec_box!(), vec_box!(), vec_box!());
     struct B;
     migration!(B, "b", vec_box!(A), vec_box!(), vec_box!());
 
-    let mut migrator = CustomMigrator::default();
+    let mut migrator = TestMigrator::default();
     migrator.add_migrations(vec_box!(A, B)).unwrap();
-    migrator.add_applied_migrations(vec_box!(A, B)).unwrap();
-    let mut conn = make_conn().await;
+    migrator.add_applied_migrations(vec_box!(A, B));
 
     // revert_name with no specific migration → revert entire app
-    let plan = apply_plan(&migrator, &mut conn, Plan::revert_name("test", None))
-        .await
-        .unwrap();
+    let plan = apply_plan(&migrator, &Plan::revert_name("test", None)).unwrap();
     let names = plan_names(&plan);
     // Both A and B must be reverted; B must come before A.
     assert!(names.contains(&"a"), "A missing: {names:?}");
@@ -1303,8 +1170,8 @@ async fn revert_app_name_reverts_all_for_app() {
 
 /// `apply_count(2)` on three pending migrations must return exactly the first
 /// two in dependency order.
-#[tokio::test]
-async fn apply_count_limits_to_n_pending() {
+#[test]
+fn apply_count_limits_to_n_pending() {
     struct A;
     migration!(A, "a", vec_box!(), vec_box!(), vec_box!());
     struct B;
@@ -1324,20 +1191,17 @@ async fn apply_count_limits_to_n_pending() {
         vec_box!()
     );
 
-    let mut migrator = CustomMigrator::default();
+    let mut migrator = TestMigrator::default();
     migrator.add_migrations(vec_box!(A, B, C)).unwrap();
-    let mut conn = make_conn().await;
 
-    let plan = apply_plan(&migrator, &mut conn, Plan::apply_count(2))
-        .await
-        .unwrap();
+    let plan = apply_plan(&migrator, &Plan::apply_count(2)).unwrap();
     assert_eq!(plan_names(&plan), vec!["a", "b"]);
 }
 
 /// `revert_count(1)` on three applied migrations must revert only the most
 /// recently applied one (the last in apply order).
-#[tokio::test]
-async fn revert_count_reverts_last_n_applied() {
+#[test]
+fn revert_count_reverts_last_n_applied() {
     struct A;
     migration!(A, "a", vec_box!(), vec_box!(), vec_box!());
     struct B;
@@ -1357,30 +1221,25 @@ async fn revert_count_reverts_last_n_applied() {
         vec_box!()
     );
 
-    let mut migrator = CustomMigrator::default();
+    let mut migrator = TestMigrator::default();
     migrator.add_migrations(vec_box!(A, B, C)).unwrap();
-    migrator.add_applied_migrations(vec_box!(A, B, C)).unwrap();
-    let mut conn = make_conn().await;
+    migrator.add_applied_migrations(vec_box!(A, B, C));
 
-    let plan = apply_plan(&migrator, &mut conn, Plan::revert_count(1))
-        .await
-        .unwrap();
+    let plan = apply_plan(&migrator, &Plan::revert_count(1)).unwrap();
     // revert_count(1) should revert C only (the last applied)
     assert_eq!(plan_names(&plan), vec!["c"]);
 }
 
 /// `apply_count(0)` is invalid and must return an error with a clear message.
-#[tokio::test]
-async fn apply_count_zero_is_error() {
+#[test]
+fn apply_count_zero_is_error() {
     struct A;
     migration!(A, "a", vec_box!(), vec_box!(), vec_box!());
 
-    let mut migrator = CustomMigrator::default();
+    let mut migrator = TestMigrator::default();
     migrator.add_migrations(vec_box!(A)).unwrap();
-    let mut conn = make_conn().await;
 
-    let err = apply_plan(&migrator, &mut conn, Plan::apply_count(0))
-        .await
+    let err = apply_plan(&migrator, &Plan::apply_count(0))
         .err()
         .expect("apply_count(0) must return an error");
     assert_eq!(err.to_string(), "plan error: count must be greater than 0");
@@ -1388,18 +1247,16 @@ async fn apply_count_zero_is_error() {
 
 /// `revert_count(0)` is invalid and must return the same error as
 /// `apply_count(0)`.
-#[tokio::test]
-async fn revert_count_zero_is_error() {
+#[test]
+fn revert_count_zero_is_error() {
     struct A;
     migration!(A, "a", vec_box!(), vec_box!(), vec_box!());
 
-    let mut migrator = CustomMigrator::default();
+    let mut migrator = TestMigrator::default();
     migrator.add_migrations(vec_box!(A)).unwrap();
-    migrator.add_applied_migrations(vec_box!(A)).unwrap();
-    let mut conn = make_conn().await;
+    migrator.add_applied_migrations(vec_box!(A));
 
-    let err = apply_plan(&migrator, &mut conn, Plan::revert_count(0))
-        .await
+    let err = apply_plan(&migrator, &Plan::revert_count(0))
         .err()
         .expect("revert_count(0) must return an error");
     assert_eq!(err.to_string(), "plan error: count must be greater than 0");
@@ -1407,18 +1264,16 @@ async fn revert_count_zero_is_error() {
 
 /// Requesting more migrations than are pending must fail with a descriptive
 /// error that includes the actual number of pending migrations available.
-#[tokio::test]
-async fn apply_count_exceeds_pending_is_error() {
+#[test]
+fn apply_count_exceeds_pending_is_error() {
     struct A;
     migration!(A, "a", vec_box!(), vec_box!(), vec_box!());
 
-    let mut migrator = CustomMigrator::default();
+    let mut migrator = TestMigrator::default();
     migrator.add_migrations(vec_box!(A)).unwrap();
-    let mut conn = make_conn().await;
 
     // Only 1 migration pending, but we request 5.
-    let err = apply_plan(&migrator, &mut conn, Plan::apply_count(5))
-        .await
+    let err = apply_plan(&migrator, &Plan::apply_count(5))
         .err()
         .expect("apply_count exceeding pending must return an error");
     assert_eq!(
@@ -1429,19 +1284,17 @@ async fn apply_count_exceeds_pending_is_error() {
 
 /// Requesting to revert more migrations than are applied must fail with a
 /// descriptive error that includes the actual number applied.
-#[tokio::test]
-async fn revert_count_exceeds_applied_is_error() {
+#[test]
+fn revert_count_exceeds_applied_is_error() {
     struct A;
     migration!(A, "a", vec_box!(), vec_box!(), vec_box!());
 
-    let mut migrator = CustomMigrator::default();
+    let mut migrator = TestMigrator::default();
     migrator.add_migrations(vec_box!(A)).unwrap();
-    migrator.add_applied_migrations(vec_box!(A)).unwrap();
-    let mut conn = make_conn().await;
+    migrator.add_applied_migrations(vec_box!(A));
 
     // Only 1 migration applied, but we request to revert 5.
-    let err = apply_plan(&migrator, &mut conn, Plan::revert_count(5))
-        .await
+    let err = apply_plan(&migrator, &Plan::revert_count(5))
         .err()
         .expect("revert_count exceeding applied must return an error");
     assert_eq!(
@@ -1455,8 +1308,8 @@ async fn revert_count_exceeds_applied_is_error() {
 
 /// When all migrations are already applied, `apply_all` must return an empty
 /// plan (no-op) rather than re-applying anything.
-#[tokio::test]
-async fn apply_all_already_applied_gives_empty_plan() {
+#[test]
+fn apply_all_already_applied_gives_empty_plan() {
     struct A;
     migration!(A, "a", vec_box!(), vec_box!(), vec_box!());
     struct B;
@@ -1468,14 +1321,11 @@ async fn apply_all_already_applied_gives_empty_plan() {
         vec_box!()
     );
 
-    let mut migrator = CustomMigrator::default();
+    let mut migrator = TestMigrator::default();
     migrator.add_migrations(vec_box!(A, B)).unwrap();
-    migrator.add_applied_migrations(vec_box!(A, B)).unwrap();
-    let mut conn = make_conn().await;
+    migrator.add_applied_migrations(vec_box!(A, B));
 
-    let plan = apply_plan(&migrator, &mut conn, Plan::apply_all())
-        .await
-        .unwrap();
+    let plan = apply_plan(&migrator, &Plan::apply_all()).unwrap();
     assert!(plan.is_empty(), "all already applied → plan must be empty");
 }
 
@@ -1485,8 +1335,8 @@ async fn apply_all_already_applied_gives_empty_plan() {
 /// Topology: N depends on M (parent); N has `run_before(T)`.
 /// Requesting T must include M and N (because N must precede T and M must
 /// precede N).
-#[tokio::test]
-async fn apply_name_run_before_pulls_in_required_parents() {
+#[test]
+fn apply_name_run_before_pulls_in_required_parents() {
     struct M;
     migration!(M, "m", vec_box!(), vec_box!(), vec_box!());
     struct N;
@@ -1500,13 +1350,10 @@ async fn apply_name_run_before_pulls_in_required_parents() {
     struct T;
     migration!(T, "t", vec_box!(), vec_box!(), vec_box!());
 
-    let mut migrator = CustomMigrator::default();
+    let mut migrator = TestMigrator::default();
     migrator.add_migrations(vec_box!(M, N, T)).unwrap();
-    let mut conn = make_conn().await;
 
-    let plan = apply_plan(&migrator, &mut conn, Plan::apply_name("test", Some("t")))
-        .await
-        .unwrap();
+    let plan = apply_plan(&migrator, &Plan::apply_name("test", Some("t"))).unwrap();
 
     let names = plan_names(&plan);
     // M must come before N; N must come before T
@@ -1522,8 +1369,8 @@ async fn apply_name_run_before_pulls_in_required_parents() {
 /// (M←N→`run_before`→T), but now all migrations are applied. Reverting M must
 /// also revert N first (since N's parent is M). T is unrelated to the M-branch
 /// on revert.
-#[tokio::test]
-async fn revert_name_includes_all_dependent_children() {
+#[test]
+fn revert_name_includes_all_dependent_children() {
     struct M;
     migration!(M, "m", vec_box!(), vec_box!(), vec_box!());
     struct N;
@@ -1537,14 +1384,11 @@ async fn revert_name_includes_all_dependent_children() {
     struct T;
     migration!(T, "t", vec_box!(), vec_box!(), vec_box!());
 
-    let mut migrator = CustomMigrator::default();
+    let mut migrator = TestMigrator::default();
     migrator.add_migrations(vec_box!(M, N, T)).unwrap();
-    migrator.add_applied_migrations(vec_box!(M, N, T)).unwrap();
-    let mut conn = make_conn().await;
+    migrator.add_applied_migrations(vec_box!(M, N, T));
 
-    let plan = apply_plan(&migrator, &mut conn, Plan::revert_name("test", Some("m")))
-        .await
-        .unwrap();
+    let plan = apply_plan(&migrator, &Plan::revert_name("test", Some("m"))).unwrap();
 
     let names = plan_names(&plan);
     // N must be reverted before M (N depends on M as parent).
@@ -1559,8 +1403,8 @@ async fn revert_name_includes_all_dependent_children() {
 
 /// A diamond dependency (A←B, A←C, B+C←D) must resolve without duplicating A.
 /// All four migrations appear exactly once, in a valid topological order.
-#[tokio::test]
-async fn diamond_dependency_resolves() {
+#[test]
+fn diamond_dependency_resolves() {
     struct A;
     migration!(A, "a", vec_box!(), vec_box!(), vec_box!());
     struct B;
@@ -1589,10 +1433,8 @@ async fn diamond_dependency_resolves() {
         vec_box!()
     );
 
-    let mut migrator = CustomMigrator::default();
-    let plan = generate_apply_all_plan(&mut migrator, vec_box!(A, B, C, D))
-        .await
-        .unwrap();
+    let mut migrator = TestMigrator::default();
+    let plan = generate_apply_all_plan(&mut migrator, vec_box!(A, B, C, D)).unwrap();
     let names = plan_names(&plan);
     assert_eq!(
         names.len(),
@@ -1608,8 +1450,8 @@ async fn diamond_dependency_resolves() {
 
 /// `apply_name` with no specific migration name applies all pending migrations
 /// for the named app.
-#[tokio::test]
-async fn apply_by_app_name_only() {
+#[test]
+fn apply_by_app_name_only() {
     struct A;
     migration!(A, "a", vec_box!(), vec_box!(), vec_box!());
     struct B;
@@ -1621,14 +1463,11 @@ async fn apply_by_app_name_only() {
         vec_box!()
     );
 
-    let mut migrator = CustomMigrator::default();
+    let mut migrator = TestMigrator::default();
     migrator.add_migrations(vec_box!(A, B)).unwrap();
-    let mut conn = make_conn().await;
 
     // apply_name with no specific migration name → apply all for that app
-    let plan = apply_plan(&migrator, &mut conn, Plan::apply_name("test", None))
-        .await
-        .unwrap();
+    let plan = apply_plan(&migrator, &Plan::apply_name("test", None)).unwrap();
     let names = plan_names(&plan);
     assert!(names.contains(&"a"), "A missing: {names:?}");
     assert!(names.contains(&"b"), "B missing: {names:?}");
@@ -1636,23 +1475,17 @@ async fn apply_by_app_name_only() {
 
 /// `apply_name` referencing a non-existent app must return a `PlanError`
 /// describing that the app does not exist.
-#[tokio::test]
-async fn apply_name_nonexistent_app_is_error() {
+#[test]
+fn apply_name_nonexistent_app_is_error() {
     struct A;
     migration!(A, "a", vec_box!(), vec_box!(), vec_box!());
 
-    let mut migrator = CustomMigrator::default();
+    let mut migrator = TestMigrator::default();
     migrator.add_migrations(vec_box!(A)).unwrap();
-    let mut conn = make_conn().await;
 
-    let err = apply_plan(
-        &migrator,
-        &mut conn,
-        Plan::apply_name("nonexistent_app", None),
-    )
-    .await
-    .err()
-    .expect("nonexistent app must return an error");
+    let err = apply_plan(&migrator, &Plan::apply_name("nonexistent_app", None))
+        .err()
+        .expect("nonexistent app must return an error");
     assert_eq!(
         err.to_string(),
         "plan error: app nonexistent_app doesn't exist"
@@ -1661,21 +1494,18 @@ async fn apply_name_nonexistent_app_is_error() {
 
 /// `apply_name` referencing an app that exists but a migration that does not
 /// must return a `PlanError` naming the missing migration.
-#[tokio::test]
-async fn apply_name_nonexistent_migration_is_error() {
+#[test]
+fn apply_name_nonexistent_migration_is_error() {
     struct A;
     migration!(A, "a", vec_box!(), vec_box!(), vec_box!());
 
-    let mut migrator = CustomMigrator::default();
+    let mut migrator = TestMigrator::default();
     migrator.add_migrations(vec_box!(A)).unwrap();
-    let mut conn = make_conn().await;
 
     let err = apply_plan(
         &migrator,
-        &mut conn,
-        Plan::apply_name("test", Some("no_such_migration")),
+        &Plan::apply_name("test", Some("no_such_migration")),
     )
-    .await
     .err()
     .expect("nonexistent migration name must return an error");
     assert_eq!(
@@ -1686,24 +1516,18 @@ async fn apply_name_nonexistent_migration_is_error() {
 
 /// `revert_name` referencing a non-existent app must return a `PlanError`
 /// describing that the app does not exist.
-#[tokio::test]
-async fn revert_name_nonexistent_app_is_error() {
+#[test]
+fn revert_name_nonexistent_app_is_error() {
     struct A;
     migration!(A, "a", vec_box!(), vec_box!(), vec_box!());
 
-    let mut migrator = CustomMigrator::default();
+    let mut migrator = TestMigrator::default();
     migrator.add_migrations(vec_box!(A)).unwrap();
-    migrator.add_applied_migrations(vec_box!(A)).unwrap();
-    let mut conn = make_conn().await;
+    migrator.add_applied_migrations(vec_box!(A));
 
-    let err = apply_plan(
-        &migrator,
-        &mut conn,
-        Plan::revert_name("nonexistent_app", None),
-    )
-    .await
-    .err()
-    .expect("nonexistent app must return an error");
+    let err = apply_plan(&migrator, &Plan::revert_name("nonexistent_app", None))
+        .err()
+        .expect("nonexistent app must return an error");
     assert_eq!(
         err.to_string(),
         "plan error: app nonexistent_app doesn't exist"
@@ -1712,19 +1536,16 @@ async fn revert_name_nonexistent_app_is_error() {
 
 /// Targeting an app whose migrations are all already applied must produce an
 /// empty plan (idempotent apply) instead of an error.
-#[tokio::test]
-async fn apply_name_fully_applied_app_returns_empty_plan() {
+#[test]
+fn apply_name_fully_applied_app_returns_empty_plan() {
     struct A;
     migration!(A, "a", vec_box!(), vec_box!(), vec_box!());
 
-    let mut migrator = CustomMigrator::default();
+    let mut migrator = TestMigrator::default();
     migrator.add_migrations(vec_box!(A)).unwrap();
-    migrator.add_applied_migrations(vec_box!(A)).unwrap();
-    let mut conn = make_conn().await;
+    migrator.add_applied_migrations(vec_box!(A));
 
-    let plan = apply_plan(&migrator, &mut conn, Plan::apply_name("test", None))
-        .await
-        .unwrap();
+    let plan = apply_plan(&migrator, &Plan::apply_name("test", None)).unwrap();
     assert!(
         plan.is_empty(),
         "expected empty plan: {:?}",
@@ -1734,19 +1555,16 @@ async fn apply_name_fully_applied_app_returns_empty_plan() {
 
 /// Targeting an already applied migration by name must produce an empty plan
 /// (idempotent apply) instead of an error.
-#[tokio::test]
-async fn apply_name_already_applied_migration_returns_empty_plan() {
+#[test]
+fn apply_name_already_applied_migration_returns_empty_plan() {
     struct A;
     migration!(A, "a", vec_box!(), vec_box!(), vec_box!());
 
-    let mut migrator = CustomMigrator::default();
+    let mut migrator = TestMigrator::default();
     migrator.add_migrations(vec_box!(A)).unwrap();
-    migrator.add_applied_migrations(vec_box!(A)).unwrap();
-    let mut conn = make_conn().await;
+    migrator.add_applied_migrations(vec_box!(A));
 
-    let plan = apply_plan(&migrator, &mut conn, Plan::apply_name("test", Some("a")))
-        .await
-        .unwrap();
+    let plan = apply_plan(&migrator, &Plan::apply_name("test", Some("a"))).unwrap();
     assert!(
         plan.is_empty(),
         "expected empty plan: {:?}",
@@ -1756,18 +1574,15 @@ async fn apply_name_already_applied_migration_returns_empty_plan() {
 
 /// Reverting a migration that was never applied must produce an empty plan
 /// (idempotent revert) instead of an error.
-#[tokio::test]
-async fn revert_name_nothing_applied_returns_empty_plan() {
+#[test]
+fn revert_name_nothing_applied_returns_empty_plan() {
     struct A;
     migration!(A, "a", vec_box!(), vec_box!(), vec_box!());
 
-    let mut migrator = CustomMigrator::default();
+    let mut migrator = TestMigrator::default();
     migrator.add_migrations(vec_box!(A)).unwrap();
-    let mut conn = make_conn().await;
 
-    let plan = apply_plan(&migrator, &mut conn, Plan::revert_name("test", Some("a")))
-        .await
-        .unwrap();
+    let plan = apply_plan(&migrator, &Plan::revert_name("test", Some("a"))).unwrap();
     assert!(
         plan.is_empty(),
         "expected empty plan: {:?}",
@@ -1784,10 +1599,13 @@ async fn check_pending_errors_only_when_pending_exists() {
     struct B;
     migration!(B, "b", vec_box!(A), vec_box!(), vec_box!());
 
-    let mut migrator = CustomMigrator::default();
+    let mut migrator = Migrator::<Sqlite>::default();
     migrator.add_migrations(vec_box!(A, B)).unwrap();
-    migrator.add_applied_migrations(vec_box!(A)).unwrap();
     let mut conn = make_conn().await;
+    migrator
+        .run(&mut conn, &Plan::apply_count(1).fake(true))
+        .await
+        .unwrap();
 
     let err = migrator
         .check_pending(&mut conn)
@@ -1795,43 +1613,42 @@ async fn check_pending_errors_only_when_pending_exists() {
         .expect_err("pending migration must return an error");
     assert!(matches!(err, Error::PendingMigrationPresent));
 
-    migrator.add_applied_migrations(vec_box!(B)).unwrap();
+    migrator
+        .run(&mut conn, &Plan::apply_all().fake(true))
+        .await
+        .unwrap();
     assert!(migrator.check_pending(&mut conn).await.is_ok());
 }
 
 /// `status` must return every migration in apply order along with its applied
 /// row when applied, and an empty list for a migrator with no migrations.
-#[tokio::test]
-async fn status_returns_applied_state_in_apply_order() {
+#[test]
+fn status_returns_applied_state_in_apply_order() {
     struct A;
     migration!(A, "a", vec_box!(), vec_box!(), vec_box!());
     struct B;
     migration!(B, "b", vec_box!(A), vec_box!(), vec_box!());
 
-    let mut migrator = CustomMigrator::default();
+    let mut migrator = TestMigrator::default();
     migrator.add_migrations(vec_box!(B, A)).unwrap();
-    migrator.add_applied_migrations(vec_box!(A)).unwrap();
-    let mut conn = make_conn().await;
+    migrator.add_applied_migrations(vec_box!(A));
 
-    let rows = migrator
-        .fetch_applied_migration_from_db(&mut conn)
-        .await
-        .unwrap();
-    let status = migrator.status(&rows).unwrap();
+    let rows = &migrator.applied_migrations;
+    let status = migrator.status(rows).unwrap();
     assert_eq!(status.len(), 2);
     assert_eq!(status[0].0.name(), "a");
     assert!(status[0].1.is_some(), "a must be applied");
     assert_eq!(status[1].0.name(), "b");
     assert!(status[1].1.is_none(), "b must be pending");
 
-    let empty_migrator = CustomMigrator::default();
-    assert!(empty_migrator.status(&rows).unwrap().is_empty());
+    let empty_migrator = TestMigrator::default();
+    assert!(empty_migrator.status(rows).unwrap().is_empty());
 }
 /// Both the squash migration (replacer) and one of its replaced predecessors
 /// being applied simultaneously is an inconsistent state. The planner must
 /// report a `PlanError` rather than silently producing a broken plan.
-#[tokio::test]
-async fn replace_and_replacer_both_applied_is_error() {
+#[test]
+fn replace_and_replacer_both_applied_is_error() {
     struct A;
     migration!(A, "a", vec_box!(), vec_box!(), vec_box!());
     struct B;
@@ -1840,14 +1657,12 @@ async fn replace_and_replacer_both_applied_is_error() {
     struct C;
     migration!(C, "c", vec_box!(), vec_box!(B), vec_box!());
 
-    let mut migrator = CustomMigrator::default();
+    let mut migrator = TestMigrator::default();
     migrator.add_migrations(vec_box!(A, B, C)).unwrap();
     // Mark both B and C as applied — this is the illegal state.
-    migrator.add_applied_migrations(vec_box!(A, B, C)).unwrap();
-    let mut conn = make_conn().await;
+    migrator.add_applied_migrations(vec_box!(A, B, C));
 
-    let err = apply_plan(&migrator, &mut conn, Plan::apply_all())
-        .await
+    let err = apply_plan(&migrator, &Plan::apply_all())
         .err()
         .expect("simultaneously applied replacer and replaced must return an error");
     assert_eq!(
@@ -1859,14 +1674,14 @@ async fn replace_and_replacer_both_applied_is_error() {
 /// `generate_migration_plan` is the synchronous core of the planner.
 /// Called with an empty `applied_migration_sql_rows` slice and an `apply_all`
 /// plan it must return every migration in apply order.
-#[tokio::test]
-async fn generate_plan_with_empty_rows_returns_apply_order() {
+#[test]
+fn generate_plan_with_empty_rows_returns_apply_order() {
     struct A;
     migration!(A, "a", vec_box!(), vec_box!(), vec_box!());
     struct B;
     migration!(B, "b", vec_box!(A), vec_box!(), vec_box!());
 
-    let mut migrator = CustomMigrator::default();
+    let mut migrator = TestMigrator::default();
     migrator.add_migrations(vec_box!(A, B)).unwrap();
 
     // Call the sync variant directly with no applied rows.
@@ -1879,7 +1694,7 @@ async fn generate_plan_with_empty_rows_returns_apply_order() {
 // ── Sync tests
 // ────────────────────────────────────────────────────────────────
 
-/// `Synchronize::sync` must complete without error when the old migrator has
+/// `Migrator::sync` must complete without error when the old migrator has
 /// migrations that are a subset of those registered in the new migrator.
 #[tokio::test]
 async fn sync_completes_without_error() {
@@ -1889,12 +1704,12 @@ async fn sync_completes_without_error() {
     migration!(B, "b", vec_box!(A), vec_box!(), vec_box!());
 
     // Old migrator: A is applied.
-    let mut old_migrator = CustomMigrator::default();
+    let mut old_migrator = TestMigrator::default();
     old_migrator.add_migration(Box::new(A)).unwrap();
-    old_migrator.add_applied_migration(Box::new(A)).unwrap();
+    old_migrator.add_applied_migration(&A);
 
     // New migrator knows about both A and B.
-    let mut new_migrator = CustomMigrator::default();
+    let mut new_migrator = TestMigrator::default();
     new_migrator.add_migrations(vec_box!(A, B)).unwrap();
 
     let mut conn = make_conn().await;
@@ -1902,9 +1717,15 @@ async fn sync_completes_without_error() {
         .sync(&mut conn, &old_migrator)
         .await
         .expect("sync must complete without error");
+    let rows = new_migrator
+        .fetch_applied_migration_from_db(&mut conn)
+        .await
+        .unwrap();
+    assert_eq!(rows.len(), 1);
+    assert_eq!(rows[0].name(), "a");
 }
 
-/// `Synchronize::sync` must silently skip migrations from the old migrator that
+/// `Migrator::sync` must silently skip migrations from the old migrator that
 /// are not present in the new migrator's migration list.
 #[tokio::test]
 async fn sync_skips_unknown_migrations() {
@@ -1914,12 +1735,12 @@ async fn sync_skips_unknown_migrations() {
     migration!(B, "b", vec_box!(A), vec_box!(), vec_box!());
 
     // Old migrator: A and B are applied.
-    let mut old_migrator = CustomMigrator::default();
+    let mut old_migrator = TestMigrator::default();
     old_migrator.add_migrations(vec_box!(A, B)).unwrap();
-    old_migrator.add_applied_migrations(vec_box!(A, B)).unwrap();
+    old_migrator.add_applied_migrations(vec_box!(A, B));
 
     // New migrator only knows about A (not B).
-    let mut new_migrator = CustomMigrator::default();
+    let mut new_migrator = TestMigrator::default();
     new_migrator.add_migration(Box::new(A)).unwrap();
 
     // Sync must not fail even though B is unknown to the new migrator.
@@ -1928,29 +1749,32 @@ async fn sync_skips_unknown_migrations() {
         .sync(&mut conn, &old_migrator)
         .await
         .expect("sync must skip unknown migrations without error");
+    let rows = new_migrator
+        .fetch_applied_migration_from_db(&mut conn)
+        .await
+        .unwrap();
+    assert_eq!(rows.len(), 1);
+    assert_eq!(rows[0].name(), "a");
 }
 
-/// The lock strategy defaults to the database one, can be changed with the
-/// builder and combines with the other configuration options.
+/// A dialect carries the table prefix and schema into the migrator.
+#[tokio::test]
+async fn new_with_dialect_adjusts_built_in_sql() {
+    let dialect = Dialect::sqlite_with(Some("pfx"), Some("sch")).unwrap();
+    let migrator = Migrator::<Sqlite>::new(dialect);
+    assert_eq!(&migrator.table_name(), "sch._pfx_sqlx_migrator_migrations");
+    let mut conn = make_conn().await;
+    migrator.lock(&mut conn).await.unwrap();
+    migrator.unlock(&mut conn).await.unwrap();
+}
+
+/// Creating the schema is on for Postgres and can be switched off.
+#[cfg(feature = "postgres")]
 #[test]
-fn lock_strategy_configuration() {
-    assert_eq!(LockStrategy::default(), LockStrategy::Database);
-    let migrator = Migrator::<Sqlite>::new();
-    assert_eq!(migrator.lock_strategy(), LockStrategy::Database);
-    let migrator = migrator
-        .set_table_prefix("pfx")
-        .unwrap()
-        .set_lock_strategy(LockStrategy::None)
-        .set_schema("sch")
-        .unwrap();
-    assert_eq!(migrator.lock_strategy(), LockStrategy::None);
-    assert_eq!(migrator.table_name(), "sch._pfx_sqlx_migrator_migrations");
-    assert_eq!(
-        migrator
-            .set_lock_strategy(LockStrategy::Database)
-            .lock_strategy(),
-        LockStrategy::Database
-    );
+fn create_schema_can_be_disabled() {
+    let dialect = Dialect::postgres_with(None, Some("sch")).unwrap();
+    assert!(dialect.create_schema());
+    assert!(!dialect.set_create_schema(false).create_schema());
 }
 
 // ── Internal migrations of the migration table ───────────────────────────────
@@ -1975,22 +1799,18 @@ async fn sqlite_table_exists(conn: &mut <Sqlite as Database>::Connection, table:
 
 #[test]
 fn meta_table_name_follows_prefix_and_schema() {
-    let migrator = Migrator::<Sqlite>::new();
-    assert_eq!(migrator.meta_table_name(), "_sqlx_migrator_meta");
-    let migrator = Migrator::<Sqlite>::new()
-        .set_table_prefix("pfx")
-        .unwrap()
-        .set_schema("sch")
-        .unwrap();
-    assert_eq!(migrator.meta_table_name(), "sch._pfx_sqlx_migrator_meta");
-    assert_eq!(migrator.table_name(), "sch._pfx_sqlx_migrator_migrations");
+    let migrator = Migrator::<Sqlite>::default();
+    assert_eq!(&migrator.meta_table_name(), "_sqlx_migrator_meta");
+    let migrator = Migrator::<Sqlite>::new(Dialect::sqlite_with(Some("pfx"), Some("sch")).unwrap());
+    assert_eq!(&migrator.meta_table_name(), "sch._pfx_sqlx_migrator_meta");
+    assert_eq!(&migrator.table_name(), "sch._pfx_sqlx_migrator_migrations");
 }
 
 /// A fresh install creates both tables and records the internal migration;
 /// ensuring again is a no-op.
 #[tokio::test]
 async fn fresh_install_creates_both_tables() {
-    let migrator = Migrator::<Sqlite>::new();
+    let migrator = Migrator::<Sqlite>::default();
     let mut conn = make_conn().await;
     migrator
         .ensure_migration_table_exists(&mut conn)
@@ -2016,13 +1836,9 @@ async fn fresh_install_creates_both_tables() {
 /// included, since the internal migrations are safe to rerun.
 #[tokio::test]
 async fn legacy_install_keeps_existing_rows() {
-    let migrator = Migrator::<Sqlite>::new();
+    let migrator = Migrator::<Sqlite>::default();
     let mut conn = make_conn().await;
-    let first_layout =
-        super::sqlite::internal_migrations(&migrator.table_name(), &migrator.meta_table_name())
-            .steps()[0]
-            .1
-            .clone();
+    let first_layout = migrator.dialect().sql().internal.steps()[0].1.clone();
     raw(&mut conn, first_layout).await;
     raw(
         &mut conn,
@@ -2049,7 +1865,7 @@ async fn legacy_install_keeps_existing_rows() {
 /// ignored.
 #[tokio::test]
 async fn unknown_internal_migration_is_rejected() {
-    let migrator = Migrator::<Sqlite>::new();
+    let migrator = Migrator::<Sqlite>::default();
     let mut conn = make_conn().await;
     migrator
         .ensure_migration_table_exists(&mut conn)
@@ -2092,7 +1908,7 @@ async fn unknown_internal_migration_is_rejected() {
 /// Dropping the migration table drops the meta table as well.
 #[tokio::test]
 async fn drop_removes_meta_table() {
-    let migrator = Migrator::<Sqlite>::new();
+    let migrator = Migrator::<Sqlite>::default();
     let mut conn = make_conn().await;
     migrator
         .ensure_migration_table_exists(&mut conn)

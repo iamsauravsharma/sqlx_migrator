@@ -7,7 +7,7 @@ use sqlx::Database;
 
 use super::output::confirm;
 use crate::error::Error;
-use crate::migrator::Migrate;
+use crate::migrator::{Migrator, SupportedDatabase};
 
 #[derive(Parser, Debug)]
 pub(super) struct Prune {
@@ -17,16 +17,14 @@ pub(super) struct Prune {
 }
 
 impl Prune {
-    pub(super) async fn run<DB, M>(
+    pub(super) async fn run<DB>(
         &self,
         connection: &mut <DB as Database>::Connection,
-        migrator: &M,
+        migrator: &Migrator<DB>,
     ) -> Result<(), Error>
     where
-        DB: Database,
-        M: Migrate<DB> + ?Sized,
+        DB: SupportedDatabase,
     {
-        migrator.ensure_migration_table_exists(connection).await?;
         let applied_migrations = migrator.fetch_applied_migration_from_db(connection).await?;
         let known_keys = migrator
             .migrations()

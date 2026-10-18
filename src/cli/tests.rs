@@ -160,7 +160,6 @@ mod with_sqlite {
     use sqlx::{Connection as _, Sqlite, SqliteConnection};
 
     use super::*;
-    use crate::migrator::{DatabaseOperation as _, Info as _, Migrator};
     use crate::{sqlite_migration, vec_box};
 
     struct First;
@@ -209,7 +208,7 @@ mod with_sqlite {
     }
 
     fn migrator() -> Migrator<Sqlite> {
-        let mut migrator = Migrator::<Sqlite>::new();
+        let mut migrator = Migrator::<Sqlite>::default();
         migrator.add_migrations(vec_box![First, Second]).unwrap();
         migrator
     }
@@ -412,14 +411,12 @@ mod with_sqlite {
     async fn plan_rendering() {
         let mut connection = connection().await;
         let migrator = migrator();
+        // fetching creates the table, so a fresh database has no rows
         let rows = migrator
             .fetch_applied_migration_from_db(&mut connection)
-            .await;
-        assert!(rows.is_err(), "table is created lazily");
-        migrator
-            .ensure_migration_table_exists(&mut connection)
             .await
             .unwrap();
+        assert_eq!(rows.len(), 0);
         let plan = migrator
             .generate_migration_plan(Some(&Plan::apply_all()), &[])
             .unwrap();

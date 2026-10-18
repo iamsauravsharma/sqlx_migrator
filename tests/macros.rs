@@ -9,9 +9,7 @@ mod tests {
     use sqlx::{Connection as _, Sqlite, SqliteConnection};
     use sqlx_migrator::error::Error;
     use sqlx_migrator::migration::{AppliedMigrationSqlRow, Migration};
-    use sqlx_migrator::migrator::{
-        DatabaseOperation as _, Info as _, Migrate as _, Migrator, Plan,
-    };
+    use sqlx_migrator::migrator::{Migrator, Plan};
     use sqlx_migrator::operation::Operation;
     use sqlx_migrator::{include_sql, migration, sqlite_migration, vec_box};
 
@@ -199,7 +197,7 @@ mod tests {
     #[tokio::test]
     async fn mixed_string_operations_apply_and_fail_to_revert() {
         let mut connection = connection().await;
-        let mut migrator = Migrator::<Sqlite>::new();
+        let mut migrator = Migrator::<Sqlite>::default();
         migrator.add_migration(Box::new(StringOperations)).unwrap();
 
         migrator
@@ -220,7 +218,7 @@ mod tests {
     #[tokio::test]
     async fn sql_file_migrations_apply_and_revert() {
         let mut connection = connection().await;
-        let mut migrator = Migrator::<Sqlite>::new();
+        let mut migrator = Migrator::<Sqlite>::default();
         migrator
             .add_migrations(vec_box![SqlFiles, SqlFileIrreversible])
             .unwrap();
@@ -256,7 +254,7 @@ mod tests {
     #[tokio::test]
     async fn manual_migration_with_replaces_and_run_before_applies() {
         let mut connection = connection().await;
-        let mut migrator = Migrator::<Sqlite>::new();
+        let mut migrator = Migrator::<Sqlite>::default();
         // Manual replaces a virtual migration and runs before another virtual
         // one; register the concrete stand-ins so the plan can be
         // generated
@@ -266,8 +264,9 @@ mod tests {
 
         let applied = migrator
             .fetch_applied_migration_from_db(&mut connection)
-            .await;
-        assert!(applied.is_err(), "table should not exist before first run");
+            .await
+            .unwrap();
+        assert_eq!(applied.len(), 0, "nothing is applied before the first run");
 
         migrator
             .run(&mut connection, &Plan::apply_all())

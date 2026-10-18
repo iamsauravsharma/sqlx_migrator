@@ -1,9 +1,8 @@
-use sqlx::{AssertSqlSafe, Database, MySql};
+use sqlx::MySql;
 
-use super::internal_migration::{self, InternalMigrations};
-use super::{DatabaseOperation, LockStrategy, Migrator};
-use crate::error::Error;
-use crate::migration::{AppliedMigrationSqlRow, Migration};
+use super::dialect::{Lock, Names, Sql};
+use super::internal_migration::InternalMigrations;
+use super::{Dialect, Migrator};
 
 /// Internal migrations in order, see [`super::internal_migration`]
 fn internal_migration_steps(table_name: &str) -> Vec<(&'static str, String)> {
@@ -26,9 +25,9 @@ fn create_migrations_table(table_name: &str) -> String {
 }
 
 /// Internal migrations for the given table names
-pub(crate) fn internal_migrations(table_name: &str, meta_table_name: &str) -> InternalMigrations {
+fn internal_migrations(table_name: &str, meta_table_name: &str) -> InternalMigrations {
     let create_meta_table = format!(
-        "CREATE TABLE IF NOT EXISTS {meta_table_name} (name VARCHAR(255) PRIMARY KEY NOT NULL, \
+        "CREATE TABLE IF NOT EXISTS {meta_table_name} (name VARCHAR(384) PRIMARY KEY NOT NULL, \
          applied_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP)"
     );
     let fetch_applied = format!("SELECT name FROM {meta_table_name}");
@@ -43,142 +42,62 @@ pub(crate) fn internal_migrations(table_name: &str, meta_table_name: &str) -> In
 
 /// Drop table query
 #[must_use]
-pub(crate) fn drop_table_query(table_name: &str) -> AssertSqlSafe<String> {
-    AssertSqlSafe(format!("DROP TABLE IF EXISTS {table_name}"))
+fn drop_table_query(table_name: &str) -> String {
+    format!("DROP TABLE IF EXISTS {table_name}")
 }
 
-/// fetch rows
+/// Fetch rows query
 #[must_use]
-pub(crate) fn fetch_rows_query(table_name: &str) -> AssertSqlSafe<String> {
-    AssertSqlSafe(format!(
+fn fetch_rows_query(table_name: &str) -> String {
+    format!(
         "SELECT id, app, name, DATE_FORMAT(applied_time, '%Y-%m-%d %H:%i:%s') AS applied_time \
          FROM {table_name}"
-    ))
+    )
 }
 
-/// add migration query
+/// Add migration query
 #[must_use]
-pub(crate) fn add_migration_query(table_name: &str) -> AssertSqlSafe<String> {
-    AssertSqlSafe(format!("INSERT INTO {table_name}(app, name) VALUES (?, ?)"))
+fn add_migration_query(table_name: &str) -> String {
+    format!("INSERT INTO {table_name}(app, name) VALUES (?, ?)")
 }
 
-/// delete migration query
+/// Delete migration query
 #[must_use]
-pub(crate) fn delete_migration_query(table_name: &str) -> AssertSqlSafe<String> {
-    AssertSqlSafe(format!(
-        "DELETE FROM {table_name} WHERE app = ? AND name = ?"
-    ))
+fn delete_migration_query(table_name: &str) -> String {
+    format!("DELETE FROM {table_name} WHERE app = ? AND name = ?")
 }
 
-/// current database query
-pub(crate) const CURRENT_DATABASE_QUERY: &str = "SELECT DATABASE()";
-
-/// lock database query
-pub(crate) const LOCK_DATABASE_QUERY: &str = "SELECT GET_LOCK(?, -1)";
-
-/// unlock database query
-pub(crate) const UNLOCK_DATABASE_QUERY: &str = "SELECT RELEASE_LOCK(?)";
-
-/// generate lock id
-pub(crate) fn get_lock_id(database_name: &str, table_name: &str) -> String {
-    let buf = format!("{database_name}/{table_name}");
-    crc32fast::hash(buf.as_bytes()).to_string()
+/// Built in SQL, see [`Dialect::mysql`]
+fn sql(names: &Names) -> Sql {
+    // lock names are server wide and at most 64 characters, so the database
+    // name is included and the whole key is hashed
+    let lock = Lock::new(
+        "SELECT GET_LOCK(CRC32(CONCAT(COALESCE(DATABASE(), ''), '/', ?)), -1)",
+        "SELECT RELEASE_LOCK(CRC32(CONCAT(COALESCE(DATABASE(), ''), '/', ?)))",
+    );
+    Sql {
+        create_schema: None,
+        internal: internal_migrations(&names.table(), &names.meta_table()),
+        drop_tables: format!(
+            "{}; {}",
+            drop_table_query(&names.table()),
+            drop_table_query(&names.meta_table())
+        ),
+        fetch_rows: fetch_rows_query(&names.table()),
+        add_migration: add_migration_query(&names.table()),
+        delete_migration: delete_migration_query(&names.table()),
+        lock: Some(lock),
+    }
 }
 
-#[async_trait::async_trait]
-impl DatabaseOperation<MySql> for Migrator<MySql> {
-    async fn ensure_migration_table_exists(
-        &self,
-        connection: &mut <MySql as Database>::Connection,
-    ) -> Result<(), Error> {
-        internal_migration::ensure_tables::<MySql>(
-            connection,
-            &internal_migrations(&self.table_name(), &self.meta_table_name()),
-        )
-        .await
-    }
+/// Built in dialect, see [`Dialect::mysql`]
+pub(crate) fn dialect(names: Names) -> Dialect<MySql> {
+    Dialect::new(names, sql)
+}
 
-    async fn drop_migration_table_if_exists(
-        &self,
-        connection: &mut <MySql as Database>::Connection,
-    ) -> Result<(), Error> {
-        sqlx::query(drop_table_query(&self.table_name()))
-            .execute(&mut *connection)
-            .await?;
-        sqlx::query(drop_table_query(&self.meta_table_name()))
-            .execute(connection)
-            .await?;
-        Ok(())
-    }
-
-    async fn add_migration_to_db_table(
-        &self,
-        connection: &mut <MySql as Database>::Connection,
-        migration: &dyn Migration<MySql>,
-    ) -> Result<(), Error> {
-        sqlx::query(add_migration_query(&self.table_name()))
-            .bind(migration.app())
-            .bind(migration.name())
-            .execute(connection)
-            .await?;
-        Ok(())
-    }
-
-    async fn delete_migration_from_db_table(
-        &self,
-        connection: &mut <MySql as Database>::Connection,
-        migration: &dyn Migration<MySql>,
-    ) -> Result<(), Error> {
-        sqlx::query(delete_migration_query(&self.table_name()))
-            .bind(migration.app())
-            .bind(migration.name())
-            .execute(connection)
-            .await?;
-        Ok(())
-    }
-
-    async fn fetch_applied_migration_from_db(
-        &self,
-        connection: &mut <MySql as Database>::Connection,
-    ) -> Result<Vec<AppliedMigrationSqlRow>, Error> {
-        Ok(
-            sqlx::query_as::<_, AppliedMigrationSqlRow>(fetch_rows_query(&self.table_name()))
-                .fetch_all(connection)
-                .await?,
-        )
-    }
-
-    async fn lock(&self, connection: &mut <MySql as Database>::Connection) -> Result<(), Error> {
-        if self.lock_strategy == LockStrategy::None {
-            return Ok(());
-        }
-        let (database_name,): (String,) = sqlx::query_as(CURRENT_DATABASE_QUERY)
-            .fetch_one(&mut *connection)
-            .await?;
-        let lock_id = get_lock_id(&database_name, &self.table_name());
-        sqlx::query(LOCK_DATABASE_QUERY)
-            .bind(lock_id)
-            .execute(connection)
-            .await?;
-        Ok(())
-    }
-
-    async fn unlock(&self, connection: &mut <MySql as Database>::Connection) -> Result<(), Error> {
-        if self.lock_strategy == LockStrategy::None {
-            return Ok(());
-        }
-        let (database_name,): (String,) = sqlx::query_as(CURRENT_DATABASE_QUERY)
-            .fetch_one(&mut *connection)
-            .await?;
-        let lock_id = get_lock_id(&database_name, &self.table_name());
-        sqlx::query(UNLOCK_DATABASE_QUERY)
-            .bind(lock_id)
-            .execute(connection)
-            .await?;
-        Ok(())
-    }
-
-    fn supports_transactional_ddl(&self, _connection: &<MySql as Database>::Connection) -> bool {
-        false
+impl Default for Migrator<MySql> {
+    /// Creates a migrator with the built in dialect, see [`Dialect::mysql`]
+    fn default() -> Self {
+        Self::new(Dialect::mysql())
     }
 }

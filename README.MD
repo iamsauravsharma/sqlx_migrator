@@ -11,7 +11,6 @@ Supported Databases:
 - [x] PostgreSQL
 - [x] SQLite
 - [x] MySql
-- [x] Any
 
 ## Installation
 
@@ -31,15 +30,6 @@ OR
 
 ```toml
 sqlx_migrator = { version = "0.20.0", features=["sqlite"] }
-```
-
-OR
-
-```toml
-sqlx_migrator = { version = "0.20.0", features=[
-    "any",
-    # Plus any one of above database driver
-    ] }
 ```
 
 # Usage
@@ -172,7 +162,7 @@ or `is_atomic`, implement the `Migration` trait by hand as shown above.
 Finally, create a migrator to run your migrations:
 
 ```rust
-use sqlx_migrator::migrator::{Info, Migrate, Migrator};
+use sqlx_migrator::migrator::Migrator;
 use sqlx::Postgres;
 
 #[tokio::main]
@@ -189,7 +179,7 @@ async fn main() {
 ## Migration table
 
 Applied migrations are recorded in `_sqlx_migrator_migrations`, with an optional prefix
-and schema (see `Migrator::set_table_prefix` and `Migrator::set_schema`). The table is
+and schema (see `Dialect::postgres_with`, `Dialect::mysql_with` and `Dialect::sqlite_with`). The table is
 created and changed by the migrator's own internal migrations, a numbered list of SQL
 statements per database. A small meta table next to it, `_sqlx_migrator_meta`,
 records the name of every internal migration which has run. When a release adds an internal
@@ -204,18 +194,34 @@ While a plan runs, the migrator holds a database lock so two processes cannot
 migrate at the same time. Postgres uses a session level advisory lock and MySQL uses
 `GET_LOCK`; SQLite serialises writers itself. Session level locks are not reliable
 behind a transaction pooling proxy such as PgBouncer, and are unnecessary when a
-single process runs migrations, so the strategy can be changed:
+single process runs migrations, so the lock can be removed from the dialect
+(see "Custom SQL" below):
 
 ```rust
-use sqlx_migrator::migrator::LockStrategy;
-let migrator = Migrator::<Postgres>::new().set_lock_strategy(LockStrategy::None);
+use sqlx_migrator::{Dialect, Migrator};
+let migrator = Migrator::<Postgres>::new(Dialect::postgres().set_lock(false));
 ```
 
 Atomic migrations run inside a transaction. MySQL and MariaDB commit implicitly on
 most DDL statements, so on those backends a failed atomic migration cannot be rolled
-back as a unit. The migrator reports this through
-`DatabaseOperation::supports_transactional_ddl` and logs a `tracing` warning when an
-atomic migration runs on such a backend.
+back as a unit.
+
+## Custom SQL
+
+A migrator is configured by a `Dialect` value holding the table prefix, schema and advisory lock
+options, plus the SQL built from them. `Migrator::default` uses the built in
+`Dialect::postgres`, `Dialect::mysql` or `Dialect::sqlite`. The table prefix and schema are arguments of the `_with`
+constructors, for example `Dialect::postgres_with(Some("prefix"), Some("schema"))`. Adjust a built in dialect with `set_lock` and `set_create_schema` where the database has them, and pass it to `Migrator::new`:
+
+```rust
+use sqlx::Postgres;
+use sqlx_migrator::{Dialect, Migrator};
+
+let migrator = Migrator::<Postgres>::new(Dialect::postgres().set_lock(false));
+```
+
+Generic code over the database uses `SupportedDatabase`, which every sqlx database the
+crate can execute SQL against implements automatically.
 
 # Running Migrations
 
@@ -345,8 +351,6 @@ impl OldMigrator<Postgres> for SqlxMigrator {
 Before running your main migration code, execute the sync operation
 
 ```rust
-use sqlx_migrator::Synchronize;
-
 let sqlx_sql_migrator = SqlxMigrator;
 migrator.sync(&mut *conn, &sqlx_sql_migrator).await?;
 ```

@@ -13,10 +13,9 @@ macro_rules! vec_box {
 ///
 /// The database specific macros
 /// ([`postgres_migration!`](crate::postgres_migration),
-/// [`sqlite_migration!`](crate::sqlite_migration),
-/// [`mysql_migration!`](crate::mysql_migration) and
-/// [`any_migration!`](crate::any_migration)) take the same arguments without
-/// the leading database type.
+/// [`sqlite_migration!`](crate::sqlite_migration) and
+/// [`mysql_migration!`](crate::mysql_migration)) take the same arguments
+/// without the leading database type.
 ///
 /// Arguments, in order:
 /// - `$db:ty`: the type of database
@@ -103,21 +102,6 @@ macro_rules! include_sql {
             include_str!(concat!($base, ".up.sql")),
             include_str!(concat!($base, ".down.sql")),
         )
-    };
-}
-
-/// Macro for implementing the [`migration`] macro for the `Any`.
-///
-/// Takes the same arguments as [`migration`] without the leading database
-/// type.
-#[macro_export]
-#[cfg(all(
-    any(feature = "postgres", feature = "mysql", feature = "sqlite"),
-    feature = "any"
-))]
-macro_rules! any_migration {
-    ($($args:tt)*) => {
-        $crate::migration!(sqlx::Any, $($args)*);
     };
 }
 
