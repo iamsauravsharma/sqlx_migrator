@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["Dialect","Migrator","Plan","RunRecord","RunReport"],"trait":["SupportedDatabase"]};
+window.SIDEBAR_ITEMS = {"enum":["LockStrategy"],"struct":["Dialect","Migrator","Plan","RunRecord","RunReport"],"trait":["SupportedDatabase"]};
