@@ -2,6 +2,7 @@
 //! named lock, no transactional DDL.
 
 use sqlx::{Connection as _, MySql, MySqlConnection};
+use sqlx_migrator::migrator::LockStrategy;
 use sqlx_migrator::{Dialect, Migrator};
 
 use crate::common::{Harness, backend_tests, chain, database_url, tables};
@@ -31,6 +32,16 @@ impl Harness for My {
 
     fn migrator(&self, test: &str) -> Migrator<MySql> {
         let mut migrator = Migrator::<MySql>::new(Dialect::mysql_with(Some(test), None).unwrap());
+        migrator.add_migrations(chain(test)).unwrap();
+        migrator
+    }
+
+    fn row_lock_migrator(&self, test: &str) -> Migrator<MySql> {
+        let dialect = Dialect::mysql_with(Some(test), None)
+            .unwrap()
+            .set_lock_strategy(LockStrategy::Row)
+            .unwrap();
+        let mut migrator = Migrator::<MySql>::new(dialect);
         migrator.add_migrations(chain(test)).unwrap();
         migrator
     }

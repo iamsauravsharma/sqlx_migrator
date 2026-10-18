@@ -12,9 +12,11 @@ Postgres migrator with no lock
 
 ```rust,no_run
 use sqlx::Postgres;
+use sqlx_migrator::migrator::LockStrategy;
 use sqlx_migrator::{Dialect, Migrator};
 
-let migrator = Migrator::<Postgres>::new(Dialect::postgres().set_lock(false));
+let dialect = Dialect::postgres().set_lock_strategy(LockStrategy::None).unwrap();
+let migrator = Migrator::<Postgres>::new(dialect);
 ```
 "
 )]
@@ -24,7 +26,7 @@ use std::collections::{HashMap, HashSet};
 use sqlx::{Connection as _, Database};
 use tracing::Instrument as _;
 
-pub use self::dialect::{Dialect, SupportedDatabase};
+pub use self::dialect::{Dialect, LockStrategy, SupportedDatabase};
 use crate::error::Error;
 use crate::migration::{AppliedMigrationSqlRow, Migration};
 use crate::sync::OldMigrator;
@@ -522,6 +524,27 @@ fn get_recursive_replaces<'get, DB>(
     recursive_vec
 }
 
+/// What a lock is held on
+enum Held<'connection, DB: Database> {
+    /// The connection, the lock is released by statements or nothing was taken
+    Connection(&'connection mut <DB as Database>::Connection),
+    /// A transaction which holds the lock until it ends
+    Transaction(sqlx::Transaction<'connection, DB>),
+}
+
+/// A lock taken by [`Migrator::lock`]
+pub(crate) struct Locked<'connection, DB: Database>(Held<'connection, DB>);
+
+impl<DB: Database> Locked<'_, DB> {
+    /// Connection to run what needs the lock on
+    pub(crate) fn connection(&mut self) -> &mut <DB as Database>::Connection {
+        match &mut self.0 {
+            Held::Connection(connection) => connection,
+            Held::Transaction(transaction) => transaction,
+        }
+    }
+}
+
 /// A struct that stores migration-related metadata, including the list of
 /// migrations and configuration such as table and schema name
 pub struct Migrator<DB> {
@@ -761,7 +784,8 @@ where
                 &batch.to_string(),
             ],
         )
-        .await
+        .await?;
+        Ok(())
     }
 
     /// Record a migration which is about to run as failed. It is marked
@@ -781,7 +805,8 @@ where
             &self.dialect.sql().start_migration,
             &[migration.app(), migration.name(), &batch.to_string()],
         )
-        .await
+        .await?;
+        Ok(())
     }
 
     /// Mark a migration recorded by [`Migrator::start_migration_in_db_table`]
@@ -804,7 +829,8 @@ where
                 migration.name(),
             ],
         )
-        .await
+        .await?;
+        Ok(())
     }
 
     /// Remove a migration from the applied ones
@@ -821,7 +847,8 @@ where
             &self.dialect.sql().delete_migration,
             &[migration.app(), migration.name()],
         )
-        .await
+        .await?;
+        Ok(())
     }
 
     /// Fetch the applied migrations, creating or upgrading the migration
@@ -838,33 +865,133 @@ where
         DB::fetch_rows(connection, &self.dialect.sql().fetch_rows).await
     }
 
-    /// Take the dialect's advisory lock, if any, so no two migrators run at
-    /// once
+    /// Take the lock of the dialect's [`LockStrategy`]
     ///
     /// # Errors
-    /// If the SQL fails
-    pub(crate) async fn lock(
+    /// If the SQL fails or the lock row is held by another run
+    pub(crate) async fn lock<'connection>(
         &self,
-        connection: &mut <DB as Database>::Connection,
+        connection: &'connection mut <DB as Database>::Connection,
+    ) -> Result<Locked<'connection, DB>, Error> {
+        match self.dialect.lock_strategy() {
+            LockStrategy::None => {}
+            LockStrategy::Advisory => {
+                if let Some(lock) = self.dialect.advisory_lock() {
+                    DB::execute_bound(connection, lock.acquire(), &[&self.table_name()]).await?;
+                }
+            }
+            LockStrategy::Row => self.take_row_lock(connection).await?,
+            strategy @ (LockStrategy::TransactionAdvisory
+            | LockStrategy::TableShareUpdateExclusive
+            | LockStrategy::TableAccessExclusive) => {
+                return self.begin_locked_transaction(connection, strategy).await;
+            }
+        }
+        Ok(Locked(Held::Connection(connection)))
+    }
+
+    /// Release the lock taken by [`Migrator::lock`]. A transaction lock commits
+    /// its transaction when `succeeded` and rolls it back otherwise
+    ///
+    /// # Errors
+    /// If the SQL fails or the transaction cannot be committed
+    pub(crate) async fn unlock(
+        &self,
+        locked: Locked<'_, DB>,
+        succeeded: bool,
     ) -> Result<(), Error> {
-        if let Some(lock) = self.dialect.lock_statements() {
-            DB::execute_bound(connection, lock.acquire(), &[&self.table_name()]).await?;
+        match locked.0 {
+            Held::Transaction(transaction) => {
+                if succeeded {
+                    transaction.commit().await?;
+                } else {
+                    transaction.rollback().await?;
+                }
+            }
+            Held::Connection(connection) => {
+                match self.dialect.lock_strategy() {
+                    LockStrategy::Advisory => {
+                        if let Some(lock) = self.dialect.advisory_lock() {
+                            DB::execute_bound(connection, lock.release(), &[&self.table_name()])
+                                .await?;
+                        }
+                    }
+                    LockStrategy::Row => {
+                        DB::execute_bound(
+                            connection,
+                            &self.dialect.sql().row_lock.release,
+                            &[&self.table_name()],
+                        )
+                        .await?;
+                    }
+                    _ => {}
+                }
+            }
         }
         Ok(())
     }
 
-    /// Release the advisory lock taken by [`Migrator::lock`]
-    ///
-    /// # Errors
-    /// If the SQL fails
-    pub(crate) async fn unlock(
+    /// Begin the transaction holding the lock of a transaction lock strategy
+    async fn begin_locked_transaction<'connection>(
+        &self,
+        connection: &'connection mut <DB as Database>::Connection,
+        strategy: LockStrategy,
+    ) -> Result<Locked<'connection, DB>, Error> {
+        let Some(locks) = &self.dialect.sql().transaction_locks else {
+            return Err(Error::UnsupportedLockStrategy { strategy });
+        };
+        let mut transaction = connection.begin().await?;
+        // the advisory lock keeps two nodes from creating the tables at once,
+        // which a table lock cannot since the table has to exist to be locked
+        DB::execute_bound(&mut transaction, &locks.advisory, &[&self.table_name()]).await?;
+        DB::execute(&mut transaction, &locks.after_lock).await?;
+        let table_lock = match strategy {
+            LockStrategy::TableShareUpdateExclusive => Some(&locks.share_update_exclusive),
+            LockStrategy::TableAccessExclusive => Some(&locks.access_exclusive),
+            _ => None,
+        };
+        if let Some(table_lock) = table_lock {
+            self.ensure_migration_table_exists(&mut transaction).await?;
+            DB::execute(&mut transaction, table_lock).await?;
+        }
+        Ok(Locked(Held::Transaction(transaction)))
+    }
+
+    /// Insert the lock row
+    async fn take_row_lock(
         &self,
         connection: &mut <DB as Database>::Connection,
     ) -> Result<(), Error> {
-        if let Some(lock) = self.dialect.lock_statements() {
-            DB::execute_bound(connection, lock.release(), &[&self.table_name()]).await?;
+        let sql = self.dialect.sql();
+        if let Some(create_schema) = self.dialect.create_schema_statement() {
+            DB::execute(connection, create_schema).await?;
         }
-        Ok(())
+        // two processes creating the table at once may fail one of them, the
+        // statement taking the lock then reports a table which is missing
+        if let Err(error) = DB::execute(connection, &sql.row_lock.create_table).await {
+            tracing::debug!(%error, "creating the lock table failed");
+        }
+        match DB::execute_bound(connection, &sql.row_lock.acquire, &[&self.table_name()]).await {
+            Err(Error::Sqlx(sqlx::Error::Database(error))) if error.is_unique_violation() => {
+                Err(Error::LockHeld {
+                    table: self.dialect.lock_table_name(),
+                })
+            }
+            result => result,
+        }
+    }
+
+    /// Drop the lock table of [`LockStrategy::Row`] if it exists. Call it
+    /// after [`Migrator::drop_migration_table_if_exists`] once nothing is
+    /// locked, since the table holds the row of the lock
+    ///
+    /// # Errors
+    /// If the SQL fails
+    pub async fn drop_lock_table_if_exists(
+        &self,
+        connection: &mut <DB as Database>::Connection,
+    ) -> Result<(), Error> {
+        DB::execute(connection, &self.dialect.sql().drop_lock_table).await
     }
 
     /// Generate migration plan using pre-fetched applied migration rows.
@@ -1230,10 +1357,11 @@ where
         connection: &mut <DB as Database>::Connection,
     ) -> Result<usize, Error> {
         tracing::debug!("pruning unknown applied migrations");
-        self.lock(connection).await?;
+        let mut locked = self.lock(connection).await?;
         // store result of pruning so that lock is unlocked before returning
         // result
         let result = async {
+            let connection = locked.connection();
             let applied_migrations = self.fetch_applied_migration_from_db(connection).await?;
             let known_migrations = self
                 .migrations()
@@ -1254,7 +1382,7 @@ where
         .await;
         // unlock before returning; if both prune and unlock fail, the prune
         // error takes precedence over the unlock error.
-        let unlock_result = self.unlock(connection).await;
+        let unlock_result = self.unlock(locked, result.is_ok()).await;
         result.and_then(|count| unlock_result.map(|()| count))
     }
 
@@ -1272,10 +1400,11 @@ where
         connection: &mut <DB as Database>::Connection,
     ) -> Result<usize, Error> {
         tracing::debug!("repairing failed migrations");
-        self.lock(connection).await?;
+        let mut locked = self.lock(connection).await?;
         // store result of repairing so that lock is unlocked before returning
         // result
         let result = async {
+            let connection = locked.connection();
             let applied_migrations = self.fetch_applied_migration_from_db(connection).await?;
             let failed_count = applied_migrations
                 .iter()
@@ -1289,7 +1418,7 @@ where
         .await;
         // unlock before returning; if both repair and unlock fail, the repair
         // error takes precedence over the unlock error.
-        let unlock_result = self.unlock(connection).await;
+        let unlock_result = self.unlock(locked, result.is_ok()).await;
         result.and_then(|count| unlock_result.map(|()| count))
     }
 
@@ -1309,9 +1438,10 @@ where
         O: OldMigrator<DB>,
     {
         tracing::debug!("syncing old migrator");
-        self.lock(connection).await?;
+        let mut locked = self.lock(connection).await?;
         // Use a block to ensure the lock is released before returning
         let result = async {
+            let connection = locked.connection();
             let old_migrator_applied_migrations =
                 old_migrator.applied_migrations(connection).await?;
             let already_applied_migration =
@@ -1344,7 +1474,7 @@ where
         .await;
         // unlock before returning; if both sync and unlock fail, the sync
         // error takes precedence over the unlock error.
-        let unlock_result = self.unlock(connection).await;
+        let unlock_result = self.unlock(locked, result.is_ok()).await;
         result.and(unlock_result)
     }
 
@@ -1369,13 +1499,13 @@ where
         );
         async {
             tracing::debug!("running plan {:?}", plan);
-            self.lock(connection).await?;
+            let mut locked = self.lock(connection).await?;
             // store result of applying migration so that we can unlock lock
             // before returning result
-            let result = run_plan(self, connection, plan).await;
+            let result = run_plan(self, locked.connection(), plan).await;
             // unlock before returning; if both migration and unlock fail, the
             // migration error takes precedence over the unlock error.
-            let unlock_result = self.unlock(connection).await;
+            let unlock_result = self.unlock(locked, result.is_ok()).await;
             let report = result.and_then(|report| unlock_result.map(|()| report))?;
             tracing::info!(
                 count = report.len(),
@@ -1473,6 +1603,19 @@ where
         });
     }
     let plan_migrations = migrator.generate_migration_plan(Some(plan), &applied_rows)?;
+    // the transaction lock holds the whole plan in one transaction
+    if !plan.fake
+        && migrator.dialect().lock_strategy().in_transaction()
+        && plan_migrations
+            .iter()
+            .any(|migration| !migration.is_atomic())
+    {
+        return Err(Error::PlanError {
+            message: "the transaction lock runs the plan in one transaction so every migration \
+                      must be atomic"
+                .to_string(),
+        });
+    }
     // migrations applied by this run share the next batch number
     let batch = next_batch(&applied_rows);
     let mut report = RunReport {

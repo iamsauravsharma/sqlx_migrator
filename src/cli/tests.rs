@@ -233,6 +233,15 @@ mod with_sqlite {
         parse(args).unwrap().run(connection, migrator).await
     }
 
+    async fn table_exists(connection: &mut SqliteConnection, table: &str) -> bool {
+        sqlx::query(sqlx::AssertSqlSafe(format!(
+            "SELECT 1 FROM {table} WHERE 1 = 0"
+        )))
+        .execute(connection)
+        .await
+        .is_ok()
+    }
+
     async fn applied(
         connection: &mut SqliteConnection,
         migrator: &Migrator<Sqlite>,
@@ -368,6 +377,24 @@ mod with_sqlite {
             applied(&mut connection, &migrator).await,
             vec!["first", "second"]
         );
+    }
+
+    #[tokio::test]
+    async fn drop_removes_the_lock_table_of_the_row_lock() {
+        let mut connection = connection().await;
+        let dialect = crate::Dialect::sqlite()
+            .set_lock_strategy(crate::migrator::LockStrategy::Row)
+            .unwrap();
+        let lock_table = dialect.lock_table_name();
+        let mut migrator = Migrator::<Sqlite>::new(dialect);
+        migrator.add_migrations(vec_box![First, Second]).unwrap();
+        run(&["apply"], &mut connection, &migrator).await.unwrap();
+        assert!(table_exists(&mut connection, &lock_table).await);
+        run(&["revert", "--all", "--force"], &mut connection, &migrator)
+            .await
+            .unwrap();
+        run(&["drop"], &mut connection, &migrator).await.unwrap();
+        assert!(!table_exists(&mut connection, &lock_table).await);
     }
 
     #[tokio::test]
