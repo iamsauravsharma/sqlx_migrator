@@ -36,6 +36,14 @@ fn every_subcommand_parses() {
         SubCommand::Prune(Prune { force: true })
     ));
     assert!(matches!(
+        parse(&["repair"]).unwrap().sub_command,
+        SubCommand::Repair(Repair { force: false })
+    ));
+    assert!(matches!(
+        parse(&["repair", "--force"]).unwrap().sub_command,
+        SubCommand::Repair(Repair { force: true })
+    ));
+    assert!(matches!(
         parse(&["redo", "--force"]).unwrap().sub_command,
         SubCommand::Redo(Redo { force: true })
     ));
@@ -101,6 +109,10 @@ fn revert_argument_rules() {
     #[cfg(feature = "json")]
     assert!(parse(&["revert", "--plan", "--format", "json"]).is_ok());
     assert!(parse(&["revert", "--all", "--force"]).is_ok());
+    assert!(parse(&["revert", "--last-batch", "--force"]).is_ok());
+    assert!(parse(&["revert", "--last-batch", "--all"]).is_err());
+    assert!(parse(&["revert", "--last-batch", "--app", "main"]).is_err());
+    assert!(parse(&["revert", "--last-batch", "--count", "1"]).is_err());
 }
 
 #[test]
@@ -328,7 +340,12 @@ mod with_sqlite {
         run(&["prune"], &mut connection, &migrator).await.unwrap();
 
         migrator
-            .add_migration_to_db_table(&mut connection, &("ghost", "removed"))
+            .add_migration_to_db_table(
+                &mut connection,
+                &("ghost", "removed"),
+                std::time::Duration::ZERO,
+                1,
+            )
             .await
             .unwrap();
         let rows = migrator
@@ -351,6 +368,73 @@ mod with_sqlite {
             applied(&mut connection, &migrator).await,
             vec!["first", "second"]
         );
+    }
+
+    #[tokio::test]
+    async fn repair_removes_failed_rows() {
+        let mut connection = connection().await;
+        let migrator = migrator();
+        // nothing failed yet, no confirmation needed
+        run(&["repair"], &mut connection, &migrator).await.unwrap();
+
+        migrator
+            .start_migration_in_db_table(&mut connection, &First, 1)
+            .await
+            .unwrap();
+        let rows = migrator
+            .fetch_applied_migration_from_db(&mut connection)
+            .await
+            .unwrap();
+        let entries = list_entries(&migrator, &rows).unwrap();
+        assert_eq!(entries[0].status, ListStatus::Failed);
+        assert!(
+            render_list(&entries, OutputFormat::Table)
+                .unwrap()
+                .contains('!')
+        );
+        assert!(matches!(
+            run(&["apply"], &mut connection, &migrator).await,
+            Err(Error::FailedMigration { name, .. }) if name == "first"
+        ));
+
+        assert!(matches!(
+            run(&["repair"], &mut connection, &migrator).await,
+            Err(Error::ConfirmationRequired)
+        ));
+        run(&["repair", "--force"], &mut connection, &migrator)
+            .await
+            .unwrap();
+        run(&["apply"], &mut connection, &migrator).await.unwrap();
+        assert_eq!(
+            applied(&mut connection, &migrator).await,
+            vec!["first", "second"]
+        );
+    }
+
+    #[tokio::test]
+    async fn revert_last_batch_through_cli() {
+        let mut connection = connection().await;
+        let migrator = migrator();
+        // nothing applied, nothing to revert
+        run(
+            &["revert", "--last-batch", "--force"],
+            &mut connection,
+            &migrator,
+        )
+        .await
+        .unwrap();
+        run(&["apply", "--count", "1"], &mut connection, &migrator)
+            .await
+            .unwrap();
+        run(&["apply"], &mut connection, &migrator).await.unwrap();
+        run(
+            &["revert", "--last-batch", "--force"],
+            &mut connection,
+            &migrator,
+        )
+        .await
+        .unwrap();
+        assert_eq!(applied(&mut connection, &migrator).await, vec!["first"]);
     }
 
     #[tokio::test]

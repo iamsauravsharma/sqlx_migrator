@@ -41,6 +41,14 @@ impl Harness for Lite {
         migrator
     }
 
+    fn legacy_table_sql(&self, table: &str) -> String {
+        format!(
+            "CREATE TABLE {table} (id INTEGER PRIMARY KEY AUTOINCREMENT, app TEXT NOT NULL, name \
+             TEXT NOT NULL, applied_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, UNIQUE \
+             (app, name))"
+        )
+    }
+
     fn lock_statements(&self) -> Option<(&'static str, &'static str)> {
         None
     }

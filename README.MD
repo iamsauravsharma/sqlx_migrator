@@ -179,14 +179,26 @@ async fn main() {
 ## Migration table
 
 Applied migrations are recorded in `_sqlx_migrator_migrations`, with an optional prefix
-and schema (see `Dialect::postgres_with`, `Dialect::mysql_with` and `Dialect::sqlite_with`). The table is
-created and changed by the migrator's own internal migrations, a numbered list of SQL
-statements per database. A small meta table next to it, `_sqlx_migrator_meta`,
-records the name of every internal migration which has run. When a release adds an internal
-migration, older databases run it the next time migrations run; a database changed by
-an internal migration this release does not know is refused rather than guessed at.
-Each internal migration is safe to rerun, so databases created before the meta table
-existed simply catch up.
+and schema (see `Dialect::postgres_with`, `Dialect::mysql_with` and `Dialect::sqlite_with`).
+The migrator creates and changes this table itself with numbered internal migrations. A
+small meta table next to it, `_sqlx_migrator_meta`, records which of them have run, so each
+runs once. A database changed by an internal migration this release does not know is
+refused.
+
+Each row records the migration's `app`, `name` and `applied_time`, plus:
+
+- `success`: `false` while a non atomic migration is running or after it failed.
+- `execution_time_ms`: how long the migration took, `0` for fake runs and synced migrations.
+- `batch`: migrations applied by one run share a batch, `revert --last-batch` reverts it.
+  Rows already in the table when this column is added get their `id` as batch, so they
+  count as one batch each in apply order. Synced migrations are recorded as one batch.
+
+A non atomic migration is recorded with `success = false` before its operations run and
+marked successful after the last one. If it fails part way the database is partly
+migrated, so every run is refused with `Error::FailedMigration` until you fix the database
+by hand and run `repair`, which removes the failed entry so the migration runs again.
+Atomic migrations are recorded in the same transaction as their operations, so they never
+leave a failed entry.
 
 ## Locking and transactions
 
@@ -262,9 +274,10 @@ The command provides these subcommands:
 | Subcommand | Purpose |
 | --- | --- |
 | `apply` | Apply pending migrations. `--plan` shows what would run, `--check` fails when something is pending, `--fake` only records them, `--app` / `--migration` / `--count` limit the plan. |
-| `revert` | Revert the last applied migration by default; `--all`, `--app` / `--migration` or `--count` choose more. Asks for confirmation unless `--force` is passed. |
+| `revert` | Revert the last applied migration by default; `--all`, `--app` / `--migration`, `--count` or `--last-batch` (everything the last run applied) choose more. Asks for confirmation unless `--force` is passed. |
 | `redo` | Revert the last applied migration and apply it again, handy while developing a migration. |
-| `list` | Show every migration with its status: applied, pending, replaced, or unknown (in the table but no longer in the code). |
+| `list` | Show every migration with its status (applied, failed, pending, replaced or unknown), batch and execution time. |
+| `repair` | Remove failed entries from the migration table after fixing the database by hand, so those migrations run again. Asks for confirmation unless `--force` is passed. |
 | `prune` | Delete unknown entries from the migration table after migrations were removed from the code. Asks for confirmation unless `--force` is passed. |
 | `drop` | Drop the migration table once every migration is reverted. |
 

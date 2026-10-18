@@ -61,6 +61,18 @@ pub enum Error {
     /// invalid if it has any fields present except app name and migration name
     #[error("invalid virtual migration")]
     InvalidVirtualMigration,
+    /// Error raised when a non atomic migration started running and never
+    /// finished, so the database may be partly migrated
+    #[error(
+        "migration {app} - {name} failed and left the database partly migrated. Fix the database \
+         by hand and repair the migration table"
+    )]
+    FailedMigration {
+        /// Migration application name
+        app: String,
+        /// Migration name
+        name: String,
+    },
     /// Error raised when the meta table records an internal migration this
     /// version of the crate does not know, meaning the migration table was
     /// changed by a newer release

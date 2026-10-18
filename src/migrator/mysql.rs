@@ -6,10 +6,29 @@ use super::{Dialect, Migrator};
 
 /// Internal migrations in order, see [`super::internal_migration`]
 fn internal_migration_steps(table_name: &str) -> Vec<(&'static str, String)> {
-    vec![(
-        "0001_create_migrations_table",
-        create_migrations_table(table_name),
-    )]
+    vec![
+        (
+            "0001_create_migrations_table",
+            create_migrations_table(table_name),
+        ),
+        (
+            "0002_add_success_column",
+            format!("ALTER TABLE {table_name} ADD COLUMN success BOOLEAN NOT NULL DEFAULT TRUE"),
+        ),
+        (
+            "0003_add_execution_time_column",
+            format!(
+                "ALTER TABLE {table_name} ADD COLUMN execution_time_ms BIGINT NOT NULL DEFAULT 0"
+            ),
+        ),
+        (
+            "0004_add_batch_column",
+            format!(
+                "ALTER TABLE {table_name} ADD COLUMN batch INT NOT NULL DEFAULT 0; UPDATE \
+                 {table_name} SET batch = id"
+            ),
+        ),
+    ]
 }
 
 fn create_migrations_table(table_name: &str) -> String {
@@ -50,21 +69,48 @@ fn drop_table_query(table_name: &str) -> String {
 #[must_use]
 fn fetch_rows_query(table_name: &str) -> String {
     format!(
-        "SELECT id, app, name, DATE_FORMAT(applied_time, '%Y-%m-%d %H:%i:%s') AS applied_time \
-         FROM {table_name}"
+        "SELECT id, app, name, DATE_FORMAT(applied_time, '%Y-%m-%d %H:%i:%s') AS applied_time, \
+         success, execution_time_ms, batch FROM {table_name}"
     )
 }
 
 /// Add migration query
 #[must_use]
 fn add_migration_query(table_name: &str) -> String {
-    format!("INSERT INTO {table_name}(app, name) VALUES (?, ?)")
+    format!(
+        "INSERT INTO {table_name}(app, name, execution_time_ms, batch) VALUES (?, ?, CAST(? AS \
+         SIGNED), CAST(? AS SIGNED))"
+    )
+}
+
+/// Start migration query, records a migration which is running as failed
+#[must_use]
+fn start_migration_query(table_name: &str) -> String {
+    format!(
+        "INSERT INTO {table_name}(app, name, success, batch) VALUES (?, ?, FALSE, CAST(? AS \
+         SIGNED))"
+    )
+}
+
+/// Finish migration query, marks a running migration as successful
+#[must_use]
+fn finish_migration_query(table_name: &str) -> String {
+    format!(
+        "UPDATE {table_name} SET success = TRUE, execution_time_ms = CAST(? AS SIGNED) WHERE app \
+         = ? AND name = ?"
+    )
 }
 
 /// Delete migration query
 #[must_use]
 fn delete_migration_query(table_name: &str) -> String {
     format!("DELETE FROM {table_name} WHERE app = ? AND name = ?")
+}
+
+/// Delete failed migrations query
+#[must_use]
+fn delete_failed_migrations_query(table_name: &str) -> String {
+    format!("DELETE FROM {table_name} WHERE success = FALSE")
 }
 
 /// Built in SQL, see [`Dialect::mysql`]
@@ -85,7 +131,10 @@ fn sql(names: &Names) -> Sql {
         ),
         fetch_rows: fetch_rows_query(&names.table()),
         add_migration: add_migration_query(&names.table()),
+        start_migration: start_migration_query(&names.table()),
+        finish_migration: finish_migration_query(&names.table()),
         delete_migration: delete_migration_query(&names.table()),
+        delete_failed_migrations: delete_failed_migrations_query(&names.table()),
         lock: Some(lock),
     }
 }

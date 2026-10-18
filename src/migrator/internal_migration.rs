@@ -1,11 +1,10 @@
 //! Internal migrations: how the migrator creates and changes its own
 //! migration table.
 //!
-//! Each backend builds them as a `(name, sql)` list in order. The
-//! meta table records the names which have run, so only new ones run, and a
-//! name this release does not know is rejected. Shipped entries are never
-//! edited, only appended to. Every entry must be safe to rerun, so a database
-//! created before the meta table existed just runs them all.
+//! Each backend builds them as a `(name, sql)` list in order. The meta table
+//! records the names which have run, so only new ones run, and a name this
+//! release does not know is rejected. Entries are never edited, only appended
+//! to. The first entry is safe to rerun, later ones run exactly once.
 
 use std::collections::HashSet;
 
