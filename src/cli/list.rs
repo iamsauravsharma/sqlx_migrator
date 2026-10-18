@@ -51,7 +51,7 @@ pub(super) struct ListEntry<'a> {
     pub(super) name: &'a str,
     pub(super) status: ListStatus,
     pub(super) applied_time: Option<&'a str>,
-    pub(super) execution_time_ms: Option<i64>,
+    pub(super) execution_time_ns: Option<i64>,
     pub(super) batch: Option<i32>,
 }
 
@@ -94,7 +94,7 @@ where
                             ListStatus::Failed
                         },
                         applied_time: Some(row.applied_time()),
-                        execution_time_ms: Some(row.execution_time_ms()),
+                        execution_time_ns: Some(row.execution_time_ns()),
                         batch: Some(row.batch()),
                     }
                 }
@@ -109,7 +109,7 @@ where
                             ListStatus::Replaced
                         },
                         applied_time: None,
-                        execution_time_ms: None,
+                        execution_time_ns: None,
                         batch: None,
                     }
                 }
@@ -129,12 +129,22 @@ where
                     name: row.name(),
                     status: ListStatus::Unknown,
                     applied_time: Some(row.applied_time()),
-                    execution_time_ms: Some(row.execution_time_ms()),
+                    execution_time_ns: Some(row.execution_time_ns()),
                     batch: Some(row.batch()),
                 }
             }),
     );
     Ok(entries)
+}
+
+/// Time kept in nanoseconds as milliseconds with a fraction, for example
+/// `1.234` for 1234567 nanoseconds
+pub(super) fn milliseconds(nanoseconds: i64) -> String {
+    format!(
+        "{}.{:03}",
+        nanoseconds / 1_000_000,
+        nanoseconds % 1_000_000 / 1_000
+    )
 }
 
 /// Render list entries in the requested format
@@ -168,8 +178,8 @@ pub(super) fn render_list(
                             .batch
                             .map_or_else(|| "N/A".to_string(), |batch| batch.to_string()),
                         entry
-                            .execution_time_ms
-                            .map_or_else(|| "N/A".to_string(), |millis| millis.to_string()),
+                            .execution_time_ns
+                            .map_or_else(|| "N/A".to_string(), milliseconds),
                     ]
                 })
                 .collect::<Vec<_>>();

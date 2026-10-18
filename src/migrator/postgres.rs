@@ -27,7 +27,7 @@ fn internal_migration_steps(table_name: &str) -> Vec<(&'static str, String)> {
         (
             "0003_add_execution_time_column",
             format!(
-                "ALTER TABLE {table_name} ADD COLUMN IF NOT EXISTS execution_time_ms BIGINT NOT \
+                "ALTER TABLE {table_name} ADD COLUMN IF NOT EXISTS execution_time_ns BIGINT NOT \
                  NULL DEFAULT 0"
             ),
         ),
@@ -80,7 +80,7 @@ fn drop_table_query(table_name: &str) -> String {
 #[must_use]
 fn fetch_rows_query(table_name: &str) -> String {
     format!(
-        "SELECT id, app, name, applied_time::TEXT, success, execution_time_ms, batch FROM \
+        "SELECT id, app, name, applied_time::TEXT, success, execution_time_ns, batch FROM \
          {table_name}"
     )
 }
@@ -89,7 +89,7 @@ fn fetch_rows_query(table_name: &str) -> String {
 #[must_use]
 fn add_migration_query(table_name: &str) -> String {
     format!(
-        "INSERT INTO {table_name}(app, name, execution_time_ms, batch) VALUES ($1, $2, CAST($3 AS \
+        "INSERT INTO {table_name}(app, name, execution_time_ns, batch) VALUES ($1, $2, CAST($3 AS \
          BIGINT), CAST($4 AS INT))"
     )
 }
@@ -107,7 +107,7 @@ fn start_migration_query(table_name: &str) -> String {
 #[must_use]
 fn finish_migration_query(table_name: &str) -> String {
     format!(
-        "UPDATE {table_name} SET success = TRUE, execution_time_ms = CAST($1 AS BIGINT) WHERE app \
+        "UPDATE {table_name} SET success = TRUE, execution_time_ns = CAST($1 AS BIGINT) WHERE app \
          = $2 AND name = $3"
     )
 }

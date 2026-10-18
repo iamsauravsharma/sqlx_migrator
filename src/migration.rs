@@ -199,7 +199,7 @@ pub struct AppliedMigrationSqlRow {
     name: String,
     applied_time: String,
     success: bool,
-    execution_time_ms: i64,
+    execution_time_ns: i64,
     batch: i32,
 }
 
@@ -212,7 +212,7 @@ impl AppliedMigrationSqlRow {
             name: name.to_string(),
             applied_time: String::new(),
             success: true,
-            execution_time_ms: 0,
+            execution_time_ns: 0,
             batch: 0,
         }
     }
@@ -248,11 +248,11 @@ impl AppliedMigrationSqlRow {
         self.success
     }
 
-    /// Return the time the migration took to run in milliseconds. `0` for fake
+    /// Return the time the migration took to run in nanoseconds. `0` for fake
     /// runs and synced migrations
     #[must_use]
-    pub fn execution_time_ms(&self) -> i64 {
-        self.execution_time_ms
+    pub fn execution_time_ns(&self) -> i64 {
+        self.execution_time_ns
     }
 
     /// Return the batch of the run which applied the migration. Migrations

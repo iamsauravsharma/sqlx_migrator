@@ -3,7 +3,7 @@
     clippy::unreachable,
     reason = "tests destructure a subcommand they just parsed"
 )]
-use super::list::{ListStatus, list_entries, render_list};
+use super::list::{ListStatus, list_entries, milliseconds, render_list};
 use super::output::{OutputFormat, render_plan, render_table};
 use super::*;
 use crate::migration::Migration;
@@ -130,6 +130,14 @@ fn list_format_argument() {
         assert_eq!(list.format, OutputFormat::Json);
     }
     assert!(parse(&["list", "--format", "yaml"]).is_err());
+}
+
+#[test]
+fn time_is_shown_in_milliseconds_with_a_fraction() {
+    assert_eq!(milliseconds(0), "0.000");
+    assert_eq!(milliseconds(999_999), "0.999");
+    assert_eq!(milliseconds(1_234_567), "1.234");
+    assert_eq!(milliseconds(2_000_000_000), "2000.000");
 }
 
 #[test]

@@ -188,7 +188,7 @@ refused.
 Each row records the migration's `app`, `name` and `applied_time`, plus:
 
 - `success`: `false` while a non atomic migration is running or after it failed.
-- `execution_time_ms`: how long the migration took, `0` for fake runs and synced migrations.
+- `execution_time_ns`: how long the migration took in nanoseconds, `0` for fake runs and synced migrations.
 - `batch`: migrations applied by one run share a batch, `revert --last-batch` reverts it.
   Rows already in the table when this column is added get their `id` as batch, so they
   count as one batch each in apply order. Synced migrations are recorded as one batch.

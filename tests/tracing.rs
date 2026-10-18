@@ -135,7 +135,7 @@ mod tests {
         assert_eq!(info("applying migration"), 2, "{events:?}");
         assert_eq!(info("migration finished"), 2, "{events:?}");
         assert!(
-            events.iter().any(|e| e.contains("elapsed_ms=")),
+            events.iter().any(|e| e.contains("elapsed_ns=")),
             "{events:?}"
         );
         assert_eq!(info("run finished"), 1, "{events:?}");
