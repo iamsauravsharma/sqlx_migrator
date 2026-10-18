@@ -1,2 +1,2 @@
-createSrcSidebar('[["sqlx_migrator",["",[["cli",[],["apply.rs","drop.rs","list.rs","mod.rs","output.rs","prune.rs","redo.rs","revert.rs"]],["migrator",[],["any.rs","internal_migration.rs","mod.rs","mysql.rs","postgres.rs","sqlite.rs"]]],["error.rs","lib.rs","macros.rs","migration.rs","operation.rs","sync.rs"]]]]');
-//{"start":19,"fragment_lengths":[293]}
+createSrcSidebar('[["sqlx_migrator",["",[["cli",[],["apply.rs","drop.rs","list.rs","mod.rs","output.rs","prune.rs","redo.rs","revert.rs"]],["migrator",[],["dialect.rs","internal_migration.rs","mod.rs","mysql.rs","postgres.rs","sqlite.rs"]]],["error.rs","lib.rs","macros.rs","migration.rs","operation.rs","sync.rs"]]]]');
+//{"start":19,"fragment_lengths":[297]}

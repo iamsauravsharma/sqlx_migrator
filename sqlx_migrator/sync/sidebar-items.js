@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"trait":["OldMigrator","Synchronize"]};
+window.SIDEBAR_ITEMS = {"trait":["OldMigrator"]};
