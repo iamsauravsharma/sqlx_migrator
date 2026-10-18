@@ -199,7 +199,7 @@
 <a href=#199 id=199 data-nosnippet>199</a>    name: String,
 <a href=#200 id=200 data-nosnippet>200</a>    applied_time: String,
 <a href=#201 id=201 data-nosnippet>201</a>    success: bool,
-<a href=#202 id=202 data-nosnippet>202</a>    execution_time_ms: i64,
+<a href=#202 id=202 data-nosnippet>202</a>    execution_time_ns: i64,
 <a href=#203 id=203 data-nosnippet>203</a>    batch: i32,
 <a href=#204 id=204 data-nosnippet>204</a>}
 <a href=#205 id=205 data-nosnippet>205</a>
@@ -212,7 +212,7 @@
 <a href=#212 id=212 data-nosnippet>212</a>            name: name.to_string(),
 <a href=#213 id=213 data-nosnippet>213</a>            applied_time: String::new(),
 <a href=#214 id=214 data-nosnippet>214</a>            success: <span class="bool-val">true</span>,
-<a href=#215 id=215 data-nosnippet>215</a>            execution_time_ms: <span class="number">0</span>,
+<a href=#215 id=215 data-nosnippet>215</a>            execution_time_ns: <span class="number">0</span>,
 <a href=#216 id=216 data-nosnippet>216</a>            batch: <span class="number">0</span>,
 <a href=#217 id=217 data-nosnippet>217</a>        }
 <a href=#218 id=218 data-nosnippet>218</a>    }
@@ -248,11 +248,11 @@
 <a href=#248 id=248 data-nosnippet>248</a>        <span class="self">self</span>.success
 <a href=#249 id=249 data-nosnippet>249</a>    }
 <a href=#250 id=250 data-nosnippet>250</a>
-<a href=#251 id=251 data-nosnippet>251</a>    <span class="doccomment">/// Return the time the migration took to run in milliseconds. `0` for fake
+<a href=#251 id=251 data-nosnippet>251</a>    <span class="doccomment">/// Return the time the migration took to run in nanoseconds. `0` for fake
 <a href=#252 id=252 data-nosnippet>252</a>    /// runs and synced migrations
 <a href=#253 id=253 data-nosnippet>253</a>    </span><span class="attr">#[must_use]
-<a href=#254 id=254 data-nosnippet>254</a>    </span><span class="kw">pub fn </span>execution_time_ms(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; i64 {
-<a href=#255 id=255 data-nosnippet>255</a>        <span class="self">self</span>.execution_time_ms
+<a href=#254 id=254 data-nosnippet>254</a>    </span><span class="kw">pub fn </span>execution_time_ns(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; i64 {
+<a href=#255 id=255 data-nosnippet>255</a>        <span class="self">self</span>.execution_time_ns
 <a href=#256 id=256 data-nosnippet>256</a>    }
 <a href=#257 id=257 data-nosnippet>257</a>
 <a href=#258 id=258 data-nosnippet>258</a>    <span class="doccomment">/// Return the batch of the run which applied the migration. Migrations

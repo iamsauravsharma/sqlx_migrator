@@ -27,7 +27,7 @@
 <a href=#27 id=27 data-nosnippet>27</a>        (
 <a href=#28 id=28 data-nosnippet>28</a>            <span class="string">"0003_add_execution_time_column"</span>,
 <a href=#29 id=29 data-nosnippet>29</a>            <span class="macro">format!</span>(
-<a href=#30 id=30 data-nosnippet>30</a>                <span class="string">"ALTER TABLE {table_name} ADD COLUMN IF NOT EXISTS execution_time_ms BIGINT NOT \
+<a href=#30 id=30 data-nosnippet>30</a>                <span class="string">"ALTER TABLE {table_name} ADD COLUMN IF NOT EXISTS execution_time_ns BIGINT NOT \
 <a href=#31 id=31 data-nosnippet>31</a>                 NULL DEFAULT 0"
 <a href=#32 id=32 data-nosnippet>32</a>            </span>),
 <a href=#33 id=33 data-nosnippet>33</a>        ),
@@ -80,7 +80,7 @@
 <a href=#80 id=80 data-nosnippet>80</a></span><span class="attr">#[must_use]
 <a href=#81 id=81 data-nosnippet>81</a></span><span class="kw">fn </span>fetch_rows_query(table_name: <span class="kw-2">&amp;</span>str) -&gt; String {
 <a href=#82 id=82 data-nosnippet>82</a>    <span class="macro">format!</span>(
-<a href=#83 id=83 data-nosnippet>83</a>        <span class="string">"SELECT id, app, name, applied_time::TEXT, success, execution_time_ms, batch FROM \
+<a href=#83 id=83 data-nosnippet>83</a>        <span class="string">"SELECT id, app, name, applied_time::TEXT, success, execution_time_ns, batch FROM \
 <a href=#84 id=84 data-nosnippet>84</a>         {table_name}"
 <a href=#85 id=85 data-nosnippet>85</a>    </span>)
 <a href=#86 id=86 data-nosnippet>86</a>}
@@ -89,7 +89,7 @@
 <a href=#89 id=89 data-nosnippet>89</a></span><span class="attr">#[must_use]
 <a href=#90 id=90 data-nosnippet>90</a></span><span class="kw">fn </span>add_migration_query(table_name: <span class="kw-2">&amp;</span>str) -&gt; String {
 <a href=#91 id=91 data-nosnippet>91</a>    <span class="macro">format!</span>(
-<a href=#92 id=92 data-nosnippet>92</a>        <span class="string">"INSERT INTO {table_name}(app, name, execution_time_ms, batch) VALUES ($1, $2, CAST($3 AS \
+<a href=#92 id=92 data-nosnippet>92</a>        <span class="string">"INSERT INTO {table_name}(app, name, execution_time_ns, batch) VALUES ($1, $2, CAST($3 AS \
 <a href=#93 id=93 data-nosnippet>93</a>         BIGINT), CAST($4 AS INT))"
 <a href=#94 id=94 data-nosnippet>94</a>    </span>)
 <a href=#95 id=95 data-nosnippet>95</a>}
@@ -107,7 +107,7 @@
 <a href=#107 id=107 data-nosnippet>107</a></span><span class="attr">#[must_use]
 <a href=#108 id=108 data-nosnippet>108</a></span><span class="kw">fn </span>finish_migration_query(table_name: <span class="kw-2">&amp;</span>str) -&gt; String {
 <a href=#109 id=109 data-nosnippet>109</a>    <span class="macro">format!</span>(
-<a href=#110 id=110 data-nosnippet>110</a>        <span class="string">"UPDATE {table_name} SET success = TRUE, execution_time_ms = CAST($1 AS BIGINT) WHERE app \
+<a href=#110 id=110 data-nosnippet>110</a>        <span class="string">"UPDATE {table_name} SET success = TRUE, execution_time_ns = CAST($1 AS BIGINT) WHERE app \
 <a href=#111 id=111 data-nosnippet>111</a>         = $2 AND name = $3"
 <a href=#112 id=112 data-nosnippet>112</a>    </span>)
 <a href=#113 id=113 data-nosnippet>113</a>}
