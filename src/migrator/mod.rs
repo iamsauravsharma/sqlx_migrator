@@ -1,141 +1,22 @@
 //! Migrator module
 //!
-//! It contains common enum and trait for implementing migrator for sqlx
-//! supported database
-//!
-//! It also provides its own struct [`Migrator`] which supports
-//! [`Any`](sqlx::Any), [`Postgres`](sqlx::Postgres), [`Sqlite`](sqlx::Sqlite)
-//! and [`MySql`](sqlx::MySql) database when corresponding feature is enabled
+//! [`Migrator`] plans and runs migrations for [`Postgres`](sqlx::Postgres),
+//! [`Sqlite`](sqlx::Sqlite) and [`MySql`](sqlx::MySql) when the matching
+//! feature is enabled. Its configuration, such as table prefix, schema and
+//! lock, is a [`Dialect`] value which can be adjusted with setters.
 #![cfg_attr(
     feature = "postgres",
-    doc = r#"
+    doc = r"
 # Example
-Create own custom Migrator which only supports postgres and uses own unique
-table name instead of default table name
+Postgres migrator with no lock
 
 ```rust,no_run
-use sqlx::{Database, Pool, Postgres};
-use sqlx_migrator::error::Error;
-use sqlx_migrator::migration::{AppliedMigrationSqlRow, Migration};
-use sqlx_migrator::migrator::{DatabaseOperation, Info, Migrate};
-use sqlx_migrator::sync::Synchronize;
+use sqlx::Postgres;
+use sqlx_migrator::{Dialect, Migrator};
 
-#[derive(Default)]
-pub struct CustomMigrator {
-    migrations: Vec<Box<dyn Migration<Postgres>>>,
-}
-
-impl Info<Postgres> for CustomMigrator {
-    fn migrations(&self) -> &[Box<dyn Migration<Postgres>>] {
-        &self.migrations
-    }
-
-    fn migrations_mut(&mut self) -> &mut Vec<Box<dyn Migration<Postgres>>> {
-        &mut self.migrations
-    }
-}
-
-#[async_trait::async_trait]
-impl DatabaseOperation<Postgres> for CustomMigrator {
-    async fn ensure_migration_table_exists(
-        &self,
-        connection: &mut <Postgres as sqlx::Database>::Connection,
-    ) -> Result<(), Error> {
-        sqlx::query(
-            "CREATE TABLE IF NOT EXISTS _custom_table_name (
-        id INT PRIMARY KEY NOT NULL GENERATED ALWAYS AS IDENTITY,
-        app TEXT NOT NULL,
-        name TEXT NOT NULL,
-        applied_time TIMESTAMPTZ NOT NULL DEFAULT now(),
-        UNIQUE (app, name)
-    )",
-        )
-        .execute(connection)
-        .await?;
-        Ok(())
-    }
-
-    async fn drop_migration_table_if_exists(
-        &self,
-        connection: &mut <Postgres as Database>::Connection,
-    ) -> Result<(), Error> {
-        sqlx::query("DROP TABLE IF EXISTS _custom_table_name")
-            .execute(connection)
-            .await?;
-        Ok(())
-    }
-
-    async fn add_migration_to_db_table(
-        &self,
-        connection: &mut <Postgres as Database>::Connection,
-        migration: &dyn Migration<Postgres>,
-    ) -> Result<(), Error> {
-        sqlx::query("INSERT INTO _custom_table_name(app, name) VALUES ($1, $2)")
-            .bind(migration.app())
-            .bind(migration.name())
-            .execute(connection)
-            .await?;
-        Ok(())
-    }
-
-    async fn delete_migration_from_db_table(
-        &self,
-        connection: &mut <Postgres as Database>::Connection,
-        migration: &dyn Migration<Postgres>,
-    ) -> Result<(), Error> {
-        sqlx::query("DELETE FROM _custom_table_name WHERE app = $1 AND name = $2")
-            .bind(migration.app())
-            .bind(migration.name())
-            .execute(connection)
-            .await?;
-        Ok(())
-    }
-
-    async fn fetch_applied_migration_from_db(
-        &self,
-        connection: &mut <Postgres as Database>::Connection,
-    ) -> Result<Vec<AppliedMigrationSqlRow>, Error> {
-        Ok(sqlx::query_as::<_, AppliedMigrationSqlRow>(
-            "SELECT id, app, name, applied_time FROM _custom_table_name",
-        )
-        .fetch_all(connection)
-        .await?)
-    }
-
-    async fn lock(
-        &self,
-        connection: &mut <Postgres as Database>::Connection,
-    ) -> Result<(), Error> {
-        let (database_name,): (String,) = sqlx::query_as("SELECT CURRENT_DATABASE()")
-            .fetch_one(&mut *connection)
-            .await?;
-        let lock_id = i64::from(crc32fast::hash(database_name.as_bytes()));
-        sqlx::query("SELECT pg_advisory_lock($1)")
-            .bind(lock_id)
-            .execute(connection)
-            .await?;
-        Ok(())
-    }
-
-    async fn unlock(
-        &self,
-        connection: &mut <Postgres as Database>::Connection,
-    ) -> Result<(), Error> {
-        let (database_name,): (String,) = sqlx::query_as("SELECT CURRENT_DATABASE()")
-            .fetch_one(&mut *connection)
-            .await?;
-        let lock_id = i64::from(crc32fast::hash(database_name.as_bytes()));
-        sqlx::query("SELECT pg_advisory_unlock($1)")
-            .bind(lock_id)
-            .execute(connection)
-            .await?;
-        Ok(())
-    }
-}
-impl Migrate<Postgres> for CustomMigrator {}
-impl Synchronize<Postgres> for CustomMigrator {}
+let migrator = Migrator::<Postgres>::new(Dialect::postgres().set_lock(false));
 ```
-"#
+"
 )]
 
 use std::collections::{HashMap, HashSet};
@@ -143,17 +24,15 @@ use std::collections::{HashMap, HashSet};
 use sqlx::{Connection as _, Database};
 use tracing::Instrument as _;
 
+pub use self::dialect::{Dialect, SupportedDatabase};
 use crate::error::Error;
 use crate::migration::{AppliedMigrationSqlRow, Migration};
+use crate::sync::OldMigrator;
 
-/// Any database module which support mysql, sqlite and postgres by default
-#[cfg(all(
-    any(feature = "postgres", feature = "mysql", feature = "sqlite"),
-    feature = "any"
-))]
-mod any;
+/// Module holding backend SQL as data and executing it generically
+mod dialect;
 
-/// Module for the migrator's own migrations of its migration table
+/// Module for the internal migrations of the migrator tables
 mod internal_migration;
 
 /// Module for mysql
@@ -280,27 +159,8 @@ impl Plan {
     }
 }
 
-/// Strategy used by [`Migrator`] to prevent two migrators from running at
-/// the same time.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
-#[non_exhaustive]
-pub enum LockStrategy {
-    /// Use the database's native locking primitive.
-    ///
-    /// Postgres uses a session level advisory lock, MySQL uses `GET_LOCK` and
-    /// `SQLite` does nothing since it serialises writers itself.
-    #[default]
-    Database,
-    /// Do not lock at all.
-    ///
-    /// Use this when the connection goes through a transaction pooling proxy
-    /// such as `PgBouncer`, where session level locks are not reliable, or
-    /// when only one process ever runs migrations.
-    None,
-}
-
 /// Record of a single migration which was applied or reverted by
-/// [`Migrate::run`].
+/// [`Migrator::run`].
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RunRecord {
     app: String,
@@ -329,7 +189,7 @@ impl RunRecord {
     }
 }
 
-/// Summary returned by [`Migrate::run`] describing what the run did.
+/// Summary returned by [`Migrator::run`] describing what the run did.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RunReport {
     apply: bool,
@@ -374,181 +234,6 @@ impl RunReport {
     #[must_use]
     pub fn total_elapsed(&self) -> std::time::Duration {
         self.records.iter().map(RunRecord::elapsed).sum()
-    }
-}
-
-/// The [`Info`] trait provides database-agnostic methods for managing
-/// migrations and interacting with migration states.
-pub trait Info<DB> {
-    /// Returns a reference to the list of migrations.
-    fn migrations(&self) -> &[BoxMigration<DB>];
-
-    /// Returns a mutable reference to the list of migrations.
-    fn migrations_mut(&mut self) -> &mut Vec<BoxMigration<DB>>;
-
-    /// Adds a list of migrations to the migrator.
-    ///
-    /// This method accepts a vector of migrations and adds each one
-    /// individually to ensure proper handling of migration relationships
-    /// and duplicates.
-    ///
-    /// # Errors
-    /// If migration is added with same app and name but inconsistent value i.e
-    /// its parents, run before, replaces and is atomic differ and do not have
-    /// same number of operation
-    fn add_migrations(&mut self, migrations: Vec<BoxMigration<DB>>) -> Result<(), Error> {
-        for migration in migrations {
-            self.add_migration(migration)?;
-        }
-        Ok(())
-    }
-
-    /// Adds a single migration to the migrator.
-    ///
-    /// # Errors
-    /// If migration is added with same app and name but inconsistent value i.e
-    /// its parents, run before, replaces and is atomic differ and do not have
-    /// same number of operation
-    fn add_migration(&mut self, migration: BoxMigration<DB>) -> Result<(), Error> {
-        if migration.is_virtual() {
-            // Virtual migrations must not have any fields other than app/name
-            if !migration.parents().is_empty()
-                || !migration.operations().is_empty()
-                || !migration.replaces().is_empty()
-                || !migration.run_before().is_empty()
-            {
-                return Err(Error::InvalidVirtualMigration);
-            }
-            // Only add virtual migration if not already present
-            if self.migrations().contains(&migration) {
-                return Ok(());
-            }
-            self.migrations_mut().push(migration);
-        } else {
-            let mut skip_add = false;
-            if let Some((migration_index, found_migration)) = self
-                .migrations()
-                .iter()
-                .enumerate()
-                .find(|(_, elem)| elem == &&migration)
-            {
-                if found_migration.is_virtual() {
-                    // Replace the placeholder virtual migration with the
-                    // concrete one
-                    self.migrations_mut().remove(migration_index);
-                } else if found_migration.parents() != migration.parents()
-                    || found_migration.operations().len() != migration.operations().len()
-                    || found_migration.replaces() != migration.replaces()
-                    || found_migration.run_before() != migration.run_before()
-                    || found_migration.is_atomic() != migration.is_atomic()
-                {
-                    // Non-virtual duplicate with different definition
-                    return Err(Error::InconsistentMigration {
-                        app: migration.app().to_string(),
-                        name: migration.name().to_string(),
-                    });
-                } else {
-                    // Non-virtual consistent duplicate — already registered
-                    skip_add = true;
-                }
-            }
-
-            if !skip_add {
-                // Add this migration and recursively register its parents,
-                // replaces, and run_before migrations
-                let migration_parents = migration.parents();
-                let migration_replaces = migration.replaces();
-                let migration_run_before = migration.run_before();
-
-                self.migrations_mut().push(migration);
-
-                for parent in migration_parents {
-                    self.add_migration(parent)?;
-                }
-                for replace in migration_replaces {
-                    self.add_migration(replace)?;
-                }
-                for run_before in migration_run_before {
-                    self.add_migration(run_before)?;
-                }
-            }
-        }
-        Ok(())
-    }
-}
-
-/// The [`DatabaseOperation`] trait defines a set of methods for performing
-/// operations related to migration management on the database.
-///
-/// This trait is typically implemented for a database to support migration
-/// operations, such as ensuring the migration table exists, adding or
-/// removing migrations from the table, and locking the database during
-/// migration processes.
-///
-/// # Security
-/// When implementing this trait, it is crucial to ensure that all database
-/// interactions are performed securely to prevent SQL injection and other
-/// vulnerabilities. Always use parameterized queries and avoid directly
-/// interpolating user input into SQL statements. If your implementation
-/// involves dynamic SQL generation, make sure to properly sanitize and validate
-/// all inputs.
-#[async_trait::async_trait]
-pub trait DatabaseOperation<DB>
-where
-    DB: Database,
-{
-    /// Ensure migration table is created before running migrations. If not
-    /// create one
-    async fn ensure_migration_table_exists(
-        &self,
-        connection: &mut <DB as Database>::Connection,
-    ) -> Result<(), Error>;
-
-    /// Drop migration table if migration table exists
-    async fn drop_migration_table_if_exists(
-        &self,
-        connection: &mut <DB as Database>::Connection,
-    ) -> Result<(), Error>;
-
-    /// Adds a migration record to the migration table in the database.
-    async fn add_migration_to_db_table(
-        &self,
-        connection: &mut <DB as Database>::Connection,
-        migration: &dyn Migration<DB>,
-    ) -> Result<(), Error>;
-
-    /// Removes a migration record from the migration table in the database.
-    async fn delete_migration_from_db_table(
-        &self,
-        connection: &mut <DB as Database>::Connection,
-        migration: &dyn Migration<DB>,
-    ) -> Result<(), Error>;
-
-    /// Fetches the list of applied migrations from the migration table in the
-    /// database.
-    async fn fetch_applied_migration_from_db(
-        &self,
-        connection: &mut <DB as Database>::Connection,
-    ) -> Result<Vec<AppliedMigrationSqlRow>, Error>;
-
-    /// Lock database while doing migrations so no two migrations run together
-    async fn lock(&self, connection: &mut <DB as Database>::Connection) -> Result<(), Error>;
-
-    /// Unlock locked database
-    async fn unlock(&self, connection: &mut <DB as Database>::Connection) -> Result<(), Error>;
-
-    /// Whether the database can roll back DDL statements inside a
-    /// transaction.
-    ///
-    /// MySQL and MariaDB commit implicitly on most DDL statements, so an
-    /// atomic migration on those backends cannot be rolled back as a unit if
-    /// one of its operations fails. When this returns `false` the migrator
-    /// still wraps atomic migrations in a transaction, but logs a warning so
-    /// the limitation is visible.
-    ///
-    /// The default implementation returns `true`.
-    fn supports_transactional_ddl(&self, _connection: &<DB as Database>::Connection) -> bool {
-        true
     }
 }
 
@@ -826,23 +511,305 @@ fn get_recursive_replaces<'get, DB>(
     recursive_vec
 }
 
-/// The [`Migrate`] trait defines methods to manage and apply database
-/// migrations according to a given plan.
-///
-/// This trait combines the functionalities of the [`Info`] and
-/// [`DatabaseOperation`] traits, providing a full set of migration
-/// capabilities. All methods have default implementations, meaning no explicit
-/// implementation is required. Additionally, all methods are database-agnostic.
-#[async_trait::async_trait]
-pub trait Migrate<DB>: Info<DB> + DatabaseOperation<DB> + Send + Sync
+/// A struct that stores migration-related metadata, including the list of
+/// migrations and configuration such as table and schema name
+pub struct Migrator<DB> {
+    migrations: Vec<BoxMigration<DB>>,
+    dialect: Dialect<DB>,
+}
+
+impl<DB> Migrator<DB>
 where
-    DB: Database,
+    DB: SupportedDatabase,
 {
+    /// Creates a migrator configured by `dialect`. `Migrator::default` uses
+    /// [`Dialect::postgres`], [`Dialect::mysql`] or [`Dialect::sqlite`]; pass
+    /// an adjusted one to change its lock, DDL behaviour, table prefix or
+    /// schema, for example no lock behind a transaction pooling proxy such as
+    /// `PgBouncer`.
+    ///
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature="sqlite")]
+    /// # fn main() {
+    /// use sqlx_migrator::{Dialect, Migrator};
+    /// let dialect = Dialect::sqlite_with(Some("v1"), None).unwrap();
+    /// let migrator = Migrator::<sqlx::Sqlite>::new(dialect);
+    /// assert_eq!(migrator.table_name(), "_v1_sqlx_migrator_migrations");
+    /// # }
+    /// # #[cfg(not(feature="sqlite"))]
+    /// # fn main() {}
+    /// ```
+    #[must_use]
+    pub fn new(dialect: Dialect<DB>) -> Self {
+        Self {
+            migrations: Vec::default(),
+            dialect,
+        }
+    }
+
+    /// Dialect holding the configuration and SQL the migrator runs
+    #[must_use]
+    pub fn dialect(&self) -> &Dialect<DB> {
+        &self.dialect
+    }
+
+    /// Returns the migrations added so far
+    #[must_use]
+    pub fn migrations(&self) -> &[BoxMigration<DB>] {
+        &self.migrations
+    }
+
+    /// Adds a list of migrations to the migrator.
+    ///
+    /// This method accepts a vector of migrations and adds each one
+    /// individually to ensure proper handling of migration relationships
+    /// and duplicates.
+    ///
+    /// # Errors
+    /// If migration is added with same app and name but inconsistent value i.e
+    /// its parents, run before, replaces and is atomic differ and do not have
+    /// same number of operation
+    pub fn add_migrations(&mut self, migrations: Vec<BoxMigration<DB>>) -> Result<(), Error> {
+        for migration in migrations {
+            self.add_migration(migration)?;
+        }
+        Ok(())
+    }
+
+    /// Adds a single migration to the migrator.
+    ///
+    /// # Errors
+    /// If migration is added with same app and name but inconsistent value i.e
+    /// its parents, run before, replaces and is atomic differ and do not have
+    /// same number of operation
+    pub fn add_migration(&mut self, migration: BoxMigration<DB>) -> Result<(), Error> {
+        if migration.is_virtual() {
+            // Virtual migrations must not have any fields other than app/name
+            if !migration.parents().is_empty()
+                || !migration.operations().is_empty()
+                || !migration.replaces().is_empty()
+                || !migration.run_before().is_empty()
+            {
+                return Err(Error::InvalidVirtualMigration);
+            }
+            // Only add virtual migration if not already present
+            if self.migrations.contains(&migration) {
+                return Ok(());
+            }
+            self.migrations.push(migration);
+        } else {
+            let mut skip_add = false;
+            if let Some((migration_index, found_migration)) = self
+                .migrations()
+                .iter()
+                .enumerate()
+                .find(|(_, elem)| elem == &&migration)
+            {
+                if found_migration.is_virtual() {
+                    // Replace the placeholder virtual migration with the
+                    // concrete one
+                    self.migrations.remove(migration_index);
+                } else if found_migration.parents() != migration.parents()
+                    || found_migration.operations().len() != migration.operations().len()
+                    || found_migration.replaces() != migration.replaces()
+                    || found_migration.run_before() != migration.run_before()
+                    || found_migration.is_atomic() != migration.is_atomic()
+                {
+                    // Non-virtual duplicate with different definition
+                    return Err(Error::InconsistentMigration {
+                        app: migration.app().to_string(),
+                        name: migration.name().to_string(),
+                    });
+                } else {
+                    // Non-virtual consistent duplicate — already registered
+                    skip_add = true;
+                }
+            }
+
+            if !skip_add {
+                // Add this migration and recursively register its parents,
+                // replaces, and run_before migrations
+                let migration_parents = migration.parents();
+                let migration_replaces = migration.replaces();
+                let migration_run_before = migration.run_before();
+
+                self.migrations.push(migration);
+
+                for parent in migration_parents {
+                    self.add_migration(parent)?;
+                }
+                for replace in migration_replaces {
+                    self.add_migration(replace)?;
+                }
+                for run_before in migration_run_before {
+                    self.add_migration(run_before)?;
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /// Get name of table which is used for storing migrations related
+    /// information in database
+    ///
+    /// Format depends on the prefix and schema of the dialect:
+    /// - With schema: `{schema}._sqlx_migrator_migrations`
+    /// - With prefix: `_{prefix}_sqlx_migrator_migrations`
+    /// - With both: `{schema}._{prefix}_sqlx_migrator_migrations`
+    /// - Default: `_sqlx_migrator_migrations`
+    ///
+    /// # Examples
+    /// ```rust
+    /// # #[cfg(feature="sqlite")]
+    /// # fn main() {
+    /// use sqlx_migrator::{Dialect, Migrator};
+    /// let dialect = Dialect::sqlite_with(Some("v1"), Some("app_schema")).unwrap();
+    /// let migrator = Migrator::<sqlx::Sqlite>::new(dialect);
+    /// assert_eq!(
+    ///     migrator.table_name(),
+    ///     "app_schema._v1_sqlx_migrator_migrations"
+    /// );
+    /// # }
+    /// # #[cfg(not(feature="sqlite"))]
+    /// # fn main() {}
+    /// ```
+    #[must_use]
+    pub fn table_name(&self) -> String {
+        self.dialect.table_name()
+    }
+
+    /// Get name of the meta table which records the migrator's internal
+    /// migrations. It follows the same prefix and schema rules as
+    /// [`Migrator::table_name`].
+    ///
+    /// # Examples
+    /// ```rust
+    /// # #[cfg(feature="sqlite")]
+    /// # fn main() {
+    /// use sqlx_migrator::{Dialect, Migrator};
+    /// let dialect = Dialect::sqlite_with(Some("v1"), None).unwrap();
+    /// let migrator = Migrator::<sqlx::Sqlite>::new(dialect);
+    /// assert_eq!(migrator.meta_table_name(), "_v1_sqlx_migrator_meta");
+    /// # }
+    /// # #[cfg(not(feature="sqlite"))]
+    /// # fn main() {}
+    /// ```
+    #[must_use]
+    pub fn meta_table_name(&self) -> String {
+        self.dialect.meta_table_name()
+    }
+
+    /// Ensure the migration table exists, creating or upgrading it with the
+    /// dialect's internal migrations
+    ///
+    /// # Errors
+    /// If the SQL fails or the meta table records an internal migration this
+    /// crate does not know
+    pub(crate) async fn ensure_migration_table_exists(
+        &self,
+        connection: &mut <DB as Database>::Connection,
+    ) -> Result<(), Error> {
+        let sql = self.dialect.sql();
+        if let Some(create_schema) = self.dialect.create_schema_statement() {
+            DB::execute(connection, create_schema).await?;
+        }
+        internal_migration::ensure_tables::<DB>(connection, &sql.internal).await
+    }
+
+    /// Drop the migration and meta tables if they exist
+    ///
+    /// # Errors
+    /// If the SQL fails
+    pub async fn drop_migration_table_if_exists(
+        &self,
+        connection: &mut <DB as Database>::Connection,
+    ) -> Result<(), Error> {
+        DB::execute(connection, &self.dialect.sql().drop_tables).await
+    }
+
+    /// Record a migration as applied
+    ///
+    /// # Errors
+    /// If the SQL fails
+    pub(crate) async fn add_migration_to_db_table(
+        &self,
+        connection: &mut <DB as Database>::Connection,
+        migration: &dyn Migration<DB>,
+    ) -> Result<(), Error> {
+        DB::execute_bound(
+            connection,
+            &self.dialect.sql().add_migration,
+            &[migration.app(), migration.name()],
+        )
+        .await
+    }
+
+    /// Remove a migration from the applied ones
+    ///
+    /// # Errors
+    /// If the SQL fails
+    pub(crate) async fn delete_migration_from_db_table(
+        &self,
+        connection: &mut <DB as Database>::Connection,
+        migration: &dyn Migration<DB>,
+    ) -> Result<(), Error> {
+        DB::execute_bound(
+            connection,
+            &self.dialect.sql().delete_migration,
+            &[migration.app(), migration.name()],
+        )
+        .await
+    }
+
+    /// Fetch the applied migrations, creating or upgrading the migration
+    /// table first
+    ///
+    /// # Errors
+    /// If the SQL fails or the meta table records an internal migration this
+    /// crate does not know
+    pub async fn fetch_applied_migration_from_db(
+        &self,
+        connection: &mut <DB as Database>::Connection,
+    ) -> Result<Vec<AppliedMigrationSqlRow>, Error> {
+        self.ensure_migration_table_exists(connection).await?;
+        DB::fetch_rows(connection, &self.dialect.sql().fetch_rows).await
+    }
+
+    /// Take the dialect's advisory lock, if any, so no two migrators run at
+    /// once
+    ///
+    /// # Errors
+    /// If the SQL fails
+    pub(crate) async fn lock(
+        &self,
+        connection: &mut <DB as Database>::Connection,
+    ) -> Result<(), Error> {
+        if let Some(lock) = self.dialect.lock_statements() {
+            DB::execute_bound(connection, lock.acquire(), &[&self.table_name()]).await?;
+        }
+        Ok(())
+    }
+
+    /// Release the advisory lock taken by [`Migrator::lock`]
+    ///
+    /// # Errors
+    /// If the SQL fails
+    pub(crate) async fn unlock(
+        &self,
+        connection: &mut <DB as Database>::Connection,
+    ) -> Result<(), Error> {
+        if let Some(lock) = self.dialect.lock_statements() {
+            DB::execute_bound(connection, lock.release(), &[&self.table_name()]).await?;
+        }
+        Ok(())
+    }
+
     /// Generate migration plan using pre-fetched applied migration rows.
     ///
     /// This is the core plan-generation logic that performs **no database
     /// access**. It is useful when you have already called
-    /// [`DatabaseOperation::fetch_applied_migration_from_db`] (e.g., to
+    /// [`Migrator::fetch_applied_migration_from_db`] (e.g., to
     /// display status alongside the plan) and want to avoid a redundant
     /// database round-trip.
     ///
@@ -855,7 +822,7 @@ where
     /// virtual migrations, has a dependency deadlock, or if the plan
     /// references an app/migration that does not exist.
     #[expect(clippy::too_many_lines)]
-    fn generate_migration_plan(
+    pub fn generate_migration_plan(
         &self,
         plan: Option<&Plan>,
         applied_migration_sql_rows: &[AppliedMigrationSqlRow],
@@ -1124,11 +1091,10 @@ where
     /// # Errors
     /// Returns [`Error::PendingMigrationPresent`] when at least one migration
     /// is pending, or other errors when plan generation fails
-    async fn check_pending(
+    pub async fn check_pending(
         &self,
         connection: &mut <DB as Database>::Connection,
     ) -> Result<(), Error> {
-        self.ensure_migration_table_exists(connection).await?;
         let applied_rows = self.fetch_applied_migration_from_db(connection).await?;
         let pending = self.generate_migration_plan(Some(&Plan::apply_all()), &applied_rows)?;
         if !pending.is_empty() {
@@ -1141,7 +1107,7 @@ where
     ///
     /// This is the core status logic which performs **no database access**.
     /// It is useful when you have already called
-    /// [`DatabaseOperation::fetch_applied_migration_from_db`] for another
+    /// [`Migrator::fetch_applied_migration_from_db`] for another
     /// purpose and want to avoid a redundant database round-trip. Returns
     /// every migration in apply order paired with a reference to its applied
     /// migration row when applied, or an empty list when no migrations are
@@ -1149,7 +1115,7 @@ where
     ///
     /// # Errors
     /// If plan generation fails
-    fn status<'get>(
+    pub fn status<'get>(
         &self,
         applied_migration_sql_rows: &'get [AppliedMigrationSqlRow],
     ) -> Result<StatusVec<'_, 'get, DB>, Error> {
@@ -1182,13 +1148,15 @@ where
     ///
     /// # Errors
     /// If fetching or deleting applied migrations fails
-    async fn prune(&self, connection: &mut <DB as Database>::Connection) -> Result<usize, Error> {
+    pub async fn prune(
+        &self,
+        connection: &mut <DB as Database>::Connection,
+    ) -> Result<usize, Error> {
         tracing::debug!("pruning unknown applied migrations");
         self.lock(connection).await?;
         // store result of pruning so that lock is unlocked before returning
         // result
         let result = async {
-            self.ensure_migration_table_exists(connection).await?;
             let applied_migrations = self.fetch_applied_migration_from_db(connection).await?;
             let known_migrations = self
                 .migrations()
@@ -1213,6 +1181,54 @@ where
         result.and_then(|count| unlock_result.map(|()| count))
     }
 
+    /// Records the migrations an old migrator reports as applied, skipping
+    /// ones this migrator does not know or which are already recorded.
+    /// Applied times are not preserved. Use it to move from another
+    /// migration system or to rename the migration table.
+    ///
+    /// # Errors
+    /// If sync cannot be completed
+    pub async fn sync<O>(
+        &self,
+        connection: &mut <DB as Database>::Connection,
+        old_migrator: &O,
+    ) -> Result<(), Error>
+    where
+        O: OldMigrator<DB>,
+    {
+        tracing::debug!("syncing old migrator");
+        self.lock(connection).await?;
+        // Use a block to ensure the lock is released before returning
+        let result = async {
+            let old_migrator_applied_migrations =
+                old_migrator.applied_migrations(connection).await?;
+            let already_applied_migration =
+                self.fetch_applied_migration_from_db(connection).await?;
+            let known_migrations = self
+                .migrations
+                .iter()
+                .map(|migration| (migration.app(), migration.name()))
+                .collect::<HashSet<_>>();
+            let already_applied = already_applied_migration
+                .iter()
+                .map(|row| (row.app(), row.name()))
+                .collect::<HashSet<_>>();
+            for migration in old_migrator_applied_migrations {
+                let key = (migration.app(), migration.name());
+                if known_migrations.contains(&key) && !already_applied.contains(&key) {
+                    self.add_migration_to_db_table(connection, migration.as_ref())
+                        .await?;
+                }
+            }
+            Ok(())
+        }
+        .await;
+        // unlock before returning; if both sync and unlock fail, the sync
+        // error takes precedence over the unlock error.
+        let unlock_result = self.unlock(connection).await;
+        result.and(unlock_result)
+    }
+
     /// Run provided plan migrations
     ///
     /// Returns a [`RunReport`] listing every migration which was applied or
@@ -1222,7 +1238,7 @@ where
     ///
     /// # Errors
     /// If failed to run provided plan migrations
-    async fn run(
+    pub async fn run(
         &self,
         connection: &mut <DB as Database>::Connection,
         plan: &Plan,
@@ -1254,21 +1270,18 @@ where
     }
 }
 
-/// Runs the plan while the lock is held. Split out of [`Migrate::run`] so
+/// Runs the plan while the lock is held. Split out of [`Migrator::run`] so
 /// the lock is always released whatever the outcome.
-async fn run_plan<DB, M>(
-    migrator: &M,
+async fn run_plan<DB>(
+    migrator: &Migrator<DB>,
     connection: &mut <DB as Database>::Connection,
     plan: &Plan,
 ) -> Result<RunReport, Error>
 where
-    DB: Database,
-    M: Migrate<DB> + ?Sized,
+    DB: SupportedDatabase,
 {
-    migrator.ensure_migration_table_exists(connection).await?;
     let applied_rows = migrator.fetch_applied_migration_from_db(connection).await?;
     let plan_migrations = migrator.generate_migration_plan(Some(plan), &applied_rows)?;
-    let supports_transactional_ddl = migrator.supports_transactional_ddl(connection);
     let mut report = RunReport {
         apply: matches!(plan.plan_type, PlanType::Apply),
         fake: plan.fake,
@@ -1285,12 +1298,6 @@ where
         );
         let elapsed = async {
             let start_instant = std::time::Instant::now();
-            if migration.is_atomic() && !supports_transactional_ddl && !plan.fake {
-                tracing::warn!(
-                    "database does not support transactional DDL, atomic migration cannot be \
-                     rolled back as a unit if it fails"
-                );
-            }
             match plan.plan_type {
                 PlanType::Apply => {
                     tracing::info!("applying migration");
@@ -1361,241 +1368,4 @@ where
         });
     }
     Ok(report)
-}
-
-const DEFAULT_TABLE_NAME: &str = "_sqlx_migrator_migrations";
-const DEFAULT_META_TABLE_NAME: &str = "_sqlx_migrator_meta";
-
-/// A struct that stores migration-related metadata, including the list of
-/// migrations and configuration such as table and schema name
-pub struct Migrator<DB> {
-    migrations: Vec<BoxMigration<DB>>,
-    table_prefix: Option<String>,
-    schema: Option<String>,
-    lock_strategy: LockStrategy,
-}
-
-impl<DB> Migrator<DB> {
-    /// Creates a new migrator
-    ///
-    /// # Example
-    /// ```rust
-    /// # #[cfg(feature="sqlite")]
-    /// # fn main() {
-    /// let migrator = sqlx_migrator::Migrator::<sqlx::Sqlite>::new();
-    /// assert_eq!(&migrator.table_name(), "_sqlx_migrator_migrations")
-    /// # }
-    /// # #[cfg(not(feature="sqlite"))]
-    /// # fn main() {
-    /// # }
-    /// ```
-    #[must_use]
-    pub fn new() -> Self {
-        Self {
-            migrations: Vec::default(),
-            table_prefix: None,
-            schema: None,
-            lock_strategy: LockStrategy::default(),
-        }
-    }
-
-    /// Configures how the migrator locks the database while running.
-    ///
-    /// Defaults to [`LockStrategy::Database`]. See [`LockStrategy`] for when
-    /// another strategy is appropriate.
-    ///
-    /// # Example
-    /// ```rust
-    /// # #[cfg(feature="sqlite")]
-    /// # fn main() {
-    /// use sqlx_migrator::migrator::LockStrategy;
-    /// let migrator =
-    ///     sqlx_migrator::Migrator::<sqlx::Sqlite>::new().set_lock_strategy(LockStrategy::None);
-    /// assert_eq!(migrator.lock_strategy(), LockStrategy::None);
-    /// # }
-    /// # #[cfg(not(feature="sqlite"))]
-    /// # fn main() {}
-    /// ```
-    #[must_use]
-    pub fn set_lock_strategy(mut self, strategy: LockStrategy) -> Self {
-        self.lock_strategy = strategy;
-        self
-    }
-
-    /// Returns the configured lock strategy
-    #[must_use]
-    pub fn lock_strategy(&self) -> LockStrategy {
-        self.lock_strategy
-    }
-
-    /// Configures a prefix for the migrator table name.
-    ///
-    /// The table name will be formatted as
-    /// `_{prefix}_sqlx_migrator_migrations`. Only ASCII lowercase, numeric
-    /// characters and underscores are allowed in the prefix.
-    ///
-    /// # Example
-    /// ```rust
-    /// # #[cfg(feature="sqlite")]
-    /// # fn main() {
-    /// let migrator = sqlx_migrator::Migrator::<sqlx::Sqlite>::new()
-    ///     .set_table_prefix("prefix_value")
-    ///     .unwrap();
-    /// assert_eq!(
-    ///     &migrator.table_name(),
-    ///     "_prefix_value_sqlx_migrator_migrations"
-    /// )
-    /// # }
-    /// # #[cfg(not(feature="sqlite"))]
-    /// # fn main() {
-    /// # }
-    /// ```
-    ///
-    /// # Errors
-    /// When passed table prefix name contains invalid characters
-    pub fn set_table_prefix(mut self, prefix: impl Into<String>) -> Result<Self, Error> {
-        let prefix_str = prefix.into();
-        if prefix_str.is_empty()
-            || !prefix_str
-                .chars()
-                .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_')
-        {
-            return Err(Error::InvalidTablePrefix);
-        }
-        self.table_prefix = Some(prefix_str);
-        Ok(self)
-    }
-
-    /// Configures a schema for the migrator table.
-    ///
-    /// When set, the table name will be formatted as `{schema}.{table_name}`.
-    /// Schema name can only contain [a-z0-9_] and begin with [a-z_]
-    ///
-    /// For Postgres the schema is created automatically (`CREATE SCHEMA IF
-    /// NOT EXISTS`) when the migration table is ensured, so it does not need
-    /// to exist beforehand. For MySQL the schema refers to a database which
-    /// must already exist. SQLite has no schema support (other than attached
-    /// databases), so setting a schema is not useful there.
-    ///
-    /// # Examples
-    /// ```rust
-    /// # #[cfg(feature="sqlite")]
-    /// # fn main() {
-    /// let migrator = sqlx_migrator::Migrator::<sqlx::Sqlite>::new()
-    ///     .set_schema("migrations")
-    ///     .unwrap();
-    /// assert_eq!(
-    ///     &migrator.table_name(),
-    ///     "migrations._sqlx_migrator_migrations"
-    /// );
-    /// # }
-    /// # #[cfg(not(feature="sqlite"))]
-    /// # fn main() {}
-    /// ```
-    ///
-    /// # Errors
-    /// When passed schema name contains invalid characters
-    pub fn set_schema(mut self, schema: impl Into<String>) -> Result<Self, Error> {
-        let schema_str = schema.into();
-        if schema_str.is_empty()
-            || !schema_str
-                .chars()
-                .next()
-                .is_some_and(|c| c.is_ascii_lowercase() || c == '_')
-            || !schema_str
-                .chars()
-                .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_')
-        {
-            return Err(Error::InvalidSchema);
-        }
-        self.schema = Some(schema_str);
-        Ok(self)
-    }
-
-    /// Get name of table which is used for storing migrations related
-    /// information in database
-    ///
-    /// Format depends on configuration:
-    /// - With schema: `{schema}._sqlx_migrator_migrations`
-    /// - With prefix: `_{prefix}_sqlx_migrator_migrations`
-    /// - With both: `{schema}._{prefix}_sqlx_migrator_migrations`
-    /// - Default: `_sqlx_migrator_migrations`
-    ///
-    /// # Examples
-    /// ```rust
-    /// # #[cfg(feature="sqlite")]
-    /// # fn main() {
-    /// let migrator = sqlx_migrator::Migrator::<sqlx::Sqlite>::new()
-    ///     .set_schema("app_schema")
-    ///     .unwrap()
-    ///     .set_table_prefix("v1")
-    ///     .unwrap();
-    /// assert_eq!(
-    ///     &migrator.table_name(),
-    ///     "app_schema._v1_sqlx_migrator_migrations"
-    /// );
-    /// # }
-    /// # #[cfg(not(feature="sqlite"))]
-    /// # fn main() {}
-    /// ```
-    #[must_use]
-    pub fn table_name(&self) -> String {
-        self.qualified_name(DEFAULT_TABLE_NAME)
-    }
-
-    /// Get name of the meta table which records the migrator's internal
-    /// migrations. It follows the same prefix and schema rules as
-    /// [`Migrator::table_name`].
-    ///
-    /// # Examples
-    /// ```rust
-    /// # #[cfg(feature="sqlite")]
-    /// # fn main() {
-    /// let migrator = sqlx_migrator::Migrator::<sqlx::Sqlite>::new()
-    ///     .set_table_prefix("v1")
-    ///     .unwrap();
-    /// assert_eq!(&migrator.meta_table_name(), "_v1_sqlx_migrator_meta");
-    /// # }
-    /// # #[cfg(not(feature="sqlite"))]
-    /// # fn main() {}
-    /// ```
-    #[must_use]
-    pub fn meta_table_name(&self) -> String {
-        self.qualified_name(DEFAULT_META_TABLE_NAME)
-    }
-
-    /// Applies the configured prefix and schema to a base table name
-    fn qualified_name(&self, base: &str) -> String {
-        let mut table_name = base.to_string();
-        if let Some(prefix) = &self.table_prefix {
-            table_name = format!("_{prefix}{table_name}");
-        }
-        if let Some(schema) = &self.schema {
-            table_name = format!("{schema}.{table_name}");
-        }
-        table_name
-    }
-}
-
-impl<DB> Default for Migrator<DB> {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl<DB> Info<DB> for Migrator<DB> {
-    fn migrations(&self) -> &[BoxMigration<DB>] {
-        &self.migrations
-    }
-
-    fn migrations_mut(&mut self) -> &mut Vec<BoxMigration<DB>> {
-        &mut self.migrations
-    }
-}
-
-impl<DB> Migrate<DB> for Migrator<DB>
-where
-    DB: Database,
-    Self: DatabaseOperation<DB>,
-{
 }

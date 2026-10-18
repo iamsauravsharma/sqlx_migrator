@@ -3,7 +3,7 @@
 
 use sqlx::sqlite::SqliteConnectOptions;
 use sqlx::{ConnectOptions as _, Sqlite, SqliteConnection};
-use sqlx_migrator::migrator::{Info as _, Migrator};
+use sqlx_migrator::{Dialect, Migrator};
 
 use crate::common::{Harness, backend_tests, chain, sqlite_path};
 
@@ -36,13 +36,13 @@ impl Harness for Lite {
     }
 
     fn migrator(&self, test: &str) -> Migrator<Sqlite> {
-        let mut migrator = Migrator::<Sqlite>::new().set_table_prefix(test).unwrap();
+        let mut migrator = Migrator::<Sqlite>::new(Dialect::sqlite_with(Some(test), None).unwrap());
         migrator.add_migrations(chain(test)).unwrap();
         migrator
     }
 
-    fn locks(&self) -> bool {
-        false
+    fn lock_statements(&self) -> Option<(&'static str, &'static str)> {
+        None
     }
 
     fn transactional_ddl(&self) -> bool {
@@ -50,4 +50,4 @@ impl Harness for Lite {
     }
 }
 
-backend_tests!([Lite], "lite");
+backend_tests!(Lite, "lite");

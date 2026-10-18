@@ -5,7 +5,7 @@ use sqlx::Database;
 
 use super::output::confirm;
 use crate::error::Error;
-use crate::migrator::{Migrate, Plan};
+use crate::migrator::{Migrator, Plan, SupportedDatabase};
 
 #[derive(Parser, Debug)]
 pub(super) struct Redo {
@@ -15,16 +15,14 @@ pub(super) struct Redo {
 }
 
 impl Redo {
-    pub(super) async fn run<DB, M>(
+    pub(super) async fn run<DB>(
         &self,
         connection: &mut <DB as Database>::Connection,
-        migrator: &M,
+        migrator: &Migrator<DB>,
     ) -> Result<(), Error>
     where
-        DB: Database,
-        M: Migrate<DB> + ?Sized,
+        DB: SupportedDatabase,
     {
-        migrator.ensure_migration_table_exists(connection).await?;
         let applied_rows = migrator.fetch_applied_migration_from_db(connection).await?;
         // the revert all plan lists applied migrations last applied first,
         // so its head is the migration to redo

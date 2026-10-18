@@ -5,7 +5,7 @@ use sqlx::Database;
 
 use super::output::{OutputFormat, confirm, render_plan};
 use crate::error::Error;
-use crate::migrator::{Migrate, Plan};
+use crate::migrator::{Migrator, Plan, SupportedDatabase};
 
 #[derive(Parser, Debug)]
 #[expect(clippy::struct_excessive_bools)]
@@ -39,14 +39,13 @@ pub(super) struct Revert {
 }
 
 impl Revert {
-    pub(super) async fn run<DB, M>(
+    pub(super) async fn run<DB>(
         &self,
         connection: &mut <DB as Database>::Connection,
-        migrator: &M,
+        migrator: &Migrator<DB>,
     ) -> Result<(), Error>
     where
-        DB: Database,
-        M: Migrate<DB> + ?Sized,
+        DB: SupportedDatabase,
     {
         let revert_last = self.count.is_none() && self.app.is_none() && !self.all;
         let plan = if let Some(count) = self.count {
@@ -59,7 +58,6 @@ impl Revert {
             Plan::revert_count(1)
         }
         .fake(self.fake);
-        migrator.ensure_migration_table_exists(connection).await?;
         let applied_rows = migrator.fetch_applied_migration_from_db(connection).await?;
         // reverting the last migration when nothing is applied is not an
         // error, unlike an explicit count which is larger than what is applied

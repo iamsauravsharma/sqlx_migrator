@@ -1,7 +1,7 @@
 //! Example crate for postgres
 use sqlx::Postgres;
 use sqlx_migrator::cli::MigrationCommand;
-use sqlx_migrator::migrator::{Info as _, Migrator};
+use sqlx_migrator::{Dialect, Migrator};
 
 mod migrations;
 #[tokio::main]
@@ -9,11 +9,8 @@ async fn main() {
     let uri = std::env::var("POSTGRES_DATABASE_URL").unwrap();
     let pool = sqlx::Pool::<Postgres>::connect(&uri).await.unwrap();
     // schema is created automatically by the migrator if it doesn't exist
-    let mut migrator = Migrator::default()
-        .set_table_prefix("prefix")
-        .unwrap()
-        .set_schema("random_schema_name")
-        .unwrap();
+    let mut migrator =
+        Migrator::new(Dialect::postgres_with(Some("prefix"), Some("random_schema_name")).unwrap());
     migrator.add_migrations(migrations::migrations()).unwrap();
     // There are two way to run migration. Either you can create cli as shown
     // below

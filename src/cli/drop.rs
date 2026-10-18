@@ -3,17 +3,15 @@
 use sqlx::Database;
 
 use crate::error::Error;
-use crate::migrator::Migrate;
+use crate::migrator::{Migrator, SupportedDatabase};
 
-pub(super) async fn drop_migrations<DB, M>(
+pub(super) async fn drop_migrations<DB>(
     connection: &mut <DB as Database>::Connection,
-    migrator: &M,
+    migrator: &Migrator<DB>,
 ) -> Result<(), Error>
 where
-    DB: Database,
-    M: Migrate<DB> + ?Sized,
+    DB: SupportedDatabase,
 {
-    migrator.ensure_migration_table_exists(connection).await?;
     // hold lock for dropping migration table to avoid race condition where
     // another process is applying migration and we are dropping the table
     migrator.lock(connection).await?;

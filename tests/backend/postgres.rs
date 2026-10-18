@@ -2,7 +2,7 @@
 //! transactional DDL.
 
 use sqlx::{Connection as _, PgConnection, Postgres};
-use sqlx_migrator::migrator::{Info as _, Migrator};
+use sqlx_migrator::{Dialect, Migrator};
 
 use crate::common::{Harness, backend_tests, chain, database_url, tables};
 
@@ -36,11 +36,8 @@ impl Harness for Pg {
     }
 
     fn migrator(&self, test: &str) -> Migrator<Postgres> {
-        let mut migrator = Migrator::<Postgres>::new()
-            .set_schema(test)
-            .unwrap()
-            .set_table_prefix(test)
-            .unwrap();
+        let mut migrator =
+            Migrator::<Postgres>::new(Dialect::postgres_with(Some(test), Some(test)).unwrap());
         migrator.add_migrations(chain(test)).unwrap();
         migrator
     }
@@ -49,8 +46,11 @@ impl Harness for Pg {
         format!("{test}._{test}_sqlx_migrator_migrations")
     }
 
-    fn locks(&self) -> bool {
-        true
+    fn lock_statements(&self) -> Option<(&'static str, &'static str)> {
+        Some((
+            "SELECT pg_advisory_lock(hashtext($1))",
+            "SELECT pg_advisory_unlock(hashtext($1))",
+        ))
     }
 
     fn transactional_ddl(&self) -> bool {
@@ -59,4 +59,4 @@ impl Harness for Pg {
 }
 
 // Postgres reserves the `pg_` prefix for schema names
-backend_tests!([Pg], "tpg", ignore = "needs POSTGRES_DATABASE_URL");
+backend_tests!(Pg, "tpg", ignore = "needs POSTGRES_DATABASE_URL");

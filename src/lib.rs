@@ -13,11 +13,9 @@ pub use crate::error::Error;
 #[doc(inline)]
 pub use crate::migration::Migration;
 #[doc(inline)]
-pub use crate::migrator::{Info, LockStrategy, Migrate, Migrator, Plan, RunRecord, RunReport};
+pub use crate::migrator::{Dialect, Migrator, Plan};
 #[doc(inline)]
 pub use crate::operation::Operation;
-#[doc(inline)]
-pub use crate::sync::{OldMigrator, Synchronize};
 
 #[cfg(feature = "cli")]
 pub mod cli;

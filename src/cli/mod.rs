@@ -30,7 +30,7 @@ use self::prune::Prune;
 use self::redo::Redo;
 use self::revert::Revert;
 use crate::error::Error;
-use crate::migrator::Migrate;
+use crate::migrator::{Migrator, SupportedDatabase};
 
 mod apply;
 mod drop;
@@ -54,13 +54,12 @@ impl MigrationCommand {
     ///
     /// # Errors
     /// If migration command fails to complete and raise some issue
-    pub async fn parse_and_run<DB, M>(
+    pub async fn parse_and_run<DB>(
         connection: &mut <DB as Database>::Connection,
-        migrator: &M,
+        migrator: &Migrator<DB>,
     ) -> Result<(), Error>
     where
-        DB: Database,
-        M: Migrate<DB> + ?Sized,
+        DB: SupportedDatabase,
     {
         let migration_command = Self::parse();
         migration_command.run(connection, migrator).await
@@ -70,14 +69,13 @@ impl MigrationCommand {
     ///
     /// # Errors
     /// If migration command fails to complete and raise some issue
-    pub async fn run<DB, M>(
+    pub async fn run<DB>(
         &self,
         connection: &mut <DB as Database>::Connection,
-        migrator: &M,
+        migrator: &Migrator<DB>,
     ) -> Result<(), Error>
     where
-        DB: Database,
-        M: Migrate<DB> + ?Sized,
+        DB: SupportedDatabase,
     {
         self.sub_command
             .handle_subcommand(migrator, connection)
@@ -106,14 +104,13 @@ enum SubCommand {
 }
 
 impl SubCommand {
-    async fn handle_subcommand<DB, M>(
+    async fn handle_subcommand<DB>(
         &self,
-        migrator: &M,
+        migrator: &Migrator<DB>,
         connection: &mut <DB as Database>::Connection,
     ) -> Result<(), Error>
     where
-        DB: Database,
-        M: Migrate<DB> + ?Sized,
+        DB: SupportedDatabase,
     {
         match self {
             SubCommand::Apply(apply) => apply.run(connection, migrator).await?,

@@ -42,9 +42,6 @@ pub enum Error {
          non-interactively"
     )]
     ConfirmationRequired,
-    /// Error when unsupported database is used as any database
-    #[error("unsupported database")]
-    UnsupportedDatabase,
     /// Error when table prefix is invalid
     #[error("table prefix name can only contain [a-z0-9_]")]
     InvalidTablePrefix,

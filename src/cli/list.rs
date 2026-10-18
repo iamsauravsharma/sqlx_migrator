@@ -10,7 +10,7 @@ use sqlx::Database;
 use super::output::{OutputFormat, render_table};
 use crate::error::Error;
 use crate::migration::AppliedMigrationSqlRow;
-use crate::migrator::{Migrate, Plan};
+use crate::migrator::{Migrator, Plan, SupportedDatabase};
 
 /// Status of a migration as shown by `list`
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -51,13 +51,12 @@ pub(super) struct ListEntry<'a> {
 
 /// Build the list entries: every known migration in apply order followed by
 /// applied rows which are not known any more.
-pub(super) fn list_entries<'a, DB, M>(
-    migrator: &'a M,
+pub(super) fn list_entries<'a, DB>(
+    migrator: &'a Migrator<DB>,
     applied_migrations: &'a [AppliedMigrationSqlRow],
 ) -> Result<Vec<ListEntry<'a>>, Error>
 where
-    DB: Database,
-    M: Migrate<DB> + ?Sized,
+    DB: SupportedDatabase,
 {
     let status_list = migrator.status(applied_migrations)?;
     let apply_plan_keys = if status_list.is_empty() {
@@ -168,16 +167,14 @@ pub(super) struct List {
 }
 
 impl List {
-    pub(super) async fn run<DB, M>(
+    pub(super) async fn run<DB>(
         &self,
         connection: &mut <DB as Database>::Connection,
-        migrator: &M,
+        migrator: &Migrator<DB>,
     ) -> Result<(), Error>
     where
-        DB: Database,
-        M: Migrate<DB> + ?Sized,
+        DB: SupportedDatabase,
     {
-        migrator.ensure_migration_table_exists(connection).await?;
         let applied_migrations = migrator.fetch_applied_migration_from_db(connection).await?;
         let entries = list_entries(migrator, &applied_migrations)?;
         println!("{}", render_list(&entries, self.format)?);

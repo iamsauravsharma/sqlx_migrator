@@ -2,7 +2,7 @@
 //! named lock, no transactional DDL.
 
 use sqlx::{Connection as _, MySql, MySqlConnection};
-use sqlx_migrator::migrator::{Info as _, Migrator};
+use sqlx_migrator::{Dialect, Migrator};
 
 use crate::common::{Harness, backend_tests, chain, database_url, tables};
 
@@ -30,13 +30,16 @@ impl Harness for My {
     }
 
     fn migrator(&self, test: &str) -> Migrator<MySql> {
-        let mut migrator = Migrator::<MySql>::new().set_table_prefix(test).unwrap();
+        let mut migrator = Migrator::<MySql>::new(Dialect::mysql_with(Some(test), None).unwrap());
         migrator.add_migrations(chain(test)).unwrap();
         migrator
     }
 
-    fn locks(&self) -> bool {
-        true
+    fn lock_statements(&self) -> Option<(&'static str, &'static str)> {
+        Some((
+            "SELECT GET_LOCK(CRC32(CONCAT(COALESCE(DATABASE(), ''), '/', ?)), -1)",
+            "SELECT RELEASE_LOCK(CRC32(CONCAT(COALESCE(DATABASE(), ''), '/', ?)))",
+        ))
     }
 
     fn transactional_ddl(&self) -> bool {
@@ -44,4 +47,4 @@ impl Harness for My {
     }
 }
 
-backend_tests!([My], "my", ignore = "needs MYSQL_DATABASE_URL");
+backend_tests!(My, "my", ignore = "needs MYSQL_DATABASE_URL");

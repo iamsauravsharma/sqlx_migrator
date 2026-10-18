@@ -1,11 +1,11 @@
-//! Integration tests for the `RunReport` returned by `Migrate::run`.
+//! Integration tests for the `RunReport` returned by `Migrator::run`.
 #![cfg(all(test, feature = "sqlite"))]
 
 #[cfg(test)]
 mod tests {
     use sqlx::{Connection as _, Sqlite, SqliteConnection};
     use sqlx_migrator::error::Error;
-    use sqlx_migrator::migrator::{Info as _, Migrate as _, Migrator, Plan, RunRecord, RunReport};
+    use sqlx_migrator::migrator::{Migrator, Plan, RunRecord, RunReport};
     use sqlx_migrator::{sqlite_migration, vec_box};
 
     struct First;
@@ -40,7 +40,7 @@ mod tests {
     }
 
     fn migrator() -> Migrator<Sqlite> {
-        let mut migrator = Migrator::<Sqlite>::new();
+        let mut migrator = Migrator::<Sqlite>::default();
         migrator.add_migrations(vec_box![First, Second]).unwrap();
         migrator
     }
@@ -115,7 +115,7 @@ mod tests {
     #[tokio::test]
     async fn failed_run_returns_error_and_keeps_earlier_migrations() {
         let mut connection = connection().await;
-        let mut migrator = Migrator::<Sqlite>::new();
+        let mut migrator = Migrator::<Sqlite>::default();
         migrator.add_migration(Box::new(Failing)).unwrap();
         let result = migrator.run(&mut connection, &Plan::apply_all()).await;
         assert!(matches!(result, Err(Error::Sqlx(_))));
