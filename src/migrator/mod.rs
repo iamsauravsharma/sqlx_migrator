@@ -27,6 +27,7 @@ use sqlx::{Connection as _, Database};
 use tracing::Instrument as _;
 
 pub use self::dialect::{Dialect, LockStrategy, SupportedDatabase};
+use self::relations::Relations;
 use crate::error::Error;
 use crate::migration::{AppliedMigrationSqlRow, Migration};
 use crate::sync::OldMigrator;
@@ -49,6 +50,9 @@ mod sqlite;
 #[cfg(feature = "postgres")]
 mod postgres;
 
+/// Module for ordering migrations and narrowing them down to a plan
+mod relations;
+
 /// Module for testing
 #[cfg(feature = "sqlite")]
 #[cfg(test)]
@@ -62,10 +66,15 @@ type StatusVec<'migration, 'row, DB> = Vec<(
     Option<&'row AppliedMigrationSqlRow>,
 )>;
 
+#[derive(Debug, Default)]
+struct RevertPlan {
+    last_batch: bool,
+}
+
 #[derive(Debug)]
 enum PlanType {
     Apply,
-    Revert,
+    Revert(RevertPlan),
 }
 
 /// Struct that determines the type of migration plan to execute.
@@ -81,7 +90,6 @@ pub struct Plan {
     plan_type: PlanType,
     app_migration: Option<(String, Option<String>)>,
     count: Option<usize>,
-    last_batch: bool,
     fake: bool,
 }
 
@@ -95,7 +103,6 @@ impl Plan {
             plan_type,
             app_migration,
             count,
-            last_batch: false,
             fake: false,
         }
     }
@@ -142,7 +149,7 @@ impl Plan {
     /// Creates a new plan to revert all migrations.
     #[must_use]
     pub fn revert_all() -> Self {
-        Self::new(PlanType::Revert, None, None)
+        Self::new(PlanType::Revert(RevertPlan::default()), None, None)
     }
 
     /// Creates a new plan to revert a specific migration by name. If migration
@@ -150,7 +157,7 @@ impl Plan {
     #[must_use]
     pub fn revert_name(app: &str, name: Option<&str>) -> Self {
         Self::new(
-            PlanType::Revert,
+            PlanType::Revert(RevertPlan::default()),
             Some((app.to_string(), name.map(ToString::to_string))),
             None,
         )
@@ -159,16 +166,15 @@ impl Plan {
     /// Creates a new plan to revert a limited number of migrations.
     #[must_use]
     pub fn revert_count(count: usize) -> Self {
-        Self::new(PlanType::Revert, None, Some(count))
+        Self::new(PlanType::Revert(RevertPlan::default()), None, Some(count))
     }
 
     /// Creates a new plan to revert the migrations applied by the last run,
     /// which share the highest batch number
     #[must_use]
     pub fn revert_last_batch() -> Self {
-        let mut plan = Self::new(PlanType::Revert, None, None);
-        plan.last_batch = true;
-        plan
+        let plan_type = PlanType::Revert(RevertPlan { last_batch: true });
+        Self::new(plan_type, None, None)
     }
 }
 
@@ -248,280 +254,6 @@ impl RunReport {
     pub fn total_elapsed(&self) -> std::time::Duration {
         self.records.iter().map(RunRecord::elapsed).sum()
     }
-}
-
-/// populate replace hash map recursively
-fn populate_replace_recursive<'populate, DB>(
-    replace_hash_map: &mut HashMap<&'populate BoxMigration<DB>, Vec<&'populate BoxMigration<DB>>>,
-    key: &'populate BoxMigration<DB>,
-    value: &'populate BoxMigration<DB>,
-) -> Result<(), Error> {
-    // protect against a case where two migration replaces each other
-    if key == value {
-        return Err(Error::PlanError {
-            message: "two migrations replace each other".to_string(),
-        });
-    }
-    let replace_hash_map_vec = replace_hash_map.entry(key).or_default();
-    if !replace_hash_map_vec.contains(&value) {
-        replace_hash_map_vec.push(value);
-    }
-    // Clone only the inner Vec (cheap: Vec of references) to release the
-    // mutable borrow on replace_hash_map before the recursive call.
-    let grand_values = replace_hash_map.get(value).cloned();
-    if let Some(grand_values) = grand_values {
-        for grand_value in grand_values {
-            populate_replace_recursive(replace_hash_map, key, grand_value)?;
-        }
-    }
-    Ok(())
-}
-
-/// Narrows `migration_list` down to only the migrations that are required to
-/// apply or revert the specific set of *target* migrations supplied in
-/// `with_list`.
-///
-/// When a user targets a particular app/migration (e.g. `--app foo
-/// --migration bar`), the full ordered list already contains every migration in
-/// dependency order. This function keeps only the subset that is actually
-/// needed to safely apply or revert the requested targets — discarding
-/// unrelated migrations from other apps or branches.
-fn only_related_migration<DB>(
-    migration_list: &mut MigrationVec<'_, DB>,
-    with_list: Vec<&BoxMigration<DB>>,
-    plan_type: &PlanType,
-    replace_children: &HashMap<&BoxMigration<DB>, Vec<&BoxMigration<DB>>>,
-) {
-    use std::collections::VecDeque;
-
-    // `related` is a membership set only; BFS visitation order is kept by
-    // `queue`, so a HashSet keeps the inner-loop `contains` checks O(1).
-    let mut related: HashSet<&BoxMigration<DB>> = HashSet::new();
-    let mut queue: VecDeque<&BoxMigration<DB>> = VecDeque::new();
-
-    // Seed the BFS with the explicitly requested targets
-    for with in with_list {
-        if related.insert(with) {
-            queue.push_back(with);
-        }
-    }
-
-    // Expand one hop at a time until no new migrations can be reached.
-    while let Some(current) = queue.pop_front() {
-        // These depend only on `current`, so compute them once per BFS node
-        // instead of once per (current, m) pair. `parents()`/`run_before()`
-        // each allocate a fresh Vec, so hoisting avoids repeated allocations.
-        let current_parents = current.parents();
-        let current_run_before = current.run_before();
-        let current_replaced = replace_children.get(current);
-        for &m in migration_list.iter() {
-            if related.contains(&m) {
-                continue;
-            }
-            let should_include = match plan_type {
-                PlanType::Apply => {
-                    // m is a direct parent of current, or a parent of any
-                    // migration current transitively replaces (inherited edge).
-                    let is_parent = current_parents.iter().any(|p| p.as_ref() == m.as_ref())
-                        || current_replaced.is_some_and(|children| {
-                            children.iter().any(|child| {
-                                child.parents().iter().any(|p| p.as_ref() == m.as_ref())
-                            })
-                        });
-
-                    // current (or any migration it replaces) is in m's
-                    // run_before, meaning m must precede
-                    // current.
-                    let is_run_before = m
-                        .run_before()
-                        .iter()
-                        .any(|rb| rb.as_ref() == current.as_ref())
-                        || current_replaced.is_some_and(|children| {
-                            children.iter().any(|child| {
-                                m.run_before()
-                                    .iter()
-                                    .any(|rb| rb.as_ref() == child.as_ref())
-                            })
-                        });
-
-                    is_parent || is_run_before
-                }
-                PlanType::Revert => {
-                    // Collect what m transitively replaces.
-                    let m_replaced = replace_children.get(m);
-
-                    // current is a direct parent of m, or a parent of any
-                    // migration m transitively replaces (inherited edge).
-                    let is_parent = m.parents().iter().any(|p| p.as_ref() == current.as_ref())
-                        || m_replaced.is_some_and(|children| {
-                            children.iter().any(|child| {
-                                child
-                                    .parents()
-                                    .iter()
-                                    .any(|p| p.as_ref() == current.as_ref())
-                            })
-                        });
-
-                    // m (or any migration m replaces) is in current's
-                    // run_before, meaning current runs
-                    // before m, so m must be reverted before current.
-                    let is_run_before = current_run_before
-                        .iter()
-                        .any(|rb| rb.as_ref() == m.as_ref())
-                        || m_replaced.is_some_and(|children| {
-                            children.iter().any(|child| {
-                                current_run_before
-                                    .iter()
-                                    .any(|rb| rb.as_ref() == child.as_ref())
-                            })
-                        });
-
-                    is_parent || is_run_before
-                }
-            };
-            if should_include {
-                related.insert(m);
-                queue.push_back(m);
-            }
-        }
-    }
-
-    migration_list.retain(|m| related.contains(m));
-}
-
-/// Process plan to provided migrations list
-fn process_plan<'process, DB>(
-    migration_list: &mut MigrationVec<'process, DB>,
-    applied_migrations: &HashSet<&'process BoxMigration<DB>>,
-    plan: &Plan,
-    replace_children: &HashMap<&BoxMigration<DB>, Vec<&BoxMigration<DB>>>,
-    all_migrations: &[BoxMigration<DB>],
-) -> Result<(), Error>
-where
-    DB: Database,
-{
-    // Modify migration list according to plan type
-    match plan.plan_type {
-        PlanType::Apply => {
-            migration_list.retain(|migration| !applied_migrations.contains(migration));
-        }
-        PlanType::Revert => {
-            migration_list.retain(|migration| applied_migrations.contains(migration));
-            migration_list.reverse();
-        }
-    }
-
-    if let Some((app, migration_name)) = &plan.app_migration {
-        // Find position of last migration which matches condition of provided
-        // app and migration name. A target that exists in the full migration
-        // list but not in the processed list has nothing to do (it is already
-        // applied/reverted or replaced), so the plan is empty rather than an
-        // error — this keeps targeted apply/revert idempotent. Only a target
-        // that doesn't exist at all is an error.
-        let position = if let Some(name) = migration_name {
-            let pos = migration_list
-                .iter()
-                .rposition(|migration| migration.app() == app && migration.name() == name);
-            if pos.is_none() {
-                if !all_migrations
-                    .iter()
-                    .any(|migration| migration.app() == app)
-                {
-                    return Err(Error::PlanError {
-                        message: format!("app {app} doesn't exist"),
-                    });
-                }
-                if !all_migrations
-                    .iter()
-                    .any(|migration| migration.app() == app && migration.name() == name)
-                {
-                    return Err(Error::PlanError {
-                        message: format!("migration {name} doesn't exist for app {app}"),
-                    });
-                }
-            }
-            pos
-        } else {
-            let pos = migration_list
-                .iter()
-                .rposition(|migration| migration.app() == app);
-            if pos.is_none()
-                && !all_migrations
-                    .iter()
-                    .any(|migration| migration.app() == app)
-            {
-                return Err(Error::PlanError {
-                    message: format!("app {app} doesn't exist"),
-                });
-            }
-            pos
-        };
-        let Some(position) = position else {
-            migration_list.clear();
-            return Ok(());
-        };
-        migration_list.truncate(position + 1);
-        let with_list = if migration_name.is_some() {
-            vec![migration_list[position]]
-        } else {
-            migration_list
-                .iter()
-                .filter(|pos_migration| pos_migration.app() == app)
-                .copied()
-                .collect::<Vec<_>>()
-        };
-        only_related_migration(migration_list, with_list, &plan.plan_type, replace_children);
-    } else if let Some(count) = plan.count {
-        if count == 0 {
-            return Err(Error::PlanError {
-                message: "count must be greater than 0".to_string(),
-            });
-        }
-        let actual_len = migration_list.len();
-        if count > actual_len {
-            return Err(Error::PlanError {
-                message: format!(
-                    "passed count value is larger than migration length: {actual_len}"
-                ),
-            });
-        }
-        migration_list.truncate(count);
-    }
-    Ok(())
-}
-
-/// Resolve a replaced migration to the concrete migration registered in the
-/// list.
-///
-/// A virtual migration is only a placeholder for a real migration sharing the
-/// same app/name, so when `child` is virtual the matching non-virtual migration
-/// must be located; otherwise `child` itself is returned.
-fn resolve_replaced_migration<'resolve, DB>(
-    migrations: &'resolve [BoxMigration<DB>],
-    child: &'resolve BoxMigration<DB>,
-) -> Result<&'resolve BoxMigration<DB>, Error> {
-    if child.is_virtual() {
-        migrations
-            .iter()
-            .find(|&search_migration| search_migration == child)
-            .ok_or(Error::PlanError {
-                message: "Failed finding non virtual migration for virtual migration".to_string(),
-            })
-    } else {
-        Ok(child)
-    }
-}
-
-// get all replaces migration recursively for a migration
-fn get_recursive_replaces<'get, DB>(
-    hash_map: &'get HashMap<BoxMigration<DB>, &'get BoxMigration<DB>>,
-    val: &'get BoxMigration<DB>,
-) -> Vec<&'get BoxMigration<DB>> {
-    let mut recursive_vec = vec![val];
-    if let Some(&parent) = hash_map.get(val) {
-        recursive_vec.extend(get_recursive_replaces(hash_map, parent));
-    }
-    recursive_vec
 }
 
 /// What a lock is held on
@@ -780,7 +512,7 @@ where
             &[
                 migration.app(),
                 migration.name(),
-                &execution_time.as_millis().to_string(),
+                &execution_time.as_nanos().to_string(),
                 &batch.to_string(),
             ],
         )
@@ -824,7 +556,7 @@ where
             connection,
             &self.dialect.sql().finish_migration,
             &[
-                &execution_time.as_millis().to_string(),
+                &execution_time.as_nanos().to_string(),
                 migration.app(),
                 migration.name(),
             ],
@@ -1010,7 +742,6 @@ where
     /// Returns an error if the migration list is empty, contains unresolved
     /// virtual migrations, has a dependency deadlock, or if the plan
     /// references an app/migration that does not exist.
-    #[expect(clippy::too_many_lines)]
     pub fn generate_migration_plan(
         &self,
         plan: Option<&Plan>,
@@ -1036,255 +767,44 @@ where
 
         tracing::debug!("generating {:?} migration plan", plan);
 
-        // Hashmap which contains key as child migration and value as parent
-        // migration Child migration is migration which is replaced by
-        // parent migration. One migration can only be replaced by one
-        // migration but one migration can replace multiple migration so
-        // we can have multiple child for one parent but one child
-        // can only have one parent
-        let mut replaces_child_parent_hash_map = HashMap::new();
-
-        for parent_migration in self.migrations() {
-            for child_migration in parent_migration.replaces() {
-                let child_name = format!("{}:{}", child_migration.app(), child_migration.name());
-                if replaces_child_parent_hash_map
-                    .insert(child_migration, parent_migration)
-                    .is_some()
-                {
-                    return Err(Error::PlanError {
-                        message: format!("migration {child_name} replaced multiple times"),
-                    });
-                }
-            }
-        }
-
-        // Hashmap which contains key as migration and value is vector of
-        // migration which are children of this migration due to
-        // replace. One migration can have multiple children
-        let mut replace_children = HashMap::<_, Vec<_>>::new();
-        // in first loop add direct children of parent due to replace
-        for (child, &parent) in &replaces_child_parent_hash_map {
-            let children_migration = resolve_replaced_migration(self.migrations(), child)?;
-            replace_children
-                .entry(parent)
-                .or_default()
-                .push(children_migration);
-        }
-        // in second loop add recursive children of parent due to replace
-        for (child, &parent) in &replaces_child_parent_hash_map {
-            let children_migration = resolve_replaced_migration(self.migrations(), child)?;
-            populate_replace_recursive(&mut replace_children, parent, children_migration)?;
-        }
-
-        // Hashmap which contains key as migration and value is vector of
-        // migration which should run before this migration. One
-        // migration can have multiple run before migration
-        let mut run_before_child_parent_hash_map = HashMap::<_, Vec<_>>::new();
-
-        for parent_migration in self.migrations() {
-            for run_before_migration in parent_migration.run_before() {
-                run_before_child_parent_hash_map
-                    .entry(run_before_migration)
-                    .or_default()
-                    .push(parent_migration);
-            }
-        }
-
-        let mut migration_list = Vec::new();
-        // HashSet to keep track of migration which are already added to
-        // migration list to avoid adding same migration multiple times
-        // to migration list since one migration can be parent, run
-        // before or replace multiple migration
-        let mut migration_set = HashSet::new();
-
-        // keep looping until all migration are added to migration list. In each
-        // loop check if any migration can be added to migration list or
-        // not. A migration can be added if all its parents are already
-        // added to migration list
-        let original_migration_length = self.migrations().len();
-        while migration_list.len() != original_migration_length {
-            let loop_initial_migration_list_length = migration_list.len();
-            for migration in self.migrations() {
-                // check if all parents and run before migration are already
-                // added to migration list and if it replaces
-                // any migration then that migration
-                // should be added to migration list as well before adding this
-                // migration to migration list. Also if this
-                // migration have children due to replace
-                // then their parents and run before should be added to
-                // migration list before adding this migration
-                // to migration list
-                let all_required_added = !migration_set.contains(migration)
-                    && migration
-                        .parents()
-                        .iter()
-                        .all(|p| migration_set.contains(p))
-                    && run_before_child_parent_hash_map
-                        .get(migration)
-                        .unwrap_or(&vec![])
-                        .iter()
-                        .all(|rb| migration_set.contains(rb))
-                    && replaces_child_parent_hash_map
-                        .get(migration)
-                        .is_none_or(|r| migration_set.contains(r))
-                    && replace_children.get(migration).is_none_or(|children| {
-                        // if children are present then their parents and run
-                        // before should be
-                        // added to migration list before adding replace
-                        // migration
-                        children.iter().all(|&child| {
-                            child.parents().iter().all(|p| migration_set.contains(p))
-                                && run_before_child_parent_hash_map
-                                    .get(child)
-                                    .unwrap_or(&vec![])
-                                    .iter()
-                                    .all(|rb| migration_set.contains(rb) || children.contains(rb))
-                        })
-                    });
-                if all_required_added {
-                    migration_list.push(migration);
-                    migration_set.insert(migration);
-                }
-            }
-
-            // if no migration is added in this loop then it means there is a
-            // deadlock and we cannot proceed further
-            if loop_initial_migration_list_length == migration_list.len() {
-                return Err(Error::PlanError {
-                    message: "reached deadlock stage during plan generation".to_string(),
-                });
-            }
-        }
+        let relations = Relations::new(self.migrations())?;
+        let order = relations.order()?;
 
         // if plan is provided then modify migration list according to plan else
         // return all migration in order of apply
-        if let Some(some_plan) = plan {
-            // Index the applied rows by (app, name) once so matching each
-            // migration is an O(1) lookup rather than an O(rows) rescan, and
-            // keep the result in a set for O(1) membership tests below.
-            let applied_row_keys: HashSet<(&str, &str)> = applied_migration_sql_rows
+        let order = if let Some(some_plan) = plan {
+            let applied_keys: HashSet<(&str, &str)> = applied_migration_sql_rows
                 .iter()
                 .map(|row| (row.app(), row.name()))
                 .collect();
-            let mut applied_migrations = HashSet::new();
-            for migration in self.migrations() {
-                if applied_row_keys.contains(&(migration.app(), migration.name())) {
-                    applied_migrations.insert(migration);
-                }
-            }
-
-            // Check if any child migration is applied before its parent
-            // migration according to parents and run before field.
-            // If yes then return error. Iterate `self.migrations()`
-            // (not the set) so the reported error is deterministic
-            // when multiple migrations violate the constraint.
-            for migration in self.migrations() {
-                if !applied_migrations.contains(&migration) {
-                    continue;
-                }
-                let mut parents = vec![];
-                if let Some(run_before_list) = run_before_child_parent_hash_map.get(migration) {
-                    for &run_before in run_before_list {
-                        parents.push(run_before);
-                    }
-                }
-                let main_parents = migration.parents();
-                for parent in &main_parents {
-                    parents.push(parent);
-                }
-                for parent in parents {
-                    let recursive_vec =
-                        get_recursive_replaces(&replaces_child_parent_hash_map, parent);
-                    if !applied_migrations
+            let applied = self
+                .migrations()
+                .iter()
+                .map(|migration| applied_keys.contains(&(migration.app(), migration.name())))
+                .collect::<Vec<_>>();
+            let last_batch_keys: HashSet<(&str, &str)> = match &some_plan.plan_type {
+                PlanType::Revert(revert_plan) if revert_plan.last_batch => {
+                    let last_batch = applied_migration_sql_rows
                         .iter()
-                        .any(|applied| recursive_vec.contains(applied))
-                    {
-                        return Err(Error::PlanError {
-                            message: format!(
-                                "child migration {}:{} applied before its parent migration {}:{}",
-                                migration.app(),
-                                migration.name(),
-                                parent.app(),
-                                parent.name()
-                            ),
-                        });
-                    }
-                }
-            }
-
-            // Check if any migration and its replaces are applied together or
-            // not. Collect all removals first to avoid cloning
-            // migration_list.
-            let mut to_remove_replacers: Vec<&BoxMigration<DB>> = vec![];
-            let mut to_remove_replaced: Vec<&BoxMigration<DB>> = vec![];
-
-            for &migration in &migration_list {
-                // Check if this migration have any children due to replace
-                if let Some(children) = replace_children.get(&migration) {
-                    // Check if any one of replaced migration is applied or not
-                    let replaces_applied = children
+                        .map(AppliedMigrationSqlRow::batch)
+                        .max();
+                    applied_migration_sql_rows
                         .iter()
-                        .any(|&replace_migration| applied_migrations.contains(&replace_migration));
-
-                    // If replaces migration is applied then we cannot apply
-                    // this migration If replaces migration
-                    // is not applied then we can remove all replaced
-                    // migration from migration list since this migration will
-                    // apply in place of them
-                    if replaces_applied {
-                        // Errors out if this migration is also applied since
-                        // both migration and its
-                        // replaces cannot be applied together
-                        if applied_migrations.contains(&migration) {
-                            return Err(Error::PlanError {
-                                message: format!(
-                                    "migration {}:{} and its replaces are applied together",
-                                    migration.app(),
-                                    migration.name(),
-                                ),
-                            });
-                        }
-                        to_remove_replacers.push(migration);
-                    } else {
-                        // remove all replaced migration from migration list
-                        // since this migration will
-                        // apply in place of them
-                        to_remove_replaced.extend(children);
-                    }
+                        .filter(|row| Some(row.batch()) == last_batch)
+                        .map(|row| (row.app(), row.name()))
+                        .collect()
                 }
-            }
+                _ => HashSet::new(),
+            };
+            relations.plan(order, &applied, some_plan, &last_batch_keys)?
+        } else {
+            order
+        };
 
-            migration_list.retain(|&m| {
-                let list_contains_migration =
-                    to_remove_replacers.contains(&m) || to_remove_replaced.contains(&m);
-                !list_contains_migration
-            });
-
-            process_plan(
-                &mut migration_list,
-                &applied_migrations,
-                some_plan,
-                &replace_children,
-                self.migrations(),
-            )?;
-
-            if some_plan.last_batch {
-                let last_batch = applied_migration_sql_rows
-                    .iter()
-                    .map(AppliedMigrationSqlRow::batch)
-                    .max();
-                let last_batch_keys: HashSet<(&str, &str)> = applied_migration_sql_rows
-                    .iter()
-                    .filter(|row| Some(row.batch()) == last_batch)
-                    .map(|row| (row.app(), row.name()))
-                    .collect();
-                migration_list.retain(|migration| {
-                    last_batch_keys.contains(&(migration.app(), migration.name()))
-                });
-            }
-        }
-
-        Ok(migration_list)
+        Ok(order
+            .into_iter()
+            .map(|index| &self.migrations()[index])
+            .collect())
     }
 
     /// Ensures no pending migrations are present.
@@ -1509,7 +1029,7 @@ where
             let report = result.and_then(|report| unlock_result.map(|()| report))?;
             tracing::info!(
                 count = report.len(),
-                elapsed_ms = report.total_elapsed().as_millis(),
+                elapsed_ns = report.total_elapsed().as_nanos(),
                 "run finished"
             );
             Ok(report)
@@ -1639,7 +1159,7 @@ where
                     tracing::info!("applying migration");
                     apply_migration(migrator, connection, migration, plan.fake, batch).await?;
                 }
-                PlanType::Revert => {
+                PlanType::Revert(_) => {
                     tracing::info!("reverting migration");
 
                     // Reverse operation since last applied operation need
@@ -1671,7 +1191,7 @@ where
                 }
             }
             let elapsed = start_instant.elapsed();
-            tracing::info!(elapsed_ms = elapsed.as_millis(), "migration finished");
+            tracing::info!(elapsed_ns = elapsed.as_nanos(), "migration finished");
             Ok::<_, Error>(elapsed)
         }
         .instrument(migration_span)

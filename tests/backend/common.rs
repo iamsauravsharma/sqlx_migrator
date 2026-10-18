@@ -591,7 +591,7 @@ where
     for row in &rows {
         assert!(row.success());
         assert_eq!(row.batch(), 1);
-        assert!(row.execution_time_ms() >= 0);
+        assert!(row.execution_time_ns() >= 0);
     }
 
     assert!(matches!(

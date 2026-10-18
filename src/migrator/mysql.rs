@@ -18,7 +18,7 @@ fn internal_migration_steps(table_name: &str) -> Vec<(&'static str, String)> {
         (
             "0003_add_execution_time_column",
             format!(
-                "ALTER TABLE {table_name} ADD COLUMN execution_time_ms BIGINT NOT NULL DEFAULT 0"
+                "ALTER TABLE {table_name} ADD COLUMN execution_time_ns BIGINT NOT NULL DEFAULT 0"
             ),
         ),
         (
@@ -70,7 +70,7 @@ fn drop_table_query(table_name: &str) -> String {
 fn fetch_rows_query(table_name: &str) -> String {
     format!(
         "SELECT id, app, name, DATE_FORMAT(applied_time, '%Y-%m-%d %H:%i:%s') AS applied_time, \
-         success, execution_time_ms, batch FROM {table_name}"
+         success, execution_time_ns, batch FROM {table_name}"
     )
 }
 
@@ -78,7 +78,7 @@ fn fetch_rows_query(table_name: &str) -> String {
 #[must_use]
 fn add_migration_query(table_name: &str) -> String {
     format!(
-        "INSERT INTO {table_name}(app, name, execution_time_ms, batch) VALUES (?, ?, CAST(? AS \
+        "INSERT INTO {table_name}(app, name, execution_time_ns, batch) VALUES (?, ?, CAST(? AS \
          SIGNED), CAST(? AS SIGNED))"
     )
 }
@@ -96,7 +96,7 @@ fn start_migration_query(table_name: &str) -> String {
 #[must_use]
 fn finish_migration_query(table_name: &str) -> String {
     format!(
-        "UPDATE {table_name} SET success = TRUE, execution_time_ms = CAST(? AS SIGNED) WHERE app \
+        "UPDATE {table_name} SET success = TRUE, execution_time_ns = CAST(? AS SIGNED) WHERE app \
          = ? AND name = ?"
     )
 }

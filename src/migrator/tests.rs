@@ -1724,7 +1724,7 @@ async fn sync_completes_without_error() {
     assert_eq!(rows.len(), 1);
     assert_eq!(rows[0].name(), "a");
     // synced migrations have no execution time and form a batch
-    assert_eq!(rows[0].execution_time_ms(), 0);
+    assert_eq!(rows[0].execution_time_ns(), 0);
     assert_eq!(rows[0].batch(), 1);
 }
 
@@ -1867,7 +1867,7 @@ async fn legacy_install_keeps_existing_rows() {
     assert_eq!(rows[0].app(), "legacy");
     // columns added by internal migrations get their defaults
     assert!(rows[0].success());
-    assert_eq!(rows[0].execution_time_ms(), 0);
+    assert_eq!(rows[0].execution_time_ns(), 0);
     // existing rows get a batch each, in apply order
     assert_eq!(rows[0].batch(), 1);
     assert_eq!(rows[1].batch(), 2);
@@ -2151,7 +2151,7 @@ async fn applied_rows_record_time_and_batch() {
         .collect::<Vec<_>>();
     assert_eq!(batches, [1, 2, 2, 3]);
     // a fake run executes nothing
-    assert_eq!(rows[3].execution_time_ms(), 0);
+    assert_eq!(rows[3].execution_time_ns(), 0);
 }
 
 /// Reverting the last batch reverts the migrations of the last run only and
@@ -2315,4 +2315,267 @@ async fn row_lock_fails_while_held() {
     raw(&mut conn, format!("DELETE FROM {lock_table}")).await;
     let report = migrator.run(&mut conn, &Plan::apply_all()).await.unwrap();
     assert_eq!(report.len(), 1);
+}
+
+// ── Plan order ───────────────────────────────────────────────────────────────
+
+/// Migration of the `main` app with parents and run before migrations given by
+/// name.
+struct Node {
+    name: String,
+    parents: Vec<String>,
+    run_before: Vec<String>,
+    replaces: Vec<String>,
+}
+
+impl Node {
+    fn new(name: usize, parents: &[usize], run_before: &[usize]) -> Self {
+        let names = |indexes: &[usize]| indexes.iter().map(|index| format!("m{index}")).collect();
+        Self {
+            name: format!("m{name}"),
+            parents: names(parents),
+            run_before: names(run_before),
+            replaces: Vec::new(),
+        }
+    }
+
+    fn replacing(mut self, replaces: &[usize]) -> Self {
+        self.replaces = replaces.iter().map(|index| format!("m{index}")).collect();
+        self
+    }
+}
+
+fn nodes_to_migrations(nodes: Vec<Node>) -> Vec<Box<dyn Migration<Sqlite>>> {
+    nodes
+        .into_iter()
+        .map(|node| Box::new(node) as Box<dyn Migration<Sqlite>>)
+        .collect()
+}
+
+impl Migration<Sqlite> for Node {
+    fn app(&self) -> &'static str {
+        "main"
+    }
+
+    fn name(&self) -> &str {
+        &self.name
+    }
+
+    fn parents(&self) -> Vec<Box<dyn Migration<Sqlite>>> {
+        self.parents
+            .iter()
+            .map(|parent| Box::new(("main", parent.clone())) as Box<dyn Migration<Sqlite>>)
+            .collect()
+    }
+
+    fn operations(&self) -> Vec<Box<dyn Operation<Sqlite>>> {
+        vec![]
+    }
+
+    fn replaces(&self) -> Vec<Box<dyn Migration<Sqlite>>> {
+        self.replaces
+            .iter()
+            .map(|migration| Box::new(("main", migration.clone())) as Box<dyn Migration<Sqlite>>)
+            .collect()
+    }
+
+    fn run_before(&self) -> Vec<Box<dyn Migration<Sqlite>>> {
+        self.run_before
+            .iter()
+            .map(|migration| Box::new(("main", migration.clone())) as Box<dyn Migration<Sqlite>>)
+            .collect()
+    }
+}
+
+/// A long chain added from the last migration to the first is planned quickly,
+/// plans which look for the related migrations included.
+#[test]
+fn long_chain_is_planned_quickly() {
+    let size = 3000;
+    let mut migrator = Migrator::<Sqlite>::default();
+    migrator
+        .add_migrations(nodes_to_migrations(
+            (0..size)
+                .rev()
+                .map(|name| {
+                    Node::new(
+                        name,
+                        &name.checked_sub(1).into_iter().collect::<Vec<_>>(),
+                        &[],
+                    )
+                })
+                .collect(),
+        ))
+        .unwrap();
+    let rows = (0..size)
+        .map(|name| {
+            AppliedMigrationSqlRow::new(i32::try_from(name).unwrap(), "main", &format!("m{name}"))
+        })
+        .collect::<Vec<_>>();
+    let last = format!("m{}", size - 1);
+    let started = std::time::Instant::now();
+    let plan = migrator.generate_migration_plan(None, &[]).unwrap();
+    assert_eq!(plan.len(), size);
+    assert_eq!(plan[0].name(), "m0");
+    assert_eq!(plan[size - 1].name(), last);
+    let apply = migrator
+        .generate_migration_plan(Some(&Plan::apply_name("main", Some(&last))), &[])
+        .unwrap();
+    assert_eq!(apply.len(), size);
+    let revert = migrator
+        .generate_migration_plan(Some(&Plan::revert_name("main", Some("m0"))), &rows)
+        .unwrap();
+    assert_eq!(revert.len(), size);
+    assert_eq!(revert[0].name(), last);
+    assert!(started.elapsed() < std::time::Duration::from_secs(2));
+}
+
+/// Plan of the migrations `nodes` for `plan`, as names or the error message,
+/// when the migrations with the indexes in `applied` are applied.
+fn plan_of(
+    nodes: Vec<Node>,
+    plan: Option<&Plan>,
+    applied: &[usize],
+) -> Result<Vec<String>, String> {
+    let mut migrator = Migrator::<Sqlite>::default();
+    migrator.add_migrations(nodes_to_migrations(nodes)).unwrap();
+    let rows = applied
+        .iter()
+        .map(|&index| {
+            AppliedMigrationSqlRow::new(i32::try_from(index).unwrap(), "main", &format!("m{index}"))
+        })
+        .collect::<Vec<_>>();
+    migrator
+        .generate_migration_plan(plan, &rows)
+        .map(|plan| {
+            plan.iter()
+                .map(|migration| migration.name().to_string())
+                .collect()
+        })
+        .map_err(|error| error.to_string())
+}
+
+/// Of the migrations which are free the first one of the list is added first,
+/// so one which was waiting for a later migration comes in as soon as that is
+/// added.
+#[test]
+fn first_free_migration_of_the_list_is_added_first() {
+    // m0 waits for m2
+    let nodes = vec![
+        Node::new(0, &[2], &[]),
+        Node::new(1, &[], &[]),
+        Node::new(2, &[], &[]),
+        Node::new(3, &[], &[]),
+    ];
+    assert_eq!(plan_of(nodes, None, &[]).unwrap(), ["m1", "m2", "m0", "m3"]);
+    // m1 waits for m0 which waits for m2
+    let nodes = vec![
+        Node::new(0, &[2], &[]),
+        Node::new(1, &[0], &[]),
+        Node::new(2, &[], &[]),
+        Node::new(3, &[], &[]),
+    ];
+    assert_eq!(plan_of(nodes, None, &[]).unwrap(), ["m2", "m0", "m1", "m3"]);
+}
+
+/// A migration which has to come before another one is added first, and a
+/// missing order is a deadlock.
+#[test]
+fn run_before_and_parents_set_the_order_and_cycles_deadlock() {
+    // m0 is in the list first but has to come after m1 through m1's run before
+    let nodes = vec![Node::new(0, &[], &[]), Node::new(1, &[], &[0])];
+    assert_eq!(plan_of(nodes, None, &[]).unwrap(), ["m1", "m0"]);
+    let nodes = vec![
+        Node::new(0, &[2], &[]),
+        Node::new(1, &[0], &[]),
+        Node::new(2, &[1], &[]),
+    ];
+    assert_eq!(
+        plan_of(nodes, None, &[]).unwrap_err(),
+        "plan error: reached deadlock stage during plan generation"
+    );
+}
+
+/// An applied migration is fine when the parent it needs is not applied itself
+/// but replaced by an applied migration.
+#[test]
+fn applied_child_of_a_parent_replaced_by_an_applied_migration_is_fine() {
+    // m2 replaces m0 and m1 has m0 as parent
+    let nodes = || {
+        vec![
+            Node::new(0, &[], &[]),
+            Node::new(1, &[0], &[]),
+            Node::new(2, &[], &[]).replacing(&[0]),
+        ]
+    };
+    assert_eq!(
+        plan_of(nodes(), Some(&Plan::apply_all()), &[1, 2]).unwrap(),
+        Vec::<String>::new()
+    );
+    assert_eq!(
+        plan_of(nodes(), Some(&Plan::apply_all()), &[1]).unwrap_err(),
+        "plan error: child migration main:m1 applied before its parent migration main:m0"
+    );
+}
+
+/// Applying one migration brings along the migrations which have to come before
+/// a migration it replaces, and leaves out the unrelated ones.
+#[test]
+fn apply_name_takes_over_the_run_before_of_replaced_migrations() {
+    // m0 is unrelated, m1 has to come before m2 which m3 replaces
+    let nodes = vec![
+        Node::new(0, &[], &[]),
+        Node::new(1, &[], &[2]),
+        Node::new(2, &[], &[]),
+        Node::new(3, &[], &[]).replacing(&[2]),
+    ];
+    assert_eq!(
+        plan_of(nodes, Some(&Plan::apply_name("main", Some("m3"))), &[]).unwrap(),
+        ["m1", "m3"]
+    );
+}
+
+/// Reverting one migration also reverts the migration replacing one it has to
+/// come before.
+#[test]
+fn revert_name_reaches_the_replacer_of_a_run_before_target() {
+    // m1 has to come before m2 which m3 replaces. m0, m1 and m3 are applied
+    let nodes = vec![
+        Node::new(0, &[], &[]),
+        Node::new(1, &[], &[2]),
+        Node::new(2, &[], &[]),
+        Node::new(3, &[], &[]).replacing(&[2]),
+    ];
+    assert_eq!(
+        plan_of(
+            nodes,
+            Some(&Plan::revert_name("main", Some("m1"))),
+            &[0, 1, 3]
+        )
+        .unwrap(),
+        ["m3", "m1"]
+    );
+}
+
+/// A migration which is replaced has nothing to apply, a replace cycle is an
+/// error whatever its length.
+#[test]
+fn replaced_migration_has_nothing_to_apply_and_replace_cycles_are_errors() {
+    let nodes = vec![
+        Node::new(0, &[], &[]),
+        Node::new(1, &[], &[]).replacing(&[0]),
+    ];
+    assert_eq!(
+        plan_of(nodes, Some(&Plan::apply_name("main", Some("m0"))), &[]).unwrap(),
+        Vec::<String>::new()
+    );
+    let nodes = vec![
+        Node::new(0, &[], &[]).replacing(&[1]),
+        Node::new(1, &[], &[]).replacing(&[2]),
+        Node::new(2, &[], &[]).replacing(&[0]),
+    ];
+    assert_eq!(
+        plan_of(nodes, None, &[]).unwrap_err(),
+        "plan error: two migrations replace each other"
+    );
 }
