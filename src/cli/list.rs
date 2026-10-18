@@ -18,6 +18,9 @@ use crate::migrator::{Migrator, Plan, SupportedDatabase};
 pub(super) enum ListStatus {
     /// Applied and recorded in the migration table
     Applied,
+    /// Started running and never finished, so the database may be partly
+    /// migrated. Fix it by hand and run the `repair` command
+    Failed,
     /// Known migration which is not applied yet
     Pending,
     /// Known migration which will not be applied because a migration replacing
@@ -32,6 +35,7 @@ impl ListStatus {
     fn symbol(self) -> &'static str {
         match self {
             ListStatus::Applied => "\u{2713}",
+            ListStatus::Failed => "!",
             ListStatus::Pending => "\u{2717}",
             ListStatus::Replaced => "\u{2194}",
             ListStatus::Unknown => "?",
@@ -47,6 +51,8 @@ pub(super) struct ListEntry<'a> {
     pub(super) name: &'a str,
     pub(super) status: ListStatus,
     pub(super) applied_time: Option<&'a str>,
+    pub(super) execution_time_ms: Option<i64>,
+    pub(super) batch: Option<i32>,
 }
 
 /// Build the list entries: every known migration in apply order followed by
@@ -82,8 +88,14 @@ where
                         id: Some(row.id()),
                         app: migration.app(),
                         name: migration.name(),
-                        status: ListStatus::Applied,
+                        status: if row.success() {
+                            ListStatus::Applied
+                        } else {
+                            ListStatus::Failed
+                        },
                         applied_time: Some(row.applied_time()),
+                        execution_time_ms: Some(row.execution_time_ms()),
+                        batch: Some(row.batch()),
                     }
                 }
                 None => {
@@ -97,6 +109,8 @@ where
                             ListStatus::Replaced
                         },
                         applied_time: None,
+                        execution_time_ms: None,
+                        batch: None,
                     }
                 }
             }
@@ -115,6 +129,8 @@ where
                     name: row.name(),
                     status: ListStatus::Unknown,
                     applied_time: Some(row.applied_time()),
+                    execution_time_ms: Some(row.execution_time_ms()),
+                    batch: Some(row.batch()),
                 }
             }),
     );
@@ -148,11 +164,25 @@ pub(super) fn render_list(
                         entry.name.to_string(),
                         entry.status.symbol().to_string(),
                         entry.applied_time.unwrap_or("N/A").to_string(),
+                        entry
+                            .batch
+                            .map_or_else(|| "N/A".to_string(), |batch| batch.to_string()),
+                        entry
+                            .execution_time_ms
+                            .map_or_else(|| "N/A".to_string(), |millis| millis.to_string()),
                     ]
                 })
                 .collect::<Vec<_>>();
             Ok(render_table(
-                &["ID", "App", "Name", "Status", "Applied time"],
+                &[
+                    "ID",
+                    "App",
+                    "Name",
+                    "Status",
+                    "Applied time",
+                    "Batch",
+                    "Time (ms)",
+                ],
                 &rows,
             ))
         }

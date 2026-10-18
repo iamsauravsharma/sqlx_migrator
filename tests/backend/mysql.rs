@@ -35,6 +35,14 @@ impl Harness for My {
         migrator
     }
 
+    fn legacy_table_sql(&self, table: &str) -> String {
+        format!(
+            "CREATE TABLE {table} (id INT PRIMARY KEY NOT NULL AUTO_INCREMENT, app VARCHAR(255) \
+             NOT NULL, name VARCHAR(255) NOT NULL, applied_time TIMESTAMP NOT NULL DEFAULT \
+             CURRENT_TIMESTAMP, UNIQUE (app, name))"
+        )
+    }
+
     fn lock_statements(&self) -> Option<(&'static str, &'static str)> {
         Some((
             "SELECT GET_LOCK(CRC32(CONCAT(COALESCE(DATABASE(), ''), '/', ?)), -1)",

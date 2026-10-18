@@ -190,14 +190,17 @@ where
 
 /// Struct representing a migration row from the database.
 ///
-/// This struct corresponds to the id, app, name, and applied time fields in the
-/// database. It is used to list the migrations that have been applied.
+/// This struct corresponds to the columns of the migration table. It is used
+/// to list the migrations that have been applied.
 #[derive(sqlx::FromRow, Clone)]
 pub struct AppliedMigrationSqlRow {
     id: i32,
     app: String,
     name: String,
     applied_time: String,
+    success: bool,
+    execution_time_ms: i64,
+    batch: i32,
 }
 
 impl AppliedMigrationSqlRow {
@@ -208,6 +211,9 @@ impl AppliedMigrationSqlRow {
             app: app.to_string(),
             name: name.to_string(),
             applied_time: String::new(),
+            success: true,
+            execution_time_ms: 0,
+            batch: 0,
         }
     }
 
@@ -233,5 +239,26 @@ impl AppliedMigrationSqlRow {
     #[must_use]
     pub fn applied_time(&self) -> &str {
         &self.applied_time
+    }
+
+    /// Return `false` when a non atomic migration started running and never
+    /// finished, so the database may be partly migrated
+    #[must_use]
+    pub fn success(&self) -> bool {
+        self.success
+    }
+
+    /// Return the time the migration took to run in milliseconds. `0` for fake
+    /// runs and synced migrations
+    #[must_use]
+    pub fn execution_time_ms(&self) -> i64 {
+        self.execution_time_ms
+    }
+
+    /// Return the batch of the run which applied the migration. Migrations
+    /// applied by one run share a batch
+    #[must_use]
+    pub fn batch(&self) -> i32 {
+        self.batch
     }
 }

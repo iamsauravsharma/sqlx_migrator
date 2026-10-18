@@ -22,10 +22,19 @@ pub(crate) struct Sql {
     pub(crate) drop_tables: String,
     /// Selects the applied migration rows as `id, app, name, applied_time`
     pub(crate) fetch_rows: String,
-    /// Records an applied migration. Binds app then name
+    /// Records an applied migration. Binds app, name, execution time in
+    /// milliseconds and batch
     pub(crate) add_migration: String,
+    /// Records a migration which started running as failed. Binds app, name
+    /// and batch
+    pub(crate) start_migration: String,
+    /// Marks a running migration as successful. Binds execution time in
+    /// milliseconds, app then name
+    pub(crate) finish_migration: String,
     /// Removes an applied migration. Binds app then name
     pub(crate) delete_migration: String,
+    /// Removes the migrations which started running and never finished
+    pub(crate) delete_failed_migrations: String,
     /// Statements of the advisory lock, `None` on backends without one
     pub(crate) lock: Option<Lock>,
 }

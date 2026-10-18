@@ -29,6 +29,7 @@ pub(crate) struct SqlMigration {
     name: String,
     parents: Vec<(String, String)>,
     operations: Vec<(String, String)>,
+    atomic: bool,
 }
 
 impl SqlMigration {
@@ -38,7 +39,13 @@ impl SqlMigration {
             name: name.to_string(),
             parents: Vec::new(),
             operations: Vec::new(),
+            atomic: true,
         }
+    }
+
+    pub(crate) fn non_atomic(mut self) -> Self {
+        self.atomic = false;
+        self
     }
 
     pub(crate) fn parent(mut self, app: &str, name: &str) -> Self {
@@ -77,6 +84,10 @@ where
             .iter()
             .map(|(up, down)| Box::new((up.clone(), down.clone())) as Box<dyn Operation<DB>>)
             .collect()
+    }
+
+    fn is_atomic(&self) -> bool {
+        self.atomic
     }
 }
 
@@ -164,6 +175,10 @@ pub(crate) trait Harness: Send + Sync + 'static {
     fn table_name(&self, test: &str) -> String {
         format!("_{test}_sqlx_migrator_migrations")
     }
+
+    /// Statement which creates the migration table with only the columns of
+    /// the first internal migration.
+    fn legacy_table_sql(&self, table: &str) -> String;
 
     /// Statements which take and release the advisory lock, binding the
     /// migration table name, `None` when the backend does not lock.
@@ -449,7 +464,8 @@ where
 }
 
 /// The meta table is created, rejects names this crate does not know,
-/// a migration table created before the meta table existed keeps its rows,
+/// a migration table without a meta table keeps its rows and gets the other
+/// columns,
 /// and both tables are dropped together.
 pub(crate) async fn internal_migrations<H>(harness: &H, test: &str)
 where
@@ -479,14 +495,34 @@ where
         Err(Error::UnknownInternalMigration { name }) if name == "9999_from_the_future"
     ));
 
-    // without a meta table an existing migration table keeps its rows
+    // a migration table with only the first columns and no meta table keeps
+    // its rows and gets the other columns
+    H::Db::execute(
+        &mut connection,
+        &format!(
+            "DROP TABLE {}; DROP TABLE {meta_table}",
+            migrator.table_name()
+        ),
+    )
+    .await
+    .unwrap();
+    H::Db::execute(
+        &mut connection,
+        &harness.legacy_table_sql(&migrator.table_name()),
+    )
+    .await
+    .unwrap();
     insert_row::<H::Db>(&mut connection, &migrator.table_name(), "legacy", "row")
         .await
         .unwrap();
-    H::Db::execute(&mut connection, &format!("DROP TABLE {meta_table}"))
+    let rows = migrator
+        .fetch_applied_migration_from_db(&mut connection)
         .await
         .unwrap();
-    assert_eq!(applied(&mut connection, &migrator).await, vec!["row"]);
+    assert_eq!(rows.len(), 1);
+    assert_eq!(rows[0].name(), "row");
+    assert!(rows[0].success());
+    assert_eq!(rows[0].batch(), rows[0].id());
     H::Db::execute(
         &mut connection,
         &format!("DELETE FROM {} WHERE app = 'legacy'", migrator.table_name()),
@@ -507,6 +543,79 @@ where
         .await
         .unwrap();
     assert!(!table_exists::<H::Db>(&mut connection, &meta_table).await);
+    harness.teardown(test);
+}
+
+/// Applied rows record time and batch. A non atomic migration which
+/// fails part way stays recorded as failed and blocks runs until it is
+/// repaired. The last batch can be reverted.
+pub(crate) async fn failed_migration<H>(harness: &H, test: &str)
+where
+    H: Harness,
+    (String, String): Operation<H::Db>,
+{
+    let mut connection = harness.setup(test).await;
+    let mut migrator = harness.migrator(test);
+    migrator
+        .add_migration(Box::new(
+            SqlMigration::new("main", "third")
+                .parent("main", "second")
+                .non_atomic()
+                .operation(
+                    &format!("CREATE TABLE {test}_failed (id INTEGER PRIMARY KEY)"),
+                    &format!("DROP TABLE {test}_failed"),
+                )
+                .operation("THIS IS NOT SQL", "SELECT 1"),
+        ))
+        .unwrap();
+
+    migrator
+        .run(&mut connection, &Plan::apply_count(2))
+        .await
+        .unwrap();
+    let rows = migrator
+        .fetch_applied_migration_from_db(&mut connection)
+        .await
+        .unwrap();
+    assert_eq!(rows.len(), 2);
+    for row in &rows {
+        assert!(row.success());
+        assert_eq!(row.batch(), 1);
+        assert!(row.execution_time_ms() >= 0);
+    }
+
+    assert!(matches!(
+        migrator.run(&mut connection, &Plan::apply_all()).await,
+        Err(Error::Sqlx(_))
+    ));
+    let rows = migrator
+        .fetch_applied_migration_from_db(&mut connection)
+        .await
+        .unwrap();
+    let third = rows.iter().find(|row| row.name() == "third").unwrap();
+    assert!(!third.success());
+    assert_eq!(third.batch(), 2);
+    assert!(matches!(
+        migrator.run(&mut connection, &Plan::apply_all()).await,
+        Err(Error::FailedMigration { name, .. }) if name == "third"
+    ));
+
+    assert_eq!(migrator.repair(&mut connection).await.unwrap(), 1);
+    assert_eq!(
+        applied(&mut connection, &migrator).await,
+        vec!["first", "second"]
+    );
+    assert_eq!(migrator.repair(&mut connection).await.unwrap(), 0);
+
+    let report = migrator
+        .run(&mut connection, &Plan::revert_last_batch())
+        .await
+        .unwrap();
+    assert_eq!(report.len(), 2);
+    assert_eq!(
+        applied(&mut connection, &migrator).await,
+        Vec::<String>::new()
+    );
     harness.teardown(test);
 }
 
@@ -562,6 +671,12 @@ macro_rules! backend_tests {
         #[tokio::test]
         async fn prune() {
             crate::common::prune(&$harness, concat!($prefix, "_prune")).await;
+        }
+
+        $(#[$ignore])?
+        #[tokio::test]
+        async fn failed_migration() {
+            crate::common::failed_migration(&$harness, concat!($prefix, "_ledger")).await;
         }
 
         $(#[$ignore])?

@@ -20,6 +20,10 @@ pub(super) struct Revert {
     /// Number of migration to revert. Conflicts with all and app args
     #[arg(long, conflicts_with_all = ["all", "app"])]
     count: Option<usize>,
+    /// Revert the migrations applied by the last run, which share a batch.
+    /// Conflicts with all, app and count args
+    #[arg(long, conflicts_with_all = ["all", "app", "count"])]
+    last_batch: bool,
     /// Make migration reverted without running revert operation
     #[arg(long)]
     fake: bool,
@@ -47,14 +51,17 @@ impl Revert {
     where
         DB: SupportedDatabase,
     {
-        let revert_last = self.count.is_none() && self.app.is_none() && !self.all;
+        let mut revert_last = false;
         let plan = if let Some(count) = self.count {
             Plan::revert_count(count)
         } else if let Some(app) = &self.app {
             Plan::revert_name(app, self.migration.as_deref())
         } else if self.all {
             Plan::revert_all()
+        } else if self.last_batch {
+            Plan::revert_last_batch()
         } else {
+            revert_last = true;
             Plan::revert_count(1)
         }
         .fake(self.fake);

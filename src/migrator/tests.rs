@@ -1723,6 +1723,9 @@ async fn sync_completes_without_error() {
         .unwrap();
     assert_eq!(rows.len(), 1);
     assert_eq!(rows[0].name(), "a");
+    // synced migrations have no execution time and form a batch
+    assert_eq!(rows[0].execution_time_ms(), 0);
+    assert_eq!(rows[0].batch(), 1);
 }
 
 /// `Migrator::sync` must silently skip migrations from the old migrator that
@@ -1779,7 +1782,7 @@ fn create_schema_can_be_disabled() {
 
 // ── Internal migrations of the migration table ───────────────────────────────
 
-/// Runs a raw statement on the connection, for setting up legacy or tampered
+/// Runs a raw statement on the connection, for setting up tampered
 /// states the public API cannot produce.
 async fn raw(conn: &mut <Sqlite as Database>::Connection, sql: String) {
     sqlx::query(sqlx::AssertSqlSafe(sql))
@@ -1825,15 +1828,18 @@ async fn fresh_install_creates_both_tables() {
     .fetch_one(&mut *conn)
     .await
     .unwrap();
-    assert_eq!(count, 1);
+    assert_eq!(
+        usize::try_from(count).unwrap(),
+        migrator.dialect().sql().internal.steps().len()
+    );
     migrator
         .ensure_migration_table_exists(&mut conn)
         .await
         .unwrap();
 }
 
-/// A migration table created before the meta table existed is kept, rows
-/// included, since the internal migrations are safe to rerun.
+/// A migration table without a meta table keeps its rows when the internal
+/// migrations run.
 #[tokio::test]
 async fn legacy_install_keeps_existing_rows() {
     let migrator = Migrator::<Sqlite>::default();
@@ -1843,7 +1849,7 @@ async fn legacy_install_keeps_existing_rows() {
     raw(
         &mut conn,
         format!(
-            "INSERT INTO {}(app, name) VALUES ('legacy', 'row')",
+            "INSERT INTO {}(app, name) VALUES ('legacy', 'row'), ('legacy', 'next')",
             migrator.table_name()
         ),
     )
@@ -1857,8 +1863,58 @@ async fn legacy_install_keeps_existing_rows() {
         .fetch_applied_migration_from_db(&mut conn)
         .await
         .unwrap();
-    assert_eq!(rows.len(), 1);
+    assert_eq!(rows.len(), 2);
     assert_eq!(rows[0].app(), "legacy");
+    // columns added by internal migrations get their defaults
+    assert!(rows[0].success());
+    assert_eq!(rows[0].execution_time_ms(), 0);
+    // existing rows get a batch each, in apply order
+    assert_eq!(rows[0].batch(), 1);
+    assert_eq!(rows[1].batch(), 2);
+}
+
+/// A migration table with only the first internal migration recorded gets the
+/// other columns and keeps its rows.
+#[tokio::test]
+async fn first_layout_with_meta_table_gets_new_columns() {
+    let migrator = Migrator::<Sqlite>::default();
+    let mut conn = make_conn().await;
+    let first_layout = migrator.dialect().sql().internal.steps()[0].1.clone();
+    raw(&mut conn, first_layout).await;
+    raw(
+        &mut conn,
+        format!(
+            "CREATE TABLE {} (name TEXT PRIMARY KEY NOT NULL, applied_time TIMESTAMP NOT NULL \
+             DEFAULT CURRENT_TIMESTAMP)",
+            migrator.meta_table_name()
+        ),
+    )
+    .await;
+    raw(
+        &mut conn,
+        format!(
+            "INSERT INTO {}(name) VALUES ('{}')",
+            migrator.meta_table_name(),
+            migrator.dialect().sql().internal.steps()[0].0
+        ),
+    )
+    .await;
+    raw(
+        &mut conn,
+        format!(
+            "INSERT INTO {}(app, name) VALUES ('old', 'row')",
+            migrator.table_name()
+        ),
+    )
+    .await;
+
+    let rows = migrator
+        .fetch_applied_migration_from_db(&mut conn)
+        .await
+        .unwrap();
+    assert_eq!(rows.len(), 1);
+    assert!(rows[0].success());
+    assert_eq!(rows[0].batch(), rows[0].id());
 }
 
 /// An internal migration recorded by a newer release is rejected rather than
@@ -1920,4 +1976,224 @@ async fn drop_removes_meta_table() {
         .unwrap();
     assert!(!sqlite_table_exists(&mut conn, &migrator.table_name()).await);
     assert!(!sqlite_table_exists(&mut conn, &migrator.meta_table_name()).await);
+}
+
+// ── Failed migrations and ledger columns ─────────────────────────────────────
+
+/// Migration of the `main` app running plain SQL, optionally outside of a
+/// transaction.
+struct SqlMigration {
+    name: &'static str,
+    parent: Option<&'static str>,
+    operations: Vec<(&'static str, &'static str)>,
+    atomic: bool,
+}
+
+impl SqlMigration {
+    fn new(name: &'static str, parent: Option<&'static str>, up: &'static str) -> Self {
+        Self {
+            name,
+            parent,
+            operations: vec![(up, "SELECT 1")],
+            atomic: true,
+        }
+    }
+
+    fn non_atomic(mut self) -> Self {
+        self.atomic = false;
+        self
+    }
+
+    fn operation(mut self, up: &'static str) -> Self {
+        self.operations.push((up, "SELECT 1"));
+        self
+    }
+}
+
+impl Migration<Sqlite> for SqlMigration {
+    fn app(&self) -> &'static str {
+        "main"
+    }
+
+    fn name(&self) -> &str {
+        self.name
+    }
+
+    fn parents(&self) -> Vec<Box<dyn Migration<Sqlite>>> {
+        self.parent
+            .map(|parent| Box::new(("main", parent)) as Box<dyn Migration<Sqlite>>)
+            .into_iter()
+            .collect()
+    }
+
+    fn operations(&self) -> Vec<Box<dyn Operation<Sqlite>>> {
+        self.operations
+            .iter()
+            .map(|(up, down)| {
+                Box::new((up.to_string(), down.to_string())) as Box<dyn Operation<Sqlite>>
+            })
+            .collect()
+    }
+
+    fn is_atomic(&self) -> bool {
+        self.atomic
+    }
+}
+
+fn migrator_of(migrations: Vec<SqlMigration>) -> Migrator<Sqlite> {
+    let mut migrator = Migrator::<Sqlite>::default();
+    migrator
+        .add_migrations(
+            migrations
+                .into_iter()
+                .map(|migration| Box::new(migration) as Box<dyn Migration<Sqlite>>)
+                .collect(),
+        )
+        .unwrap();
+    migrator
+}
+
+/// A non atomic migration which fails part way stays recorded as failed, no
+/// run touches the database until it is repaired, and repairing only removes
+/// the failed entry.
+#[tokio::test]
+async fn failed_non_atomic_migration_blocks_runs_until_repaired() {
+    let broken = || {
+        vec![
+            SqlMigration::new("first", None, "CREATE TABLE first (id INTEGER)"),
+            SqlMigration::new("second", Some("first"), "CREATE TABLE second (id INTEGER)")
+                .non_atomic()
+                .operation("THIS IS NOT SQL"),
+        ]
+    };
+    let migrator = migrator_of(broken());
+    let mut conn = make_conn().await;
+    assert!(matches!(
+        migrator.run(&mut conn, &Plan::apply_all()).await,
+        Err(Error::Sqlx(_))
+    ));
+    let rows = migrator
+        .fetch_applied_migration_from_db(&mut conn)
+        .await
+        .unwrap();
+    let success = |name: &str| {
+        rows.iter()
+            .find(|row| row.name() == name)
+            .map(AppliedMigrationSqlRow::success)
+    };
+    assert_eq!(success("first"), Some(true));
+    assert_eq!(success("second"), Some(false));
+
+    for plan in [
+        Plan::apply_all(),
+        Plan::revert_all(),
+        Plan::apply_all().fake(true),
+    ] {
+        assert!(matches!(
+            migrator.run(&mut conn, &plan).await,
+            Err(Error::FailedMigration { name, .. }) if name == "second"
+        ));
+    }
+
+    assert_eq!(migrator.repair(&mut conn).await.unwrap(), 1);
+    assert_eq!(migrator.repair(&mut conn).await.unwrap(), 0);
+    let rows = migrator
+        .fetch_applied_migration_from_db(&mut conn)
+        .await
+        .unwrap();
+    assert_eq!(rows.len(), 1);
+    assert_eq!(rows[0].name(), "first");
+
+    // the partly applied table has to be fixed by hand before running again
+    raw(&mut conn, "DROP TABLE second".to_string()).await;
+    let fixed = migrator_of(vec![
+        SqlMigration::new("first", None, "CREATE TABLE first (id INTEGER)"),
+        SqlMigration::new("second", Some("first"), "CREATE TABLE second (id INTEGER)").non_atomic(),
+    ]);
+    let report = fixed.run(&mut conn, &Plan::apply_all()).await.unwrap();
+    assert_eq!(report.len(), 1);
+    let rows = fixed
+        .fetch_applied_migration_from_db(&mut conn)
+        .await
+        .unwrap();
+    assert!(rows.iter().all(AppliedMigrationSqlRow::success));
+}
+
+/// Rows of one run share a batch and a fake run records no execution time.
+#[tokio::test]
+async fn applied_rows_record_time_and_batch() {
+    let migrator = migrator_of(vec![
+        SqlMigration::new("first", None, "CREATE TABLE first (id INTEGER)"),
+        SqlMigration::new("second", Some("first"), "CREATE TABLE second (id INTEGER)").non_atomic(),
+        SqlMigration::new("third", Some("second"), "CREATE TABLE third (id INTEGER)"),
+        SqlMigration::new("fourth", Some("third"), "CREATE TABLE fourth (id INTEGER)"),
+    ]);
+    let mut conn = make_conn().await;
+    migrator
+        .run(&mut conn, &Plan::apply_count(1))
+        .await
+        .unwrap();
+    migrator
+        .run(&mut conn, &Plan::apply_count(2))
+        .await
+        .unwrap();
+    migrator
+        .run(&mut conn, &Plan::apply_all().fake(true))
+        .await
+        .unwrap();
+    let rows = migrator
+        .fetch_applied_migration_from_db(&mut conn)
+        .await
+        .unwrap();
+    let batches = rows
+        .iter()
+        .map(AppliedMigrationSqlRow::batch)
+        .collect::<Vec<_>>();
+    assert_eq!(batches, [1, 2, 2, 3]);
+    // a fake run executes nothing
+    assert_eq!(rows[3].execution_time_ms(), 0);
+}
+
+/// Reverting the last batch reverts the migrations of the last run only and
+/// has nothing to do once nothing is applied.
+#[tokio::test]
+async fn revert_last_batch_reverts_one_run() {
+    let migrator = migrator_of(vec![
+        SqlMigration::new("first", None, "CREATE TABLE first (id INTEGER)"),
+        SqlMigration::new("second", Some("first"), "CREATE TABLE second (id INTEGER)"),
+        SqlMigration::new("third", Some("second"), "CREATE TABLE third (id INTEGER)"),
+    ]);
+    let mut conn = make_conn().await;
+    migrator
+        .run(&mut conn, &Plan::apply_count(1))
+        .await
+        .unwrap();
+    migrator.run(&mut conn, &Plan::apply_all()).await.unwrap();
+    let applied = |rows: Vec<AppliedMigrationSqlRow>| {
+        rows.iter()
+            .map(|row| row.name().to_string())
+            .collect::<Vec<_>>()
+    };
+
+    let report = migrator
+        .run(&mut conn, &Plan::revert_last_batch())
+        .await
+        .unwrap();
+    assert_eq!(report.len(), 2);
+    let rows = migrator
+        .fetch_applied_migration_from_db(&mut conn)
+        .await
+        .unwrap();
+    assert_eq!(applied(rows), ["first"]);
+
+    let report = migrator
+        .run(&mut conn, &Plan::revert_last_batch())
+        .await
+        .unwrap();
+    assert_eq!(report.len(), 1);
+    let report = migrator
+        .run(&mut conn, &Plan::revert_last_batch())
+        .await
+        .unwrap();
+    assert!(report.is_empty());
 }

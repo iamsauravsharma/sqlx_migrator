@@ -79,6 +79,7 @@ pub struct Plan {
     plan_type: PlanType,
     app_migration: Option<(String, Option<String>)>,
     count: Option<usize>,
+    last_batch: bool,
     fake: bool,
 }
 
@@ -92,6 +93,7 @@ impl Plan {
             plan_type,
             app_migration,
             count,
+            last_batch: false,
             fake: false,
         }
     }
@@ -156,6 +158,15 @@ impl Plan {
     #[must_use]
     pub fn revert_count(count: usize) -> Self {
         Self::new(PlanType::Revert, None, Some(count))
+    }
+
+    /// Creates a new plan to revert the migrations applied by the last run,
+    /// which share the highest batch number
+    #[must_use]
+    pub fn revert_last_batch() -> Self {
+        let mut plan = Self::new(PlanType::Revert, None, None);
+        plan.last_batch = true;
+        plan
     }
 }
 
@@ -728,7 +739,8 @@ where
         DB::execute(connection, &self.dialect.sql().drop_tables).await
     }
 
-    /// Record a migration as applied
+    /// Record a migration as applied. `execution_time` is zero when no
+    /// operation ran
     ///
     /// # Errors
     /// If the SQL fails
@@ -736,11 +748,61 @@ where
         &self,
         connection: &mut <DB as Database>::Connection,
         migration: &dyn Migration<DB>,
+        execution_time: std::time::Duration,
+        batch: i32,
     ) -> Result<(), Error> {
         DB::execute_bound(
             connection,
             &self.dialect.sql().add_migration,
-            &[migration.app(), migration.name()],
+            &[
+                migration.app(),
+                migration.name(),
+                &execution_time.as_millis().to_string(),
+                &batch.to_string(),
+            ],
+        )
+        .await
+    }
+
+    /// Record a migration which is about to run as failed. It is marked
+    /// successful by [`Migrator::finish_migration_in_db_table`], so a
+    /// migration which fails part way stays recorded as failed
+    ///
+    /// # Errors
+    /// If the SQL fails
+    pub(crate) async fn start_migration_in_db_table(
+        &self,
+        connection: &mut <DB as Database>::Connection,
+        migration: &dyn Migration<DB>,
+        batch: i32,
+    ) -> Result<(), Error> {
+        DB::execute_bound(
+            connection,
+            &self.dialect.sql().start_migration,
+            &[migration.app(), migration.name(), &batch.to_string()],
+        )
+        .await
+    }
+
+    /// Mark a migration recorded by [`Migrator::start_migration_in_db_table`]
+    /// as successful
+    ///
+    /// # Errors
+    /// If the SQL fails
+    pub(crate) async fn finish_migration_in_db_table(
+        &self,
+        connection: &mut <DB as Database>::Connection,
+        migration: &dyn Migration<DB>,
+        execution_time: std::time::Duration,
+    ) -> Result<(), Error> {
+        DB::execute_bound(
+            connection,
+            &self.dialect.sql().finish_migration,
+            &[
+                &execution_time.as_millis().to_string(),
+                migration.app(),
+                migration.name(),
+            ],
         )
         .await
     }
@@ -1078,6 +1140,21 @@ where
                 &replace_children,
                 self.migrations(),
             )?;
+
+            if some_plan.last_batch {
+                let last_batch = applied_migration_sql_rows
+                    .iter()
+                    .map(AppliedMigrationSqlRow::batch)
+                    .max();
+                let last_batch_keys: HashSet<(&str, &str)> = applied_migration_sql_rows
+                    .iter()
+                    .filter(|row| Some(row.batch()) == last_batch)
+                    .map(|row| (row.app(), row.name()))
+                    .collect();
+                migration_list.retain(|migration| {
+                    last_batch_keys.contains(&(migration.app(), migration.name()))
+                });
+            }
         }
 
         Ok(migration_list)
@@ -1181,6 +1258,41 @@ where
         result.and_then(|count| unlock_result.map(|()| count))
     }
 
+    /// Removes the migrations which started running and never finished from
+    /// the migration table, so they run again. Returns the number of removed
+    /// entries.
+    ///
+    /// Only the migration table is changed: the operations of a failed
+    /// migration ran partly, so the database has to be fixed by hand first.
+    ///
+    /// # Errors
+    /// If fetching or deleting failed migrations fails
+    pub async fn repair(
+        &self,
+        connection: &mut <DB as Database>::Connection,
+    ) -> Result<usize, Error> {
+        tracing::debug!("repairing failed migrations");
+        self.lock(connection).await?;
+        // store result of repairing so that lock is unlocked before returning
+        // result
+        let result = async {
+            let applied_migrations = self.fetch_applied_migration_from_db(connection).await?;
+            let failed_count = applied_migrations
+                .iter()
+                .filter(|row| !row.success())
+                .count();
+            if failed_count > 0 {
+                DB::execute(connection, &self.dialect.sql().delete_failed_migrations).await?;
+            }
+            Ok(failed_count)
+        }
+        .await;
+        // unlock before returning; if both repair and unlock fail, the repair
+        // error takes precedence over the unlock error.
+        let unlock_result = self.unlock(connection).await;
+        result.and_then(|count| unlock_result.map(|()| count))
+    }
+
     /// Records the migrations an old migrator reports as applied, skipping
     /// ones this migrator does not know or which are already recorded.
     /// Applied times are not preserved. Use it to move from another
@@ -1213,11 +1325,18 @@ where
                 .iter()
                 .map(|row| (row.app(), row.name()))
                 .collect::<HashSet<_>>();
+            // synced migrations are recorded as one batch
+            let batch = next_batch(&already_applied_migration);
             for migration in old_migrator_applied_migrations {
                 let key = (migration.app(), migration.name());
                 if known_migrations.contains(&key) && !already_applied.contains(&key) {
-                    self.add_migration_to_db_table(connection, migration.as_ref())
-                        .await?;
+                    self.add_migration_to_db_table(
+                        connection,
+                        migration.as_ref(),
+                        std::time::Duration::ZERO,
+                        batch,
+                    )
+                    .await?;
                 }
             }
             Ok(())
@@ -1270,6 +1389,72 @@ where
     }
 }
 
+/// Batch number for the migrations a run records, one more than the highest
+/// batch in the migration table
+fn next_batch(applied_rows: &[AppliedMigrationSqlRow]) -> i32 {
+    applied_rows
+        .iter()
+        .map(AppliedMigrationSqlRow::batch)
+        .max()
+        .unwrap_or(0)
+        + 1
+}
+
+/// Applies one migration and records it in the migration table. A non atomic
+/// migration is recorded as failed before its operations run and marked
+/// successful after the last one, so one which fails part way stays recorded
+/// as failed instead of being run again on top of what it already changed.
+async fn apply_migration<DB>(
+    migrator: &Migrator<DB>,
+    connection: &mut <DB as Database>::Connection,
+    migration: &BoxMigration<DB>,
+    fake: bool,
+    batch: i32,
+) -> Result<(), Error>
+where
+    DB: SupportedDatabase,
+{
+    let start_instant = std::time::Instant::now();
+    let operations = migration.operations();
+    if migration.is_atomic() {
+        let mut transaction = connection.begin().await?;
+        if !fake {
+            for operation in operations {
+                operation.up(&mut transaction).await?;
+            }
+        }
+        let execution_time = if fake {
+            std::time::Duration::ZERO
+        } else {
+            start_instant.elapsed()
+        };
+        migrator
+            .add_migration_to_db_table(&mut transaction, migration.as_ref(), execution_time, batch)
+            .await?;
+        transaction.commit().await?;
+    } else if fake {
+        migrator
+            .add_migration_to_db_table(
+                connection,
+                migration.as_ref(),
+                std::time::Duration::ZERO,
+                batch,
+            )
+            .await?;
+    } else {
+        migrator
+            .start_migration_in_db_table(connection, migration.as_ref(), batch)
+            .await?;
+        for operation in operations {
+            operation.up(connection).await?;
+        }
+        migrator
+            .finish_migration_in_db_table(connection, migration.as_ref(), start_instant.elapsed())
+            .await?;
+    }
+    Ok(())
+}
+
 /// Runs the plan while the lock is held. Split out of [`Migrator::run`] so
 /// the lock is always released whatever the outcome.
 async fn run_plan<DB>(
@@ -1281,7 +1466,15 @@ where
     DB: SupportedDatabase,
 {
     let applied_rows = migrator.fetch_applied_migration_from_db(connection).await?;
+    if let Some(failed) = applied_rows.iter().find(|row| !row.success()) {
+        return Err(Error::FailedMigration {
+            app: failed.app().to_string(),
+            name: failed.name().to_string(),
+        });
+    }
     let plan_migrations = migrator.generate_migration_plan(Some(plan), &applied_rows)?;
+    // migrations applied by this run share the next batch number
+    let batch = next_batch(&applied_rows);
     let mut report = RunReport {
         apply: matches!(plan.plan_type, PlanType::Apply),
         fake: plan.fake,
@@ -1301,28 +1494,7 @@ where
             match plan.plan_type {
                 PlanType::Apply => {
                     tracing::info!("applying migration");
-                    let operations = migration.operations();
-                    if migration.is_atomic() {
-                        let mut transaction = connection.begin().await?;
-                        if !plan.fake {
-                            for operation in operations {
-                                operation.up(&mut transaction).await?;
-                            }
-                        }
-                        migrator
-                            .add_migration_to_db_table(&mut transaction, migration.as_ref())
-                            .await?;
-                        transaction.commit().await?;
-                    } else {
-                        if !plan.fake {
-                            for operation in operations {
-                                operation.up(connection).await?;
-                            }
-                        }
-                        migrator
-                            .add_migration_to_db_table(connection, migration.as_ref())
-                            .await?;
-                    }
+                    apply_migration(migrator, connection, migration, plan.fake, batch).await?;
                 }
                 PlanType::Revert => {
                     tracing::info!("reverting migration");

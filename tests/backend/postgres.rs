@@ -46,6 +46,14 @@ impl Harness for Pg {
         format!("{test}._{test}_sqlx_migrator_migrations")
     }
 
+    fn legacy_table_sql(&self, table: &str) -> String {
+        format!(
+            "CREATE TABLE {table} (id INT PRIMARY KEY NOT NULL GENERATED ALWAYS AS IDENTITY, app \
+             TEXT NOT NULL, name TEXT NOT NULL, applied_time TIMESTAMPTZ NOT NULL DEFAULT now(), \
+             UNIQUE (app, name))"
+        )
+    }
+
     fn lock_statements(&self) -> Option<(&'static str, &'static str)> {
         Some((
             "SELECT pg_advisory_lock(hashtext($1))",

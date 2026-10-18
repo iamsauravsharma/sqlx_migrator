@@ -28,6 +28,7 @@ use self::apply::Apply;
 use self::list::List;
 use self::prune::Prune;
 use self::redo::Redo;
+use self::repair::Repair;
 use self::revert::Revert;
 use crate::error::Error;
 use crate::migrator::{Migrator, SupportedDatabase};
@@ -38,6 +39,7 @@ mod list;
 mod output;
 mod prune;
 mod redo;
+mod repair;
 mod revert;
 #[cfg(test)]
 mod tests;
@@ -99,6 +101,9 @@ enum SubCommand {
     Prune(Prune),
     /// Revert the last applied migration and apply it again
     Redo(Redo),
+    /// Remove migrations which failed part way from the migration table so
+    /// they run again. Fix the database by hand first
+    Repair(Repair),
     /// Revert migrations
     Revert(Revert),
 }
@@ -118,6 +123,7 @@ impl SubCommand {
             SubCommand::List(list) => list.run(connection, migrator).await?,
             SubCommand::Prune(prune) => prune.run(connection, migrator).await?,
             SubCommand::Redo(redo) => redo.run(connection, migrator).await?,
+            SubCommand::Repair(repair) => repair.run(connection, migrator).await?,
             SubCommand::Revert(revert) => revert.run(connection, migrator).await?,
         }
         Ok(())
