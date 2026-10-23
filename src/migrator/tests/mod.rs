@@ -186,6 +186,14 @@ impl SqlMigration {
         }
     }
 
+    /// Makes reverting the migration fail
+    fn failing_down(mut self) -> Self {
+        for operation in &mut self.operations {
+            operation.1 = "SELECT * FROM missing";
+        }
+        self
+    }
+
     fn non_atomic(mut self) -> Self {
         self.atomic = false;
         self
@@ -241,6 +249,7 @@ fn migrator_of(migrations: Vec<SqlMigration>) -> Migrator<Sqlite> {
 }
 
 mod graph;
+mod grouped;
 mod hooks;
 mod ledger;
 mod lock;

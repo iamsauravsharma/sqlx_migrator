@@ -253,8 +253,51 @@ where
                 .to_string(),
         });
     }
+    if plan.grouped
+        && !plan.fake
+        && plan_migrations
+            .iter()
+            .any(|migration| !migration.is_atomic())
+    {
+        return Err(Error::PlanError {
+            message: "a grouped plan runs in one transaction so every migration must be atomic"
+                .to_string(),
+        });
+    }
     // migrations applied by this run share the next batch number
     let batch = next_batch(&applied_rows);
+    if !plan.grouped {
+        return execute_plan(migrator, connection, plan, plan_migrations, batch).await;
+    }
+    // everything runs in one transaction, which is rolled back when anything
+    // fails. The transactions of the migrations nest inside of it
+    let mut transaction = connection.begin().await?;
+    match execute_plan(migrator, &mut transaction, plan, plan_migrations, batch).await {
+        Ok(report) => {
+            transaction.commit().await?;
+            Ok(report)
+        }
+        Err(error) => {
+            if let Err(rollback_error) = transaction.rollback().await {
+                tracing::debug!(error = %rollback_error, "rolling back the grouped plan failed");
+            }
+            Err(error)
+        }
+    }
+}
+
+/// Runs the migrations of the plan one after the other, with the run hooks
+/// around them
+async fn execute_plan<DB>(
+    migrator: &Migrator<DB>,
+    connection: &mut <DB as Database>::Connection,
+    plan: &Plan,
+    plan_migrations: Vec<&BoxMigration<DB>>,
+    batch: i32,
+) -> Result<RunReport, Error>
+where
+    DB: SupportedDatabase,
+{
     let apply = matches!(plan.plan_type, PlanType::Apply);
     migrator.before_run_hooks(connection, apply).await?;
     let mut report = RunReport {

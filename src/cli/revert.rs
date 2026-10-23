@@ -27,6 +27,10 @@ pub(super) struct Revert {
     /// Make migration reverted without running revert operation
     #[arg(long)]
     fake: bool,
+    /// Run the whole plan in one transaction, so it is reverted entirely or not
+    /// at all. Every migration has to be atomic
+    #[arg(long, conflicts_with_all = ["plan"])]
+    grouped: bool,
     /// Force run revert operation without asking question
     #[arg(long)]
     force: bool,
@@ -64,7 +68,8 @@ impl Revert {
             revert_last = true;
             Plan::revert_count(1)
         }
-        .fake(self.fake);
+        .fake(self.fake)
+        .grouped(self.grouped);
         let applied_rows = migrator.fetch_applied_migration_from_db(connection).await?;
         // reverting the last migration when nothing is applied is not an
         // error, unlike an explicit count which is larger than what is applied

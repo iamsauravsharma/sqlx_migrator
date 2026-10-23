@@ -271,6 +271,12 @@ macro_rules! backend_tests {
         }
 
         $(#[$ignore])?
+        #[tokio::test]
+        async fn grouped_plan() {
+            crate::common::grouped_plan(&$harness, concat!($prefix, "_grouped")).await;
+        }
+
+        $(#[$ignore])?
         #[tokio::test(flavor = "multi_thread")]
         async fn lock() {
             crate::common::lock(&$harness, concat!($prefix, "_lock")).await;

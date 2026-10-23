@@ -23,6 +23,10 @@ pub(super) struct Apply {
     /// Make migration applied without running migration operations
     #[arg(long)]
     fake: bool,
+    /// Run the whole plan in one transaction, so it is applied entirely or not
+    /// at all. Every migration has to be atomic
+    #[arg(long, conflicts_with_all = ["plan", "check"])]
+    grouped: bool,
     /// Force run apply operation without asking question if migration is
     /// destructible
     #[arg(long)]
@@ -55,7 +59,8 @@ impl Apply {
         } else {
             Plan::apply_all()
         }
-        .fake(self.fake);
+        .fake(self.fake)
+        .grouped(self.grouped);
         let applied_rows = migrator.fetch_applied_migration_from_db(connection).await?;
         let migrations = migrator.generate_migration_plan(Some(&plan), &applied_rows)?;
         if self.check {

@@ -633,9 +633,9 @@ where
     /// replaced twice or is replaced by a migration it replaces
     pub fn heads(&self) -> Result<Vec<&BoxMigration<DB>>, Error> {
         let relations = Relations::new(self.migrations())?;
-        let mut heads = relations.heads();
-        heads.sort_unstable();
-        Ok(heads
+        // the indexes come in migration list order
+        Ok(relations
+            .heads()
             .into_iter()
             .map(|index| &self.migrations()[index])
             .collect())

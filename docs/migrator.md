@@ -34,4 +34,5 @@ let dialect = Dialect::postgres()
 let migrator = Migrator::<Postgres>::new(dialect);
 ```
 
-MySQL commits most DDL implicitly, so a failed atomic migration cannot be rolled back there.
+MySQL commits most DDL implicitly, so a failed atomic migration cannot be rolled back there,
+and neither can a grouped plan (`Plan::grouped`).

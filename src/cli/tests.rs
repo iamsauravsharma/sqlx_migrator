@@ -100,6 +100,12 @@ fn apply_argument_rules() {
     assert!(parse(&["apply", "--plan", "--force"]).is_err());
     // prune is no longer an apply flag
     assert!(parse(&["apply", "--prune"]).is_err());
+    // grouped
+    assert!(parse(&["apply", "--grouped"]).is_ok());
+    assert!(parse(&["apply", "--grouped", "--plan"]).is_err());
+    assert!(parse(&["apply", "--grouped", "--check"]).is_err());
+    assert!(parse(&["revert", "--grouped"]).is_ok());
+    assert!(parse(&["revert", "--grouped", "--plan"]).is_err());
 }
 
 #[test]
@@ -313,6 +319,30 @@ mod with_sqlite {
             Vec::<String>::new()
         );
         run(&["drop"], &mut connection, &migrator).await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn grouped_apply_and_revert_through_cli() {
+        let mut connection = connection().await;
+        let migrator = migrator();
+        run(&["apply", "--grouped"], &mut connection, &migrator)
+            .await
+            .unwrap();
+        assert_eq!(
+            applied(&mut connection, &migrator).await,
+            vec!["first", "second"]
+        );
+        run(
+            &["revert", "--all", "--grouped", "--force"],
+            &mut connection,
+            &migrator,
+        )
+        .await
+        .unwrap();
+        assert_eq!(
+            applied(&mut connection, &migrator).await,
+            Vec::<String>::new()
+        );
     }
 
     #[tokio::test]

@@ -25,6 +25,7 @@ pub struct Plan {
     pub(super) app_migration: Option<(String, Option<String>)>,
     pub(super) count: Option<usize>,
     pub(super) fake: bool,
+    pub(super) grouped: bool,
 }
 
 impl Plan {
@@ -38,6 +39,7 @@ impl Plan {
             app_migration,
             count,
             fake: false,
+            grouped: false,
         }
     }
 
@@ -54,6 +56,23 @@ impl Plan {
     #[must_use]
     pub fn fake(mut self, fake: bool) -> Self {
         self.fake = fake;
+        self
+    }
+
+    /// Runs the whole plan in one transaction, so it is applied or reverted
+    /// entirely or not at all.
+    ///
+    /// Every migration of the plan has to be atomic, a plan with one which is
+    /// not fails before anything runs. Databases which commit DDL statements
+    /// implicitly, such as MySQL, cannot undo those with the rollback. When the
+    /// lock strategy already holds the plan in one transaction this changes
+    /// nothing.
+    ///
+    /// By default, the `grouped` flag is set to `false` and every atomic
+    /// migration runs in a transaction of its own.
+    #[must_use]
+    pub fn grouped(mut self, grouped: bool) -> Self {
+        self.grouped = grouped;
         self
     }
 

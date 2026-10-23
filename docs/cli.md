@@ -8,8 +8,8 @@ MigrationCommand::parse_and_run(&mut *conn, &migrator).await?;
 
 | Subcommand | Purpose |
 | --- | --- |
-| `apply` | Apply pending migrations. `--plan`, `--check`, `--fake`, `--app`, `--migration`, `--count`. |
-| `revert` | Revert the last migration, or `--all`, `--count`, `--last-batch`, `--app`, `--migration`. |
+| `apply` | Apply pending migrations. `--plan`, `--check`, `--fake`, `--grouped`, `--app`, `--migration`, `--count`. |
+| `revert` | Revert the last migration, or `--all`, `--count`, `--last-batch`, `--grouped`, `--app`, `--migration`. |
 | `redo` | Revert the last migration and apply it again. |
 | `heads` | Show the head of every app, and fail when an app has more than one. |
 | `list` | Show migrations with status, batch and time. |

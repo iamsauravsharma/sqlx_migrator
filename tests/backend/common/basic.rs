@@ -163,3 +163,45 @@ where
     ));
     harness.teardown(test);
 }
+
+/// A grouped plan which fails leaves nothing behind where DDL is rolled back,
+/// and one which succeeds applies everything. A backend which commits DDL
+/// implicitly keeps what was committed before the failure.
+pub(crate) async fn grouped_plan<H>(harness: &H, test: &str)
+where
+    H: Harness,
+    (String, String): Operation<H::Db>,
+{
+    let mut connection = harness.setup(test).await;
+    let mut migrator = harness.migrator(test);
+    migrator
+        .add_migration(Box::new(
+            SqlMigration::new("main", "failing")
+                .parent("main", "second")
+                .operation("THIS IS NOT SQL", "SELECT 1"),
+        ))
+        .unwrap();
+    let plan = Plan::apply_all().grouped(true);
+    assert!(matches!(
+        migrator.run(&mut connection, &plan).await,
+        Err(Error::Sqlx(_))
+    ));
+    if !harness.transactional_ddl() {
+        harness.teardown(test);
+        return;
+    }
+    assert_eq!(
+        applied(&mut connection, &migrator).await,
+        Vec::<String>::new()
+    );
+    assert!(!table_exists::<H::Db>(&mut connection, &format!("{test}_first")).await);
+
+    let migrator = harness.migrator(test);
+    let report = migrator.run(&mut connection, &plan).await.unwrap();
+    assert_eq!(report.len(), 2);
+    assert_eq!(
+        applied(&mut connection, &migrator).await,
+        vec!["first", "second"]
+    );
+    harness.teardown(test);
+}

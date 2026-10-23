@@ -85,7 +85,9 @@ let report = migrator.run(&mut *conn, &Plan::apply_all()).await.unwrap();
 migrator.run(&mut *conn, &Plan::revert_all()).await.unwrap();
 ```
 
-[`Plan`](crate::migrator::Plan) can also target an app, a migration or a count.
+[`Plan`](crate::migrator::Plan) can also target an app, a migration or a count, and
+`.grouped(true)` runs the whole plan in one transaction so it is applied or reverted
+entirely or not at all (every migration must be atomic).
 
 Each app must end in one head, a migration nothing else in the app comes after. Two
 migrations written side by side make two heads, and `run` fails with
