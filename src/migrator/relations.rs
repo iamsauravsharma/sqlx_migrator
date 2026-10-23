@@ -6,7 +6,8 @@
 
 use std::collections::{BTreeSet, HashMap, HashSet, VecDeque};
 
-use super::{BoxMigration, Plan, PlanType};
+use super::BoxMigration;
+use super::plan::{Plan, PlanType};
 use crate::error::Error;
 
 /// A migration and how it relates to the others, which are given as indexes
