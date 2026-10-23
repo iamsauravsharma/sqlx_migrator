@@ -89,16 +89,26 @@
 <a href=#89 id=89 data-nosnippet>89</a>        <span class="doccomment">/// Migration name
 <a href=#90 id=90 data-nosnippet>90</a>        </span>name: String,
 <a href=#91 id=91 data-nosnippet>91</a>    },
-<a href=#92 id=92 data-nosnippet>92</a>    <span class="doccomment">/// Error raised when the meta table records an internal migration this
-<a href=#93 id=93 data-nosnippet>93</a>    /// version of the crate does not know, meaning the migration table was
-<a href=#94 id=94 data-nosnippet>94</a>    /// changed by a newer release
-<a href=#95 id=95 data-nosnippet>95</a>    </span><span class="attr">#[error(
-<a href=#96 id=96 data-nosnippet>96</a>        <span class="string">"migration table was changed by internal migration {name} which this version of \
-<a href=#97 id=97 data-nosnippet>97</a>         sqlx_migrator does not know, upgrade sqlx_migrator"
-<a href=#98 id=98 data-nosnippet>98</a>    </span>)]
-<a href=#99 id=99 data-nosnippet>99</a>    </span>UnknownInternalMigration {
-<a href=#100 id=100 data-nosnippet>100</a>        <span class="doccomment">/// Name of the internal migration recorded in the database
-<a href=#101 id=101 data-nosnippet>101</a>        </span>name: String,
-<a href=#102 id=102 data-nosnippet>102</a>    },
-<a href=#103 id=103 data-nosnippet>103</a>}
+<a href=#92 id=92 data-nosnippet>92</a>    <span class="doccomment">/// Error raised when an app has more than one head, meaning migrations
+<a href=#93 id=93 data-nosnippet>93</a>    /// which no other migration of the app comes after. Make one of them
+<a href=#94 id=94 data-nosnippet>94</a>    /// depend on the others to merge the heads
+<a href=#95 id=95 data-nosnippet>95</a>    </span><span class="attr">#[error(<span class="string">"app {app} has multiple heads: {}"</span>, .heads.join(<span class="string">", "</span>))]
+<a href=#96 id=96 data-nosnippet>96</a>    </span>MultipleHeads {
+<a href=#97 id=97 data-nosnippet>97</a>        <span class="doccomment">/// Application name
+<a href=#98 id=98 data-nosnippet>98</a>        </span>app: String,
+<a href=#99 id=99 data-nosnippet>99</a>        <span class="doccomment">/// Names of the heads of the app
+<a href=#100 id=100 data-nosnippet>100</a>        </span>heads: Vec&lt;String&gt;,
+<a href=#101 id=101 data-nosnippet>101</a>    },
+<a href=#102 id=102 data-nosnippet>102</a>    <span class="doccomment">/// Error raised when the meta table records an internal migration this
+<a href=#103 id=103 data-nosnippet>103</a>    /// version of the crate does not know, meaning the migration table was
+<a href=#104 id=104 data-nosnippet>104</a>    /// changed by a newer release
+<a href=#105 id=105 data-nosnippet>105</a>    </span><span class="attr">#[error(
+<a href=#106 id=106 data-nosnippet>106</a>        <span class="string">"migration table was changed by internal migration {name} which this version of \
+<a href=#107 id=107 data-nosnippet>107</a>         sqlx_migrator does not know, upgrade sqlx_migrator"
+<a href=#108 id=108 data-nosnippet>108</a>    </span>)]
+<a href=#109 id=109 data-nosnippet>109</a>    </span>UnknownInternalMigration {
+<a href=#110 id=110 data-nosnippet>110</a>        <span class="doccomment">/// Name of the internal migration recorded in the database
+<a href=#111 id=111 data-nosnippet>111</a>        </span>name: String,
+<a href=#112 id=112 data-nosnippet>112</a>    },
+<a href=#113 id=113 data-nosnippet>113</a>}
 </code></pre></div></section></main></body></html>
