@@ -626,6 +626,46 @@ where
         DB::execute(connection, &self.dialect.sql().drop_lock_table).await
     }
 
+    /// The heads of every app in migration list order
+    ///
+    /// # Errors
+    /// If a migration refers to one which is not in the migration list, is
+    /// replaced twice or is replaced by a migration it replaces
+    pub fn heads(&self) -> Result<Vec<&BoxMigration<DB>>, Error> {
+        let relations = Relations::new(self.migrations())?;
+        let mut heads = relations.heads();
+        heads.sort_unstable();
+        Ok(heads
+            .into_iter()
+            .map(|index| &self.migrations()[index])
+            .collect())
+    }
+
+    /// Ensures every app has one head. Two heads mean two migrations were
+    /// written next to each other without one depending on the other.
+    ///
+    /// # Errors
+    /// [`Error::MultipleHeads`] for the first app with more than one head, or
+    /// the errors of [`Migrator::heads`]
+    pub fn check_heads(&self) -> Result<(), Error> {
+        let mut apps = Vec::<(&str, Vec<&str>)>::new();
+        for head in self.heads()? {
+            match apps.iter_mut().find(|(app, _)| *app == head.app()) {
+                Some((_, names)) => names.push(head.name()),
+                None => apps.push((head.app(), vec![head.name()])),
+            }
+        }
+        match apps.into_iter().find(|(_, names)| names.len() > 1) {
+            Some((app, names)) => {
+                Err(Error::MultipleHeads {
+                    app: app.to_string(),
+                    heads: names.into_iter().map(ToString::to_string).collect(),
+                })
+            }
+            None => Ok(()),
+        }
+    }
+
     /// Generate migration plan using pre-fetched applied migration rows.
     ///
     /// This is the core plan-generation logic that performs **no database
@@ -714,11 +754,13 @@ where
     ///
     /// # Errors
     /// Returns [`Error::PendingMigrationPresent`] when at least one migration
-    /// is pending, or other errors when plan generation fails
+    /// is pending, [`Error::MultipleHeads`] when an app has more than one head,
+    /// or other errors when plan generation fails
     pub async fn check_pending(
         &self,
         connection: &mut <DB as Database>::Connection,
     ) -> Result<(), Error> {
+        self.check_heads()?;
         let applied_rows = self.fetch_applied_migration_from_db(connection).await?;
         let pending = self.generate_migration_plan(Some(&Plan::apply_all()), &applied_rows)?;
         if !pending.is_empty() {
@@ -898,7 +940,9 @@ where
         result.and(unlock_result)
     }
 
-    /// Run provided plan migrations
+    /// Run provided plan migrations. Fails with [`Error::MultipleHeads`] before
+    /// anything runs when an app has more than one head, see
+    /// [`Migrator::check_heads`].
     ///
     /// Returns a [`RunReport`] listing every migration which was applied or
     /// reverted along with the time each one took. Progress is emitted as
@@ -919,6 +963,7 @@ where
         );
         async {
             tracing::debug!("running plan {:?}", plan);
+            self.check_heads()?;
             let mut locked = self.lock(connection).await?;
             // store result of applying migration so that we can unlock lock
             // before returning result

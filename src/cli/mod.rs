@@ -26,6 +26,7 @@ use clap::{Parser, Subcommand};
 use sqlx::Database;
 
 use self::apply::Apply;
+use self::heads::Heads;
 use self::list::List;
 use self::prune::Prune;
 use self::redo::Redo;
@@ -36,6 +37,7 @@ use crate::migrator::{Migrator, SupportedDatabase};
 
 mod apply;
 mod drop;
+mod heads;
 mod list;
 mod output;
 mod prune;
@@ -94,6 +96,8 @@ enum SubCommand {
     /// Drop migration information table. Needs all migrations to be
     /// reverted else raises error
     Drop,
+    /// Show the head of every app and fail when an app has more than one
+    Heads(Heads),
     /// List migrations along with their status and time applied if migrations
     /// is already applied
     List(List),
@@ -121,6 +125,7 @@ impl SubCommand {
         match self {
             SubCommand::Apply(apply) => apply.run(connection, migrator).await?,
             SubCommand::Drop => drop::drop_migrations(connection, migrator).await?,
+            SubCommand::Heads(_) => heads::run(migrator)?,
             SubCommand::List(list) => list.run(connection, migrator).await?,
             SubCommand::Prune(prune) => prune.run(connection, migrator).await?,
             SubCommand::Redo(redo) => redo.run(connection, migrator).await?,

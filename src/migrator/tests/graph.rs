@@ -262,3 +262,133 @@ fn replaced_migration_has_nothing_to_apply_and_replace_cycles_are_errors() {
         "plan error: two migrations replace each other"
     );
 }
+
+// ── Heads ────────────────────────────────────────────────────────────────────
+
+fn heads_of(nodes: Vec<Node>) -> Vec<String> {
+    let mut migrator = Migrator::<Sqlite>::default();
+    migrator.add_migrations(nodes_to_migrations(nodes)).unwrap();
+    migrator
+        .heads()
+        .unwrap()
+        .iter()
+        .map(|head| head.name().to_string())
+        .collect()
+}
+
+/// A migration is a head when no other migration of the app comes after it.
+#[test]
+fn heads_are_migrations_nothing_comes_after() {
+    // a chain has one head
+    let nodes = vec![
+        Node::new(0, &[], &[]),
+        Node::new(1, &[0], &[]),
+        Node::new(2, &[1], &[]),
+    ];
+    assert_eq!(heads_of(nodes), ["m2"]);
+    // the order of the list does not matter
+    let nodes = vec![
+        Node::new(2, &[1], &[]),
+        Node::new(1, &[0], &[]),
+        Node::new(0, &[], &[]),
+    ];
+    assert_eq!(heads_of(nodes), ["m2"]);
+    // two branches have two heads, a merge joins them
+    let branches = || {
+        vec![
+            Node::new(0, &[], &[]),
+            Node::new(1, &[0], &[]),
+            Node::new(2, &[0], &[]),
+        ]
+    };
+    assert_eq!(heads_of(branches()), ["m1", "m2"]);
+    let mut merged = branches();
+    merged.push(Node::new(3, &[1, 2], &[]));
+    assert_eq!(heads_of(merged), ["m3"]);
+    // run before puts the target after the migration
+    let nodes = vec![Node::new(0, &[], &[1]), Node::new(1, &[], &[])];
+    assert_eq!(heads_of(nodes), ["m1"]);
+}
+
+/// A replaced migration is never a head, and its replacer comes after what the
+/// replaced migration and its children come after.
+#[test]
+fn heads_follow_replaced_migrations() {
+    // m1 replaces m0
+    let nodes = vec![
+        Node::new(0, &[], &[]),
+        Node::new(1, &[], &[]).replacing(&[0]),
+    ];
+    assert_eq!(heads_of(nodes), ["m1"]);
+    // m2 comes after m0 which m1 replaces, so m2 is the head and m1 is not
+    let nodes = vec![
+        Node::new(0, &[], &[]),
+        Node::new(1, &[], &[]).replacing(&[0]),
+        Node::new(2, &[0], &[]),
+    ];
+    assert_eq!(heads_of(nodes), ["m2"]);
+    // m2 replaces m1 and takes over its parent m0
+    let nodes = vec![
+        Node::new(0, &[], &[]),
+        Node::new(1, &[0], &[]),
+        Node::new(2, &[], &[]).replacing(&[1]),
+    ];
+    assert_eq!(heads_of(nodes), ["m2"]);
+}
+
+/// More than one head in an app fails, other apps do not matter.
+#[test]
+fn multiple_heads_in_an_app_fail() {
+    struct Other;
+    migration!(Other, "other", vec_box!(), vec_box!(), vec_box!());
+    let mut migrator = migrator_of(vec![
+        SqlMigration::new("first", None, "SELECT 1"),
+        SqlMigration::new("second", Some("first"), "SELECT 1"),
+    ]);
+    migrator.check_heads().unwrap();
+    // a migration of another app is a head of its own
+    migrator.add_migration(Box::new(Other)).unwrap();
+    migrator.check_heads().unwrap();
+    assert_eq!(migrator.heads().unwrap().len(), 2);
+
+    migrator
+        .add_migration(Box::new(SqlMigration::new(
+            "third",
+            Some("first"),
+            "SELECT 1",
+        )))
+        .unwrap();
+    let error = migrator.check_heads().unwrap_err();
+    assert!(matches!(&error, Error::MultipleHeads { app, heads }
+        if app == "main" && heads == &["second", "third"]));
+    assert_eq!(
+        error.to_string(),
+        "app main has multiple heads: second, third"
+    );
+}
+
+/// Running and checking pending migrations fail before doing anything when an
+/// app has more than one head.
+#[tokio::test]
+async fn run_and_check_pending_fail_with_multiple_heads() {
+    let migrator = migrator_of(vec![
+        SqlMigration::new("first", None, "CREATE TABLE first (id INTEGER)"),
+        SqlMigration::new("second", None, "CREATE TABLE second (id INTEGER)"),
+    ]);
+    let mut conn = make_conn().await;
+    assert!(matches!(
+        migrator.run(&mut conn, &Plan::apply_all()).await,
+        Err(Error::MultipleHeads { .. })
+    ));
+    assert!(matches!(
+        migrator.check_pending(&mut conn).await,
+        Err(Error::MultipleHeads { .. })
+    ));
+    assert!(!sqlite_table_exists(&mut conn, "first").await);
+    // planning alone does not check, so branches can be previewed
+    assert!(
+        migrator
+            .generate_migration_plan(Some(&Plan::apply_all()), &[])
+            .is_ok()
+    );
+}

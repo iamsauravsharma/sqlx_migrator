@@ -136,6 +136,52 @@ impl Relations {
         Ok(all)
     }
 
+    /// The heads of every app: migrations no other migration of the same app
+    /// comes after. A migration replaced by another is not a head, and a
+    /// migration replacing others comes after what they come after.
+    pub(super) fn heads(&self) -> Vec<usize> {
+        let mut has_successor = vec![false; self.nodes.len()];
+        for (migration, node) in self.nodes.iter().enumerate() {
+            if node.replaced_by.is_some() {
+                continue;
+            }
+            let replaced = node.all_replaces.iter().collect::<HashSet<_>>();
+            let mut predecessors = node
+                .parents
+                .iter()
+                .chain(&node.run_after)
+                .copied()
+                .collect::<Vec<_>>();
+            for &replaced_migration in &node.all_replaces {
+                predecessors.extend(
+                    self.nodes[replaced_migration]
+                        .parents
+                        .iter()
+                        .chain(&self.nodes[replaced_migration].run_after)
+                        .filter(|predecessor| !replaced.contains(predecessor)),
+                );
+            }
+            for mut current in predecessors {
+                loop {
+                    if current != migration && self.nodes[current].app == node.app {
+                        has_successor[current] = true;
+                    }
+                    // Follow the chain of replacements to mark all successors
+                    // as having a predecessor.
+                    match self.nodes[current].replaced_by {
+                        Some(successor) => current = successor,
+                        None => break,
+                    }
+                }
+            }
+        }
+        (0..self.nodes.len())
+            .filter(|&migration| {
+                self.nodes[migration].replaced_by.is_none() && !has_successor[migration]
+            })
+            .collect()
+    }
+
     /// Order of the migrations in which they can be applied.
     ///
     /// A migration comes after its parents, the migrations which have it in

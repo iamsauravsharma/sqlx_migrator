@@ -85,4 +85,8 @@ migrator.run(&mut *conn, &Plan::revert_all()).await.unwrap();
 ```
 
 [`Plan`](crate::migrator::Plan) can also target an app, a migration or a count.
+
+Each app must end in one head, a migration nothing else in the app comes after. Two
+migrations written side by side make two heads, and `run` fails with
+`Error::MultipleHeads` until one depends on the other (see `Migrator::heads`).
 Progress is logged with `tracing`.

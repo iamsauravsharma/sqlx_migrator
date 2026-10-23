@@ -56,6 +56,7 @@ run-example-flow example_name:
     just --justfile {{justfile()}} run-example {{example_name}} apply --plan --format json
     just --justfile {{justfile()}} run-example {{example_name}} apply
     just --justfile {{justfile()}} run-example {{example_name}} apply --check
+    just --justfile {{justfile()}} run-example {{example_name}} heads
     just --justfile {{justfile()}} run-example {{example_name}} list
     just --justfile {{justfile()}} run-example {{example_name}} list --format json
     just --justfile {{justfile()}} run-example {{example_name}} redo --force

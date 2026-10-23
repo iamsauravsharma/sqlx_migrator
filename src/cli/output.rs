@@ -103,13 +103,20 @@ where
     }
 }
 
+/// Whether a terminal is available for prompting the user. Tests never prompt,
+/// so the terminal they are run from does not decide whether they wait for
+/// input.
+fn can_prompt() -> bool {
+    !cfg!(test) && std::io::stdin().is_terminal()
+}
+
 /// Ask the user to confirm an action listing the affected migrations. Returns
 /// `Ok(false)` when the user declines.
 ///
 /// # Errors
 /// When stdin is not a terminal so no answer can be read
 pub(super) fn confirm(question: &str, items: &[(&str, &str)]) -> Result<bool, Error> {
-    if !std::io::stdin().is_terminal() {
+    if !can_prompt() {
         return Err(Error::ConfirmationRequired);
     }
     println!("{question} (y/N)");

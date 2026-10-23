@@ -24,6 +24,10 @@ fn every_subcommand_parses() {
         SubCommand::Drop
     ));
     assert!(matches!(
+        parse(&["heads"]).unwrap().sub_command,
+        SubCommand::Heads(_)
+    ));
+    assert!(matches!(
         parse(&["list"]).unwrap().sub_command,
         SubCommand::List(_)
     ));

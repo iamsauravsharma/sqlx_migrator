@@ -89,6 +89,16 @@ pub enum Error {
         /// Migration name
         name: String,
     },
+    /// Error raised when an app has more than one head, meaning migrations
+    /// which no other migration of the app comes after. Make one of them
+    /// depend on the others to merge the heads
+    #[error("app {app} has multiple heads: {}", .heads.join(", "))]
+    MultipleHeads {
+        /// Application name
+        app: String,
+        /// Names of the heads of the app
+        heads: Vec<String>,
+    },
     /// Error raised when the meta table records an internal migration this
     /// version of the crate does not know, meaning the migration table was
     /// changed by a newer release
