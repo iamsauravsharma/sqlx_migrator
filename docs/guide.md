@@ -51,7 +51,8 @@ impl Migration<sqlx::Postgres> for FirstMigration {
 ## Shortcuts
 
 A `(up, down)` pair of strings is a reversible operation, one string an irreversible
-one, and `include_sql!` embeds `.up.sql` / `.down.sql` files. The `migration!` macros
+one, `include_sql!` embeds `.up.sql` / `.down.sql` files and `operation::from_fn` builds an
+operation from closures. The `migration!` macros
 cover the simple case; implement the trait by hand for `replaces`, `run_before` or
 `is_atomic`.
 

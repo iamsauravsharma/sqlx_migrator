@@ -40,9 +40,17 @@ impl Operation<Sqlite> for ExampleOperation {
 "
 )]
 
+use std::pin::Pin;
+
 use sqlx::{AssertSqlSafe, Database};
 
 use crate::error::Error;
+
+/// Future returned by the functions of a [`FnOperation`]
+pub type OperationFuture<'a> = Pin<Box<dyn Future<Output = Result<(), Error>> + Send + 'a>>;
+
+type OperationFn<DB> =
+    Box<dyn for<'a> Fn(&'a mut <DB as Database>::Connection) -> OperationFuture<'a> + Send + Sync>;
 
 /// Trait representing a database migration operation.
 ///
@@ -158,5 +166,107 @@ where
             .await
             .map_err(Error::from)?;
         Ok(())
+    }
+}
+
+/// An operation made of functions, see [`from_fn`] and
+/// [`from_fn_irreversible`].
+pub struct FnOperation<DB: Database> {
+    up: OperationFn<DB>,
+    down: Option<OperationFn<DB>>,
+    destructible: bool,
+}
+
+impl<DB: Database> FnOperation<DB> {
+    /// Sets whether `up` is destructible, see [`Operation::is_destructible`]
+    #[must_use]
+    pub fn destructible(mut self, destructible: bool) -> Self {
+        self.destructible = destructible;
+        self
+    }
+}
+
+/// Builds a reversible operation from two functions which get the connection
+/// and return a boxed future, usually written as `Box::pin(async move { .. })`.
+/// The database has to be named since the closures cannot tell it, for example
+/// `from_fn::<Postgres>(..)`.
+///
+/// To run more than one query pass `&mut *connection` to each.
+///
+/// # Example
+/// ```rust
+/// # #[cfg(feature = "sqlite")]
+/// # fn main() {
+/// use sqlx::Sqlite;
+/// use sqlx_migrator::operation::from_fn;
+///
+/// let operation = from_fn::<Sqlite>(
+///     |connection| {
+///         Box::pin(async move {
+///             sqlx::query("CREATE TABLE sample (id INTEGER)")
+///                 .execute(connection)
+///                 .await?;
+///             Ok(())
+///         })
+///     },
+///     |connection| {
+///         Box::pin(async move {
+///             sqlx::query("DROP TABLE sample").execute(connection).await?;
+///             Ok(())
+///         })
+///     },
+/// );
+/// # }
+/// # #[cfg(not(feature = "sqlite"))]
+/// # fn main() {}
+/// ```
+pub fn from_fn<DB: Database>(
+    up: impl for<'a> Fn(&'a mut <DB as Database>::Connection) -> OperationFuture<'a>
+    + Send
+    + Sync
+    + 'static,
+    down: impl for<'a> Fn(&'a mut <DB as Database>::Connection) -> OperationFuture<'a>
+    + Send
+    + Sync
+    + 'static,
+) -> FnOperation<DB> {
+    FnOperation {
+        up: Box::new(up),
+        down: Some(Box::new(down)),
+        destructible: false,
+    }
+}
+
+/// Builds an irreversible operation from a function, see [`from_fn`].
+/// Reverting a migration containing it fails with
+/// [`Error::IrreversibleOperation`].
+pub fn from_fn_irreversible<DB: Database>(
+    up: impl for<'a> Fn(&'a mut <DB as Database>::Connection) -> OperationFuture<'a>
+    + Send
+    + Sync
+    + 'static,
+) -> FnOperation<DB> {
+    FnOperation {
+        up: Box::new(up),
+        down: None,
+        destructible: false,
+    }
+}
+
+#[async_trait::async_trait]
+impl<DB: Database> Operation<DB> for FnOperation<DB> {
+    async fn up(&self, connection: &mut <DB as Database>::Connection) -> Result<(), Error> {
+        (self.up)(connection).await
+    }
+
+    async fn down(&self, connection: &mut <DB as Database>::Connection) -> Result<(), Error> {
+        match &self.down {
+            Some(down) => down(connection).await,
+            None => Err(Error::IrreversibleOperation),
+        }
+    }
+
+    fn is_destructible(&self) -> bool {
+        self.destructible
     }
 }
