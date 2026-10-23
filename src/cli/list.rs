@@ -6,6 +6,7 @@ use clap::Parser;
 #[cfg(feature = "json")]
 use serde::Serialize;
 use sqlx::Database;
+use time::{OffsetDateTime, UtcOffset};
 
 use super::output::{OutputFormat, render_table};
 use crate::error::Error;
@@ -50,7 +51,7 @@ pub(super) struct ListEntry<'a> {
     pub(super) app: &'a str,
     pub(super) name: &'a str,
     pub(super) status: ListStatus,
-    pub(super) applied_time: Option<&'a str>,
+    pub(super) applied_time: Option<String>,
     pub(super) execution_time_ns: Option<i64>,
     pub(super) batch: Option<i32>,
 }
@@ -93,7 +94,7 @@ where
                         } else {
                             ListStatus::Failed
                         },
-                        applied_time: Some(row.applied_time()),
+                        applied_time: Some(format_time(row.applied_time())),
                         execution_time_ns: Some(row.execution_time_ns()),
                         batch: Some(row.batch()),
                     }
@@ -128,13 +129,24 @@ where
                     app: row.app(),
                     name: row.name(),
                     status: ListStatus::Unknown,
-                    applied_time: Some(row.applied_time()),
+                    applied_time: Some(format_time(row.applied_time())),
                     execution_time_ns: Some(row.execution_time_ns()),
                     batch: Some(row.batch()),
                 }
             }),
     );
     Ok(entries)
+}
+
+/// Applied time in UTC as `YYYY-MM-DD HH:MM:SS`
+fn format_time(applied_time: OffsetDateTime) -> String {
+    applied_time
+        .to_offset(UtcOffset::UTC)
+        .format(time::macros::format_description!(
+            version = 2,
+            "[year]-[month]-[day] [hour]:[minute]:[second]"
+        ))
+        .unwrap_or_default()
 }
 
 /// Time kept in nanoseconds as milliseconds with a fraction, for example
@@ -173,7 +185,10 @@ pub(super) fn render_list(
                         entry.app.to_string(),
                         entry.name.to_string(),
                         entry.status.symbol().to_string(),
-                        entry.applied_time.unwrap_or("N/A").to_string(),
+                        entry
+                            .applied_time
+                            .clone()
+                            .unwrap_or_else(|| "N/A".to_string()),
                         entry
                             .batch
                             .map_or_else(|| "N/A".to_string(), |batch| batch.to_string()),

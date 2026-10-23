@@ -55,6 +55,8 @@ impl Migration<Sqlite> for ExampleMigration {
 
 use std::hash::Hash;
 
+use time::OffsetDateTime;
+
 use crate::operation::Operation;
 
 /// Trait representing a database migration.
@@ -197,7 +199,7 @@ pub struct AppliedMigrationSqlRow {
     id: i32,
     app: String,
     name: String,
-    applied_time: String,
+    applied_time: OffsetDateTime,
     success: bool,
     execution_time_ns: i64,
     batch: i32,
@@ -210,7 +212,7 @@ impl AppliedMigrationSqlRow {
             id,
             app: app.to_string(),
             name: name.to_string(),
-            applied_time: String::new(),
+            applied_time: OffsetDateTime::UNIX_EPOCH,
             success: true,
             execution_time_ns: 0,
             batch: 0,
@@ -237,8 +239,8 @@ impl AppliedMigrationSqlRow {
 
     /// Return migration applied time
     #[must_use]
-    pub fn applied_time(&self) -> &str {
-        &self.applied_time
+    pub fn applied_time(&self) -> OffsetDateTime {
+        self.applied_time
     }
 
     /// Return `false` when a non atomic migration started running and never

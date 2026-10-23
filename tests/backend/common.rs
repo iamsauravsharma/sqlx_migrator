@@ -10,6 +10,7 @@ use sqlx_migrator::migration::Migration;
 use sqlx_migrator::migrator::{Migrator, Plan, SupportedDatabase};
 use sqlx_migrator::operation::Operation;
 use sqlx_migrator::sync::OldMigrator;
+use time::OffsetDateTime;
 
 /// Returns the connection url from `variable`. Tests needing one are marked
 /// `#[ignore]` and only run with `--include-ignored`, so a missing variable is
@@ -257,7 +258,7 @@ where
         .await
         .unwrap();
     assert!(rows[0].id() < rows[1].id());
-    assert_ne!(rows[0].applied_time(), "");
+    assert_ne!(rows[0].applied_time(), OffsetDateTime::UNIX_EPOCH);
     migrator.check_pending(&mut connection).await.unwrap();
 
     let mut other = harness.connect(test).await;

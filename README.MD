@@ -200,6 +200,26 @@ by hand and run `repair`, which removes the failed entry so the migration runs a
 Atomic migrations are recorded in the same transaction as their operations, so they never
 leave a failed entry.
 
+## Hooks
+
+Register a function with `Migrator::add_hook` and a `HookType` (`BeforeRun`, `AfterRun`,
+`BeforeMigration`, `AfterMigration`) saying when it runs. It gets the connection doing the
+work, which is the transaction of an atomic migration, so `SET LOCAL lock_timeout` works, and
+a `HookContext` with the direction, the migration or the run report. Migration hooks are
+skipped by a fake plan. A plain function or a closure returning a boxed future works:
+
+```rust,ignore
+use sqlx::Executor as _;
+use sqlx_migrator::hook::HookType;
+
+migrator.add_hook(HookType::BeforeMigration, |connection, _context| {
+    Box::pin(async move {
+        connection.execute("SET LOCAL lock_timeout = '5s'").await?;
+        Ok(())
+    })
+});
+```
+
 ## Locking and transactions
 
 While a plan runs the migrator locks, so two processes cannot migrate at once. Choose the
