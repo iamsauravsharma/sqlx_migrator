@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"trait":["Operation"]};
+window.SIDEBAR_ITEMS = {"fn":["from_fn","from_fn_irreversible"],"struct":["FnOperation"],"trait":["Operation"],"type":["OperationFuture"]};

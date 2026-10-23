@@ -49,7 +49,8 @@ command line and moving from another migration tool.</p>
     }
 }</code></pre></div><h3 id="shortcuts"><a class="doc-anchor" href="#shortcuts">§</a>Shortcuts</h3>
 <p>A <code>(up, down)</code> pair of strings is a reversible operation, one string an irreversible
-one, and <code>include_sql!</code> embeds <code>.up.sql</code> / <code>.down.sql</code> files. The <code>migration!</code> macros
+one, <code>include_sql!</code> embeds <code>.up.sql</code> / <code>.down.sql</code> files and <code>operation::from_fn</code> builds an
+operation from closures. The <code>migration!</code> macros
 cover the simple case; implement the trait by hand for <code>replaces</code>, <code>run_before</code> or
 <code>is_atomic</code>.</p>
 
