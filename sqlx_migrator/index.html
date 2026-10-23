@@ -75,7 +75,9 @@ migrator.add_migration(Box::new(FirstMigration)).unwrap();
 
 <span class="kw">let </span>report = migrator.run(<span class="kw-2">&amp;mut *</span>conn, <span class="kw-2">&amp;</span>Plan::apply_all()).<span class="kw">await</span>.unwrap();
 migrator.run(<span class="kw-2">&amp;mut *</span>conn, <span class="kw-2">&amp;</span>Plan::revert_all()).<span class="kw">await</span>.unwrap();</code></pre></div>
-<p><a href="struct.Plan.html" title="struct sqlx_migrator::Plan"><code>Plan</code></a> can also target an app, a migration or a count.</p>
+<p><a href="struct.Plan.html" title="struct sqlx_migrator::Plan"><code>Plan</code></a> can also target an app, a migration or a count, and
+<code>.grouped(true)</code> runs the whole plan in one transaction so it is applied or reverted
+entirely or not at all (every migration must be atomic).</p>
 <p>Each app must end in one head, a migration nothing else in the app comes after. Two
 migrations written side by side make two heads, and <code>run</code> fails with
 <code>Error::MultipleHeads</code> until one depends on the other (see <code>Migrator::heads</code>).

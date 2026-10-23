@@ -633,9 +633,9 @@
 <a href=#633 id=633 data-nosnippet>633</a>    /// replaced twice or is replaced by a migration it replaces
 <a href=#634 id=634 data-nosnippet>634</a>    </span><span class="kw">pub fn </span>heads(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw-2">&amp;</span>BoxMigration&lt;DB&gt;&gt;, Error&gt; {
 <a href=#635 id=635 data-nosnippet>635</a>        <span class="kw">let </span>relations = Relations::new(<span class="self">self</span>.migrations())<span class="question-mark">?</span>;
-<a href=#636 id=636 data-nosnippet>636</a>        <span class="kw">let </span><span class="kw-2">mut </span>heads = relations.heads();
-<a href=#637 id=637 data-nosnippet>637</a>        heads.sort_unstable();
-<a href=#638 id=638 data-nosnippet>638</a>        <span class="prelude-val">Ok</span>(heads
+<a href=#636 id=636 data-nosnippet>636</a>        <span class="comment">// the indexes come in migration list order
+<a href=#637 id=637 data-nosnippet>637</a>        </span><span class="prelude-val">Ok</span>(relations
+<a href=#638 id=638 data-nosnippet>638</a>            .heads()
 <a href=#639 id=639 data-nosnippet>639</a>            .into_iter()
 <a href=#640 id=640 data-nosnippet>640</a>            .map(|index| <span class="kw-2">&amp;</span><span class="self">self</span>.migrations()[index])
 <a href=#641 id=641 data-nosnippet>641</a>            .collect())

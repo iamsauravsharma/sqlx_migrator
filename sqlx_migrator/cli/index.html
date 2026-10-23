@@ -19,8 +19,8 @@ sub command enum and then run migrator</p>
 <div class="example-wrap ignore"><a href="#" class="tooltip" title="This example is not tested">ⓘ</a><pre class="rust rust-example-rendered"><code><span class="kw">use </span>sqlx_migrator::cli::MigrationCommand;
 
 MigrationCommand::parse_and_run(<span class="kw-2">&amp;mut *</span>conn, <span class="kw-2">&amp;</span>migrator).<span class="kw">await</span><span class="question-mark">?</span>;</code></pre></div><div class="table"><table><thead><tr><th>Subcommand</th><th>Purpose</th></tr></thead><tbody>
-<tr><td><code>apply</code></td><td>Apply pending migrations. <code>--plan</code>, <code>--check</code>, <code>--fake</code>, <code>--app</code>, <code>--migration</code>, <code>--count</code>.</td></tr>
-<tr><td><code>revert</code></td><td>Revert the last migration, or <code>--all</code>, <code>--count</code>, <code>--last-batch</code>, <code>--app</code>, <code>--migration</code>.</td></tr>
+<tr><td><code>apply</code></td><td>Apply pending migrations. <code>--plan</code>, <code>--check</code>, <code>--fake</code>, <code>--grouped</code>, <code>--app</code>, <code>--migration</code>, <code>--count</code>.</td></tr>
+<tr><td><code>revert</code></td><td>Revert the last migration, or <code>--all</code>, <code>--count</code>, <code>--last-batch</code>, <code>--grouped</code>, <code>--app</code>, <code>--migration</code>.</td></tr>
 <tr><td><code>redo</code></td><td>Revert the last migration and apply it again.</td></tr>
 <tr><td><code>heads</code></td><td>Show the head of every app, and fail when an app has more than one.</td></tr>
 <tr><td><code>list</code></td><td>Show migrations with status, batch and time.</td></tr>

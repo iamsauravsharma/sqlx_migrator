@@ -253,50 +253,93 @@
 <a href=#253 id=253 data-nosnippet>253</a>                </span>.to_string(),
 <a href=#254 id=254 data-nosnippet>254</a>        });
 <a href=#255 id=255 data-nosnippet>255</a>    }
-<a href=#256 id=256 data-nosnippet>256</a>    <span class="comment">// migrations applied by this run share the next batch number
-<a href=#257 id=257 data-nosnippet>257</a>    </span><span class="kw">let </span>batch = next_batch(<span class="kw-2">&amp;</span>applied_rows);
-<a href=#258 id=258 data-nosnippet>258</a>    <span class="kw">let </span>apply = <span class="macro">matches!</span>(plan.plan_type, PlanType::Apply);
-<a href=#259 id=259 data-nosnippet>259</a>    migrator.before_run_hooks(connection, apply).<span class="kw">await</span><span class="question-mark">?</span>;
-<a href=#260 id=260 data-nosnippet>260</a>    <span class="kw">let </span><span class="kw-2">mut </span>report = RunReport {
-<a href=#261 id=261 data-nosnippet>261</a>        apply,
-<a href=#262 id=262 data-nosnippet>262</a>        fake: plan.fake,
-<a href=#263 id=263 data-nosnippet>263</a>        records: Vec::with_capacity(plan_migrations.len()),
-<a href=#264 id=264 data-nosnippet>264</a>    };
-<a href=#265 id=265 data-nosnippet>265</a>    <span class="kw">if </span>plan_migrations.is_empty() {
-<a href=#266 id=266 data-nosnippet>266</a>        <span class="macro">tracing::info!</span>(<span class="string">"no migration to run"</span>);
-<a href=#267 id=267 data-nosnippet>267</a>    }
-<a href=#268 id=268 data-nosnippet>268</a>    <span class="kw">for </span>migration <span class="kw">in </span>plan_migrations {
-<a href=#269 id=269 data-nosnippet>269</a>        <span class="kw">let </span>migration_span = <span class="macro">tracing::info_span!</span>(
-<a href=#270 id=270 data-nosnippet>270</a>            <span class="string">"sqlx_migrator_migration"</span>,
-<a href=#271 id=271 data-nosnippet>271</a>            app = migration.app(),
-<a href=#272 id=272 data-nosnippet>272</a>            name = migration.name()
-<a href=#273 id=273 data-nosnippet>273</a>        );
-<a href=#274 id=274 data-nosnippet>274</a>        <span class="kw">let </span>elapsed = <span class="kw">async </span>{
-<a href=#275 id=275 data-nosnippet>275</a>            <span class="kw">let </span>start_instant = std::time::Instant::now();
-<a href=#276 id=276 data-nosnippet>276</a>            <span class="kw">match </span>plan.plan_type {
-<a href=#277 id=277 data-nosnippet>277</a>                PlanType::Apply =&gt; {
-<a href=#278 id=278 data-nosnippet>278</a>                    <span class="macro">tracing::info!</span>(<span class="string">"applying migration"</span>);
-<a href=#279 id=279 data-nosnippet>279</a>                    apply_migration(migrator, connection, migration, plan.fake, batch).<span class="kw">await</span><span class="question-mark">?</span>;
-<a href=#280 id=280 data-nosnippet>280</a>                }
-<a href=#281 id=281 data-nosnippet>281</a>                PlanType::Revert(<span class="kw">_</span>) =&gt; {
-<a href=#282 id=282 data-nosnippet>282</a>                    <span class="macro">tracing::info!</span>(<span class="string">"reverting migration"</span>);
-<a href=#283 id=283 data-nosnippet>283</a>
-<a href=#284 id=284 data-nosnippet>284</a>                    revert_migration(migrator, connection, migration, plan.fake).<span class="kw">await</span><span class="question-mark">?</span>;
-<a href=#285 id=285 data-nosnippet>285</a>                }
-<a href=#286 id=286 data-nosnippet>286</a>            }
-<a href=#287 id=287 data-nosnippet>287</a>            <span class="kw">let </span>elapsed = start_instant.elapsed();
-<a href=#288 id=288 data-nosnippet>288</a>            <span class="macro">tracing::info!</span>(elapsed_ns = elapsed.as_nanos(), <span class="string">"migration finished"</span>);
-<a href=#289 id=289 data-nosnippet>289</a>            <span class="prelude-val">Ok</span>::&lt;<span class="kw">_</span>, Error&gt;(elapsed)
-<a href=#290 id=290 data-nosnippet>290</a>        }
-<a href=#291 id=291 data-nosnippet>291</a>        .instrument(migration_span)
-<a href=#292 id=292 data-nosnippet>292</a>        .<span class="kw">await</span><span class="question-mark">?</span>;
-<a href=#293 id=293 data-nosnippet>293</a>        report.records.push(RunRecord {
-<a href=#294 id=294 data-nosnippet>294</a>            app: migration.app().to_string(),
-<a href=#295 id=295 data-nosnippet>295</a>            name: migration.name().to_string(),
-<a href=#296 id=296 data-nosnippet>296</a>            elapsed,
-<a href=#297 id=297 data-nosnippet>297</a>        });
-<a href=#298 id=298 data-nosnippet>298</a>    }
-<a href=#299 id=299 data-nosnippet>299</a>    migrator.after_run_hooks(connection, <span class="kw-2">&amp;</span>report).<span class="kw">await</span><span class="question-mark">?</span>;
-<a href=#300 id=300 data-nosnippet>300</a>    <span class="prelude-val">Ok</span>(report)
-<a href=#301 id=301 data-nosnippet>301</a>}
+<a href=#256 id=256 data-nosnippet>256</a>    <span class="kw">if </span>plan.grouped
+<a href=#257 id=257 data-nosnippet>257</a>        &amp;&amp; !plan.fake
+<a href=#258 id=258 data-nosnippet>258</a>        &amp;&amp; plan_migrations
+<a href=#259 id=259 data-nosnippet>259</a>            .iter()
+<a href=#260 id=260 data-nosnippet>260</a>            .any(|migration| !migration.is_atomic())
+<a href=#261 id=261 data-nosnippet>261</a>    {
+<a href=#262 id=262 data-nosnippet>262</a>        <span class="kw">return </span><span class="prelude-val">Err</span>(Error::PlanError {
+<a href=#263 id=263 data-nosnippet>263</a>            message: <span class="string">"a grouped plan runs in one transaction so every migration must be atomic"
+<a href=#264 id=264 data-nosnippet>264</a>                </span>.to_string(),
+<a href=#265 id=265 data-nosnippet>265</a>        });
+<a href=#266 id=266 data-nosnippet>266</a>    }
+<a href=#267 id=267 data-nosnippet>267</a>    <span class="comment">// migrations applied by this run share the next batch number
+<a href=#268 id=268 data-nosnippet>268</a>    </span><span class="kw">let </span>batch = next_batch(<span class="kw-2">&amp;</span>applied_rows);
+<a href=#269 id=269 data-nosnippet>269</a>    <span class="kw">if </span>!plan.grouped {
+<a href=#270 id=270 data-nosnippet>270</a>        <span class="kw">return </span>execute_plan(migrator, connection, plan, plan_migrations, batch).<span class="kw">await</span>;
+<a href=#271 id=271 data-nosnippet>271</a>    }
+<a href=#272 id=272 data-nosnippet>272</a>    <span class="comment">// everything runs in one transaction, which is rolled back when anything
+<a href=#273 id=273 data-nosnippet>273</a>    // fails. The transactions of the migrations nest inside of it
+<a href=#274 id=274 data-nosnippet>274</a>    </span><span class="kw">let </span><span class="kw-2">mut </span>transaction = connection.begin().<span class="kw">await</span><span class="question-mark">?</span>;
+<a href=#275 id=275 data-nosnippet>275</a>    <span class="kw">match </span>execute_plan(migrator, <span class="kw-2">&amp;mut </span>transaction, plan, plan_migrations, batch).<span class="kw">await </span>{
+<a href=#276 id=276 data-nosnippet>276</a>        <span class="prelude-val">Ok</span>(report) =&gt; {
+<a href=#277 id=277 data-nosnippet>277</a>            transaction.commit().<span class="kw">await</span><span class="question-mark">?</span>;
+<a href=#278 id=278 data-nosnippet>278</a>            <span class="prelude-val">Ok</span>(report)
+<a href=#279 id=279 data-nosnippet>279</a>        }
+<a href=#280 id=280 data-nosnippet>280</a>        <span class="prelude-val">Err</span>(error) =&gt; {
+<a href=#281 id=281 data-nosnippet>281</a>            <span class="kw">if let </span><span class="prelude-val">Err</span>(rollback_error) = transaction.rollback().<span class="kw">await </span>{
+<a href=#282 id=282 data-nosnippet>282</a>                <span class="macro">tracing::debug!</span>(error = %rollback_error, <span class="string">"rolling back the grouped plan failed"</span>);
+<a href=#283 id=283 data-nosnippet>283</a>            }
+<a href=#284 id=284 data-nosnippet>284</a>            <span class="prelude-val">Err</span>(error)
+<a href=#285 id=285 data-nosnippet>285</a>        }
+<a href=#286 id=286 data-nosnippet>286</a>    }
+<a href=#287 id=287 data-nosnippet>287</a>}
+<a href=#288 id=288 data-nosnippet>288</a>
+<a href=#289 id=289 data-nosnippet>289</a><span class="doccomment">/// Runs the migrations of the plan one after the other, with the run hooks
+<a href=#290 id=290 data-nosnippet>290</a>/// around them
+<a href=#291 id=291 data-nosnippet>291</a></span><span class="kw">async fn </span>execute_plan&lt;DB&gt;(
+<a href=#292 id=292 data-nosnippet>292</a>    migrator: <span class="kw-2">&amp;</span>Migrator&lt;DB&gt;,
+<a href=#293 id=293 data-nosnippet>293</a>    connection: <span class="kw-2">&amp;mut </span>&lt;DB <span class="kw">as </span>Database&gt;::Connection,
+<a href=#294 id=294 data-nosnippet>294</a>    plan: <span class="kw-2">&amp;</span>Plan,
+<a href=#295 id=295 data-nosnippet>295</a>    plan_migrations: Vec&lt;<span class="kw-2">&amp;</span>BoxMigration&lt;DB&gt;&gt;,
+<a href=#296 id=296 data-nosnippet>296</a>    batch: i32,
+<a href=#297 id=297 data-nosnippet>297</a>) -&gt; <span class="prelude-ty">Result</span>&lt;RunReport, Error&gt;
+<a href=#298 id=298 data-nosnippet>298</a><span class="kw">where
+<a href=#299 id=299 data-nosnippet>299</a>    </span>DB: SupportedDatabase,
+<a href=#300 id=300 data-nosnippet>300</a>{
+<a href=#301 id=301 data-nosnippet>301</a>    <span class="kw">let </span>apply = <span class="macro">matches!</span>(plan.plan_type, PlanType::Apply);
+<a href=#302 id=302 data-nosnippet>302</a>    migrator.before_run_hooks(connection, apply).<span class="kw">await</span><span class="question-mark">?</span>;
+<a href=#303 id=303 data-nosnippet>303</a>    <span class="kw">let </span><span class="kw-2">mut </span>report = RunReport {
+<a href=#304 id=304 data-nosnippet>304</a>        apply,
+<a href=#305 id=305 data-nosnippet>305</a>        fake: plan.fake,
+<a href=#306 id=306 data-nosnippet>306</a>        records: Vec::with_capacity(plan_migrations.len()),
+<a href=#307 id=307 data-nosnippet>307</a>    };
+<a href=#308 id=308 data-nosnippet>308</a>    <span class="kw">if </span>plan_migrations.is_empty() {
+<a href=#309 id=309 data-nosnippet>309</a>        <span class="macro">tracing::info!</span>(<span class="string">"no migration to run"</span>);
+<a href=#310 id=310 data-nosnippet>310</a>    }
+<a href=#311 id=311 data-nosnippet>311</a>    <span class="kw">for </span>migration <span class="kw">in </span>plan_migrations {
+<a href=#312 id=312 data-nosnippet>312</a>        <span class="kw">let </span>migration_span = <span class="macro">tracing::info_span!</span>(
+<a href=#313 id=313 data-nosnippet>313</a>            <span class="string">"sqlx_migrator_migration"</span>,
+<a href=#314 id=314 data-nosnippet>314</a>            app = migration.app(),
+<a href=#315 id=315 data-nosnippet>315</a>            name = migration.name()
+<a href=#316 id=316 data-nosnippet>316</a>        );
+<a href=#317 id=317 data-nosnippet>317</a>        <span class="kw">let </span>elapsed = <span class="kw">async </span>{
+<a href=#318 id=318 data-nosnippet>318</a>            <span class="kw">let </span>start_instant = std::time::Instant::now();
+<a href=#319 id=319 data-nosnippet>319</a>            <span class="kw">match </span>plan.plan_type {
+<a href=#320 id=320 data-nosnippet>320</a>                PlanType::Apply =&gt; {
+<a href=#321 id=321 data-nosnippet>321</a>                    <span class="macro">tracing::info!</span>(<span class="string">"applying migration"</span>);
+<a href=#322 id=322 data-nosnippet>322</a>                    apply_migration(migrator, connection, migration, plan.fake, batch).<span class="kw">await</span><span class="question-mark">?</span>;
+<a href=#323 id=323 data-nosnippet>323</a>                }
+<a href=#324 id=324 data-nosnippet>324</a>                PlanType::Revert(<span class="kw">_</span>) =&gt; {
+<a href=#325 id=325 data-nosnippet>325</a>                    <span class="macro">tracing::info!</span>(<span class="string">"reverting migration"</span>);
+<a href=#326 id=326 data-nosnippet>326</a>
+<a href=#327 id=327 data-nosnippet>327</a>                    revert_migration(migrator, connection, migration, plan.fake).<span class="kw">await</span><span class="question-mark">?</span>;
+<a href=#328 id=328 data-nosnippet>328</a>                }
+<a href=#329 id=329 data-nosnippet>329</a>            }
+<a href=#330 id=330 data-nosnippet>330</a>            <span class="kw">let </span>elapsed = start_instant.elapsed();
+<a href=#331 id=331 data-nosnippet>331</a>            <span class="macro">tracing::info!</span>(elapsed_ns = elapsed.as_nanos(), <span class="string">"migration finished"</span>);
+<a href=#332 id=332 data-nosnippet>332</a>            <span class="prelude-val">Ok</span>::&lt;<span class="kw">_</span>, Error&gt;(elapsed)
+<a href=#333 id=333 data-nosnippet>333</a>        }
+<a href=#334 id=334 data-nosnippet>334</a>        .instrument(migration_span)
+<a href=#335 id=335 data-nosnippet>335</a>        .<span class="kw">await</span><span class="question-mark">?</span>;
+<a href=#336 id=336 data-nosnippet>336</a>        report.records.push(RunRecord {
+<a href=#337 id=337 data-nosnippet>337</a>            app: migration.app().to_string(),
+<a href=#338 id=338 data-nosnippet>338</a>            name: migration.name().to_string(),
+<a href=#339 id=339 data-nosnippet>339</a>            elapsed,
+<a href=#340 id=340 data-nosnippet>340</a>        });
+<a href=#341 id=341 data-nosnippet>341</a>    }
+<a href=#342 id=342 data-nosnippet>342</a>    migrator.after_run_hooks(connection, <span class="kw-2">&amp;</span>report).<span class="kw">await</span><span class="question-mark">?</span>;
+<a href=#343 id=343 data-nosnippet>343</a>    <span class="prelude-val">Ok</span>(report)
+<a href=#344 id=344 data-nosnippet>344</a>}
 </code></pre></div></section></main></body></html>

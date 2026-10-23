@@ -39,7 +39,8 @@ Atomic migrations are recorded in their own transaction and never leave a failed
     .set_lock_strategy(LockStrategy::Row)
     .unwrap();
 <span class="kw">let </span>migrator = Migrator::&lt;Postgres&gt;::new(dialect);</code></pre></div>
-<p>MySQL commits most DDL implicitly, so a failed atomic migration cannot be rolled back there.</p>
+<p>MySQL commits most DDL implicitly, so a failed atomic migration cannot be rolled back there,
+and neither can a grouped plan (<code>Plan::grouped</code>).</p>
 </div></details><h2 id="structs" class="section-header">Structs<a href="#structs" class="anchor">§</a></h2><dl class="item-table"><dt><a class="struct" href="struct.Dialect.html" title="struct sqlx_migrator::migrator::Dialect">Dialect</a></dt><dd>Configuration of the migrator for database <code>DB</code>: table names, advisory
 lock and DDL behaviour, together with the SQL built for them.</dd><dt><a class="struct" href="struct.Migrator.html" title="struct sqlx_migrator::migrator::Migrator">Migrator</a></dt><dd>A struct that stores migration-related metadata, including the list of
 migrations and configuration such as table and schema name</dd><dt><a class="struct" href="struct.Plan.html" title="struct sqlx_migrator::migrator::Plan">Plan</a></dt><dd>Struct that determines the type of migration plan to execute.</dd><dt><a class="struct" href="struct.RunRecord.html" title="struct sqlx_migrator::migrator::RunRecord">RunRecord</a></dt><dd>Record of a single migration which was applied or reverted by
