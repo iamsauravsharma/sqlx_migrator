@@ -20,7 +20,8 @@ pub(crate) struct Sql {
     pub(crate) internal: InternalMigrations,
     /// Drops the migration and meta tables if they exist
     pub(crate) drop_tables: String,
-    /// Selects the applied migration rows as `id, app, name, applied_time`
+    /// Selects the applied migration rows as `id, app, name, applied_time,
+    /// success, execution_time_ns, batch`
     pub(crate) fetch_rows: String,
     /// Records an applied migration. Binds app, name, execution time in
     /// milliseconds and batch

@@ -20,6 +20,7 @@ pub use crate::operation::Operation;
 #[cfg(feature = "cli")]
 pub mod cli;
 pub mod error;
+pub mod hook;
 mod macros;
 pub mod migration;
 pub mod migrator;

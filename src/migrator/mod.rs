@@ -29,6 +29,7 @@ use tracing::Instrument as _;
 pub use self::dialect::{Dialect, LockStrategy, SupportedDatabase};
 use self::relations::Relations;
 use crate::error::Error;
+use crate::hook::{BoxHook, HookContext, HookFuture, HookType};
 use crate::migration::{AppliedMigrationSqlRow, Migration};
 use crate::sync::OldMigrator;
 
@@ -279,9 +280,10 @@ impl<DB: Database> Locked<'_, DB> {
 
 /// A struct that stores migration-related metadata, including the list of
 /// migrations and configuration such as table and schema name
-pub struct Migrator<DB> {
+pub struct Migrator<DB: Database> {
     migrations: Vec<BoxMigration<DB>>,
     dialect: Dialect<DB>,
+    hooks: Vec<(HookType, BoxHook<DB>)>,
 }
 
 impl<DB> Migrator<DB>
@@ -311,7 +313,84 @@ where
         Self {
             migrations: Vec::default(),
             dialect,
+            hooks: Vec::default(),
         }
+    }
+
+    /// Adds a function which runs at the point of a run given by `hook_type`,
+    /// see [`HookType`]. The function gets the connection doing the work and a
+    /// [`HookContext`]. Functions of the same type run in the order they were
+    /// added, and one which fails stops the run.
+    ///
+    /// The function returns a boxed future so it can borrow the connection,
+    /// which a plain `fn` or a closure does by wrapping its body in
+    /// `Box::pin(async move { .. })`.
+    pub fn add_hook(
+        &mut self,
+        hook_type: HookType,
+        function: impl for<'a> Fn(
+            &'a mut <DB as Database>::Connection,
+            &'a HookContext<'a, DB>,
+        ) -> HookFuture<'a>
+        + Send
+        + Sync
+        + 'static,
+    ) {
+        self.hooks.push((hook_type, Box::new(function)));
+    }
+
+    async fn run_hooks(
+        &self,
+        hook_type: HookType,
+        connection: &mut <DB as Database>::Connection,
+        context: &HookContext<'_, DB>,
+    ) -> Result<(), Error> {
+        for (_, function) in self.hooks.iter().filter(|(kind, _)| *kind == hook_type) {
+            function(connection, context).await?;
+        }
+        Ok(())
+    }
+
+    async fn before_run_hooks(
+        &self,
+        connection: &mut <DB as Database>::Connection,
+        apply: bool,
+    ) -> Result<(), Error> {
+        let context = HookContext::new(apply, None, None);
+        self.run_hooks(HookType::BeforeRun, connection, &context)
+            .await
+    }
+
+    async fn after_run_hooks(
+        &self,
+        connection: &mut <DB as Database>::Connection,
+        report: &RunReport,
+    ) -> Result<(), Error> {
+        let context = HookContext::new(report.is_apply(), None, Some(report));
+        self.run_hooks(HookType::AfterRun, connection, &context)
+            .await
+    }
+
+    async fn before_migration_hooks(
+        &self,
+        connection: &mut <DB as Database>::Connection,
+        migration: &dyn Migration<DB>,
+        apply: bool,
+    ) -> Result<(), Error> {
+        let context = HookContext::new(apply, Some(migration), None);
+        self.run_hooks(HookType::BeforeMigration, connection, &context)
+            .await
+    }
+
+    async fn after_migration_hooks(
+        &self,
+        connection: &mut <DB as Database>::Connection,
+        migration: &dyn Migration<DB>,
+        apply: bool,
+    ) -> Result<(), Error> {
+        let context = HookContext::new(apply, Some(migration), None);
+        self.run_hooks(HookType::AfterMigration, connection, &context)
+            .await
     }
 
     /// Dialect holding the configuration and SQL the migrator runs
@@ -1069,6 +1148,9 @@ where
     if migration.is_atomic() {
         let mut transaction = connection.begin().await?;
         if !fake {
+            migrator
+                .before_migration_hooks(&mut transaction, migration.as_ref(), true)
+                .await?;
             for operation in operations {
                 operation.up(&mut transaction).await?;
             }
@@ -1081,6 +1163,11 @@ where
         migrator
             .add_migration_to_db_table(&mut transaction, migration.as_ref(), execution_time, batch)
             .await?;
+        if !fake {
+            migrator
+                .after_migration_hooks(&mut transaction, migration.as_ref(), true)
+                .await?;
+        }
         transaction.commit().await?;
     } else if fake {
         migrator
@@ -1093,6 +1180,9 @@ where
             .await?;
     } else {
         migrator
+            .before_migration_hooks(connection, migration.as_ref(), true)
+            .await?;
+        migrator
             .start_migration_in_db_table(connection, migration.as_ref(), batch)
             .await?;
         for operation in operations {
@@ -1101,6 +1191,64 @@ where
         migrator
             .finish_migration_in_db_table(connection, migration.as_ref(), start_instant.elapsed())
             .await?;
+        migrator
+            .after_migration_hooks(connection, migration.as_ref(), true)
+            .await?;
+    }
+    Ok(())
+}
+
+/// Reverts one migration and removes it from the migration table
+async fn revert_migration<DB>(
+    migrator: &Migrator<DB>,
+    connection: &mut <DB as Database>::Connection,
+    migration: &BoxMigration<DB>,
+    fake: bool,
+) -> Result<(), Error>
+where
+    DB: SupportedDatabase,
+{
+    // Reverse operation since last applied operation need
+    // to be reverted first
+    let mut operations = migration.operations();
+    operations.reverse();
+
+    if migration.is_atomic() {
+        let mut transaction = connection.begin().await?;
+        if !fake {
+            migrator
+                .before_migration_hooks(&mut transaction, migration.as_ref(), false)
+                .await?;
+            for operation in operations {
+                operation.down(&mut transaction).await?;
+            }
+        }
+        migrator
+            .delete_migration_from_db_table(&mut transaction, migration.as_ref())
+            .await?;
+        if !fake {
+            migrator
+                .after_migration_hooks(&mut transaction, migration.as_ref(), false)
+                .await?;
+        }
+        transaction.commit().await?;
+    } else {
+        if !fake {
+            migrator
+                .before_migration_hooks(connection, migration.as_ref(), false)
+                .await?;
+            for operation in operations {
+                operation.down(connection).await?;
+            }
+        }
+        migrator
+            .delete_migration_from_db_table(connection, migration.as_ref())
+            .await?;
+        if !fake {
+            migrator
+                .after_migration_hooks(connection, migration.as_ref(), false)
+                .await?;
+        }
     }
     Ok(())
 }
@@ -1138,8 +1286,10 @@ where
     }
     // migrations applied by this run share the next batch number
     let batch = next_batch(&applied_rows);
+    let apply = matches!(plan.plan_type, PlanType::Apply);
+    migrator.before_run_hooks(connection, apply).await?;
     let mut report = RunReport {
-        apply: matches!(plan.plan_type, PlanType::Apply),
+        apply,
         fake: plan.fake,
         records: Vec::with_capacity(plan_migrations.len()),
     };
@@ -1162,32 +1312,7 @@ where
                 PlanType::Revert(_) => {
                     tracing::info!("reverting migration");
 
-                    // Reverse operation since last applied operation need
-                    // to be reverted first
-                    let mut operations = migration.operations();
-                    operations.reverse();
-
-                    if migration.is_atomic() {
-                        let mut transaction = connection.begin().await?;
-                        if !plan.fake {
-                            for operation in operations {
-                                operation.down(&mut transaction).await?;
-                            }
-                        }
-                        migrator
-                            .delete_migration_from_db_table(&mut transaction, migration.as_ref())
-                            .await?;
-                        transaction.commit().await?;
-                    } else {
-                        if !plan.fake {
-                            for operation in operations {
-                                operation.down(connection).await?;
-                            }
-                        }
-                        migrator
-                            .delete_migration_from_db_table(connection, migration.as_ref())
-                            .await?;
-                    }
+                    revert_migration(migrator, connection, migration, plan.fake).await?;
                 }
             }
             let elapsed = start_instant.elapsed();
@@ -1202,5 +1327,6 @@ where
             elapsed,
         });
     }
+    migrator.after_run_hooks(connection, &report).await?;
     Ok(report)
 }

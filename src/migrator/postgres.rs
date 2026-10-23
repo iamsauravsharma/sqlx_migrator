@@ -80,8 +80,7 @@ fn drop_table_query(table_name: &str) -> String {
 #[must_use]
 fn fetch_rows_query(table_name: &str) -> String {
     format!(
-        "SELECT id, app, name, applied_time::TEXT, success, execution_time_ns, batch FROM \
-         {table_name}"
+        "SELECT id, app, name, applied_time, success, execution_time_ns, batch FROM {table_name}"
     )
 }
 
