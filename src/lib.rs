@@ -2,8 +2,10 @@
 
 //! Library to create sqlx migration using rust code instead of sql.
 //!
-//! Check `README.MD` for more detailed information of how to use a crate
-//! and visit [`Operation`], [`Migration`] and [`Migrator`]
+//! The guide below walks through [`Operation`], [`Migration`] and
+//! [`Migrator`]. See the [`hook`], [`cli`] and [`sync`] modules for hooks, the
+//! command line and moving from another migration tool.
+#![doc = include_str!("../docs/guide.md")]
 
 #[cfg(feature = "cli")]
 #[doc(inline)]

@@ -20,6 +20,7 @@ let migrator = Migrator::<Postgres>::new(dialect);
 ```
 "
 )]
+#![doc = include_str!("../../docs/migrator.md")]
 
 use std::collections::{HashMap, HashSet};
 
@@ -27,7 +28,11 @@ use sqlx::{Connection as _, Database};
 use tracing::Instrument as _;
 
 pub use self::dialect::{Dialect, LockStrategy, SupportedDatabase};
+pub use self::plan::Plan;
+use self::plan::PlanType;
 use self::relations::Relations;
+pub use self::run::{RunRecord, RunReport};
+use self::run::{next_batch, run_plan};
 use crate::error::Error;
 use crate::hook::{BoxHook, HookContext, HookFuture, HookType};
 use crate::migration::{AppliedMigrationSqlRow, Migration};
@@ -54,6 +59,12 @@ mod postgres;
 /// Module for ordering migrations and narrowing them down to a plan
 mod relations;
 
+/// Module for the plan of a run
+mod plan;
+
+/// Module for running a plan
+mod run;
+
 /// Module for testing
 #[cfg(feature = "sqlite")]
 #[cfg(test)]
@@ -66,196 +77,6 @@ type StatusVec<'migration, 'row, DB> = Vec<(
     &'migration BoxMigration<DB>,
     Option<&'row AppliedMigrationSqlRow>,
 )>;
-
-#[derive(Debug, Default)]
-struct RevertPlan {
-    last_batch: bool,
-}
-
-#[derive(Debug)]
-enum PlanType {
-    Apply,
-    Revert(RevertPlan),
-}
-
-/// Struct that determines the type of migration plan to execute.
-///
-/// A [`Plan`] can specify whether to apply or revert migrations, and may target
-/// all migrations, specific migrations, or a limited number of migrations.
-#[derive(Debug)]
-pub struct Plan {
-    #[expect(
-        clippy::struct_field_names,
-        reason = "type is a keyword so it cannot be used"
-    )]
-    plan_type: PlanType,
-    app_migration: Option<(String, Option<String>)>,
-    count: Option<usize>,
-    fake: bool,
-}
-
-impl Plan {
-    fn new(
-        plan_type: PlanType,
-        app_migration: Option<(String, Option<String>)>,
-        count: Option<usize>,
-    ) -> Self {
-        Self {
-            plan_type,
-            app_migration,
-            count,
-            fake: false,
-        }
-    }
-
-    /// Sets the plan as a "fake" plan.
-    ///
-    /// When the plan is marked as fake, the migration status is updated to
-    /// either "applied" or "reverted" without actually performing any
-    /// migration operations. This is useful for scenarios where you want to
-    /// simulate the effect of applying or reverting a migration, but
-    /// without making changes to the database.
-    ///
-    /// By default, the `fake` flag is set to `false`, and the migration
-    /// operations are executed as expected.
-    #[must_use]
-    pub fn fake(mut self, fake: bool) -> Self {
-        self.fake = fake;
-        self
-    }
-
-    /// Creates a new plan to apply all migrations.
-    #[must_use]
-    pub fn apply_all() -> Self {
-        Self::new(PlanType::Apply, None, None)
-    }
-
-    /// Creates a new plan to apply a specific migration by name. If migration
-    /// name is not provided it will apply all migrations of the app
-    #[must_use]
-    pub fn apply_name(app: &str, name: Option<&str>) -> Self {
-        Self::new(
-            PlanType::Apply,
-            Some((app.to_string(), name.map(ToString::to_string))),
-            None,
-        )
-    }
-
-    /// Creates a new plan to apply a limited number of migrations.
-    #[must_use]
-    pub fn apply_count(count: usize) -> Self {
-        Self::new(PlanType::Apply, None, Some(count))
-    }
-
-    /// Creates a new plan to revert all migrations.
-    #[must_use]
-    pub fn revert_all() -> Self {
-        Self::new(PlanType::Revert(RevertPlan::default()), None, None)
-    }
-
-    /// Creates a new plan to revert a specific migration by name. If migration
-    /// name is not provided it will revert all migrations of the app
-    #[must_use]
-    pub fn revert_name(app: &str, name: Option<&str>) -> Self {
-        Self::new(
-            PlanType::Revert(RevertPlan::default()),
-            Some((app.to_string(), name.map(ToString::to_string))),
-            None,
-        )
-    }
-
-    /// Creates a new plan to revert a limited number of migrations.
-    #[must_use]
-    pub fn revert_count(count: usize) -> Self {
-        Self::new(PlanType::Revert(RevertPlan::default()), None, Some(count))
-    }
-
-    /// Creates a new plan to revert the migrations applied by the last run,
-    /// which share the highest batch number
-    #[must_use]
-    pub fn revert_last_batch() -> Self {
-        let plan_type = PlanType::Revert(RevertPlan { last_batch: true });
-        Self::new(plan_type, None, None)
-    }
-}
-
-/// Record of a single migration which was applied or reverted by
-/// [`Migrator::run`].
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct RunRecord {
-    app: String,
-    name: String,
-    elapsed: std::time::Duration,
-}
-
-impl RunRecord {
-    /// Application name of the migration
-    #[must_use]
-    pub fn app(&self) -> &str {
-        &self.app
-    }
-
-    /// Name of the migration
-    #[must_use]
-    pub fn name(&self) -> &str {
-        &self.name
-    }
-
-    /// Time taken to apply or revert the migration, including updating the
-    /// migration table
-    #[must_use]
-    pub fn elapsed(&self) -> std::time::Duration {
-        self.elapsed
-    }
-}
-
-/// Summary returned by [`Migrator::run`] describing what the run did.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct RunReport {
-    apply: bool,
-    fake: bool,
-    records: Vec<RunRecord>,
-}
-
-impl RunReport {
-    /// Returns `true` when the run applied migrations and `false` when it
-    /// reverted them
-    #[must_use]
-    pub fn is_apply(&self) -> bool {
-        self.apply
-    }
-
-    /// Returns `true` when the run was fake, i.e. only the migration table
-    /// was updated and no operation was executed
-    #[must_use]
-    pub fn is_fake(&self) -> bool {
-        self.fake
-    }
-
-    /// Migrations which were applied or reverted, in execution order
-    #[must_use]
-    pub fn records(&self) -> &[RunRecord] {
-        &self.records
-    }
-
-    /// Number of migrations which were applied or reverted
-    #[must_use]
-    pub fn len(&self) -> usize {
-        self.records.len()
-    }
-
-    /// Returns `true` when the run did nothing
-    #[must_use]
-    pub fn is_empty(&self) -> bool {
-        self.records.is_empty()
-    }
-
-    /// Total time spent across all migrations
-    #[must_use]
-    pub fn total_elapsed(&self) -> std::time::Duration {
-        self.records.iter().map(RunRecord::elapsed).sum()
-    }
-}
 
 /// What a lock is held on
 enum Held<'connection, DB: Database> {
@@ -1116,217 +937,4 @@ where
         .instrument(run_span)
         .await
     }
-}
-
-/// Batch number for the migrations a run records, one more than the highest
-/// batch in the migration table
-fn next_batch(applied_rows: &[AppliedMigrationSqlRow]) -> i32 {
-    applied_rows
-        .iter()
-        .map(AppliedMigrationSqlRow::batch)
-        .max()
-        .unwrap_or(0)
-        + 1
-}
-
-/// Applies one migration and records it in the migration table. A non atomic
-/// migration is recorded as failed before its operations run and marked
-/// successful after the last one, so one which fails part way stays recorded
-/// as failed instead of being run again on top of what it already changed.
-async fn apply_migration<DB>(
-    migrator: &Migrator<DB>,
-    connection: &mut <DB as Database>::Connection,
-    migration: &BoxMigration<DB>,
-    fake: bool,
-    batch: i32,
-) -> Result<(), Error>
-where
-    DB: SupportedDatabase,
-{
-    let start_instant = std::time::Instant::now();
-    let operations = migration.operations();
-    if migration.is_atomic() {
-        let mut transaction = connection.begin().await?;
-        if !fake {
-            migrator
-                .before_migration_hooks(&mut transaction, migration.as_ref(), true)
-                .await?;
-            for operation in operations {
-                operation.up(&mut transaction).await?;
-            }
-        }
-        let execution_time = if fake {
-            std::time::Duration::ZERO
-        } else {
-            start_instant.elapsed()
-        };
-        migrator
-            .add_migration_to_db_table(&mut transaction, migration.as_ref(), execution_time, batch)
-            .await?;
-        if !fake {
-            migrator
-                .after_migration_hooks(&mut transaction, migration.as_ref(), true)
-                .await?;
-        }
-        transaction.commit().await?;
-    } else if fake {
-        migrator
-            .add_migration_to_db_table(
-                connection,
-                migration.as_ref(),
-                std::time::Duration::ZERO,
-                batch,
-            )
-            .await?;
-    } else {
-        migrator
-            .before_migration_hooks(connection, migration.as_ref(), true)
-            .await?;
-        migrator
-            .start_migration_in_db_table(connection, migration.as_ref(), batch)
-            .await?;
-        for operation in operations {
-            operation.up(connection).await?;
-        }
-        migrator
-            .finish_migration_in_db_table(connection, migration.as_ref(), start_instant.elapsed())
-            .await?;
-        migrator
-            .after_migration_hooks(connection, migration.as_ref(), true)
-            .await?;
-    }
-    Ok(())
-}
-
-/// Reverts one migration and removes it from the migration table
-async fn revert_migration<DB>(
-    migrator: &Migrator<DB>,
-    connection: &mut <DB as Database>::Connection,
-    migration: &BoxMigration<DB>,
-    fake: bool,
-) -> Result<(), Error>
-where
-    DB: SupportedDatabase,
-{
-    // Reverse operation since last applied operation need
-    // to be reverted first
-    let mut operations = migration.operations();
-    operations.reverse();
-
-    if migration.is_atomic() {
-        let mut transaction = connection.begin().await?;
-        if !fake {
-            migrator
-                .before_migration_hooks(&mut transaction, migration.as_ref(), false)
-                .await?;
-            for operation in operations {
-                operation.down(&mut transaction).await?;
-            }
-        }
-        migrator
-            .delete_migration_from_db_table(&mut transaction, migration.as_ref())
-            .await?;
-        if !fake {
-            migrator
-                .after_migration_hooks(&mut transaction, migration.as_ref(), false)
-                .await?;
-        }
-        transaction.commit().await?;
-    } else {
-        if !fake {
-            migrator
-                .before_migration_hooks(connection, migration.as_ref(), false)
-                .await?;
-            for operation in operations {
-                operation.down(connection).await?;
-            }
-        }
-        migrator
-            .delete_migration_from_db_table(connection, migration.as_ref())
-            .await?;
-        if !fake {
-            migrator
-                .after_migration_hooks(connection, migration.as_ref(), false)
-                .await?;
-        }
-    }
-    Ok(())
-}
-
-/// Runs the plan while the lock is held. Split out of [`Migrator::run`] so
-/// the lock is always released whatever the outcome.
-async fn run_plan<DB>(
-    migrator: &Migrator<DB>,
-    connection: &mut <DB as Database>::Connection,
-    plan: &Plan,
-) -> Result<RunReport, Error>
-where
-    DB: SupportedDatabase,
-{
-    let applied_rows = migrator.fetch_applied_migration_from_db(connection).await?;
-    if let Some(failed) = applied_rows.iter().find(|row| !row.success()) {
-        return Err(Error::FailedMigration {
-            app: failed.app().to_string(),
-            name: failed.name().to_string(),
-        });
-    }
-    let plan_migrations = migrator.generate_migration_plan(Some(plan), &applied_rows)?;
-    // the transaction lock holds the whole plan in one transaction
-    if !plan.fake
-        && migrator.dialect().lock_strategy().in_transaction()
-        && plan_migrations
-            .iter()
-            .any(|migration| !migration.is_atomic())
-    {
-        return Err(Error::PlanError {
-            message: "the transaction lock runs the plan in one transaction so every migration \
-                      must be atomic"
-                .to_string(),
-        });
-    }
-    // migrations applied by this run share the next batch number
-    let batch = next_batch(&applied_rows);
-    let apply = matches!(plan.plan_type, PlanType::Apply);
-    migrator.before_run_hooks(connection, apply).await?;
-    let mut report = RunReport {
-        apply,
-        fake: plan.fake,
-        records: Vec::with_capacity(plan_migrations.len()),
-    };
-    if plan_migrations.is_empty() {
-        tracing::info!("no migration to run");
-    }
-    for migration in plan_migrations {
-        let migration_span = tracing::info_span!(
-            "sqlx_migrator_migration",
-            app = migration.app(),
-            name = migration.name()
-        );
-        let elapsed = async {
-            let start_instant = std::time::Instant::now();
-            match plan.plan_type {
-                PlanType::Apply => {
-                    tracing::info!("applying migration");
-                    apply_migration(migrator, connection, migration, plan.fake, batch).await?;
-                }
-                PlanType::Revert(_) => {
-                    tracing::info!("reverting migration");
-
-                    revert_migration(migrator, connection, migration, plan.fake).await?;
-                }
-            }
-            let elapsed = start_instant.elapsed();
-            tracing::info!(elapsed_ns = elapsed.as_nanos(), "migration finished");
-            Ok::<_, Error>(elapsed)
-        }
-        .instrument(migration_span)
-        .await?;
-        report.records.push(RunRecord {
-            app: migration.app().to_string(),
-            name: migration.name().to_string(),
-            elapsed,
-        });
-    }
-    migrator.after_run_hooks(connection, &report).await?;
-    Ok(report)
 }

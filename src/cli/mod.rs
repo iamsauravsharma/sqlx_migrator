@@ -21,6 +21,7 @@
 //!     Migrator(sqlx_migrator::cli::MigrationCommand),
 //! }
 //! ```
+#![doc = include_str!("../../docs/cli.md")]
 use clap::{Parser, Subcommand};
 use sqlx::Database;
 

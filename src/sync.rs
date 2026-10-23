@@ -1,5 +1,6 @@
 //! Module which is used to sync a external migration schema to `sqlx_migrator`
 //! sqlx migration
+#![doc = include_str!("../docs/sync.md")]
 
 use sqlx::Database;
 
