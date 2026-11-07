@@ -1,5 +1,6 @@
 //! `apply` subcommand
-#![expect(clippy::print_stdout, reason = "allow printing to stdout in cli")]
+use std::io::Write as _;
+
 use clap::Parser;
 use sqlx::Database;
 
@@ -8,7 +9,10 @@ use crate::error::Error;
 use crate::migrator::{Migrator, Plan, SupportedDatabase};
 
 #[derive(Parser, Debug)]
-#[expect(clippy::struct_excessive_bools)]
+#[expect(
+    clippy::struct_excessive_bools,
+    reason = "each bool is an independent cli flag"
+)]
 pub(super) struct Apply {
     /// App name up to which migration needs to be applied. If migration option
     /// is also present then only till migration is applied
@@ -52,6 +56,7 @@ impl Apply {
     where
         DB: SupportedDatabase,
     {
+        let mut stdout = std::io::stdout();
         let plan = if let Some(count) = self.count {
             Plan::apply_count(count)
         } else if let Some(app) = &self.app {
@@ -67,18 +72,19 @@ impl Apply {
             if !migrations.is_empty() {
                 return Err(Error::PendingMigrationPresent);
             }
-            println!("No pending migration to apply");
+            writeln!(stdout, "No pending migration to apply")?;
             return Ok(());
         }
         if self.plan {
-            println!(
+            writeln!(
+                stdout,
                 "{}",
                 render_plan(
                     migrations.iter().map(AsRef::as_ref),
                     self.format,
                     "No migration exists for applying"
                 )?
-            );
+            )?;
             return Ok(());
         }
         let destructible_migrations = migrations
@@ -97,15 +103,16 @@ impl Apply {
                 &destructible_migrations,
             )?
         {
-            println!("Aborted applying migrations");
+            writeln!(stdout, "Aborted applying migrations")?;
             return Ok(());
         }
         let report = migrator.run(connection, &plan).await?;
-        println!(
+        writeln!(
+            stdout,
             "Successfully applied {} migrations according to plan in {}ms",
             report.len(),
             report.total_elapsed().as_millis()
-        );
+        )?;
         Ok(())
     }
 }

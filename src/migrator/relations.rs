@@ -327,7 +327,7 @@ impl Relations {
         plan: &Plan,
         last_batch_keys: &HashSet<(&str, &str)>,
     ) -> Result<(), Error> {
-        match &plan.plan_type {
+        match &plan.kind {
             PlanType::Apply => order.retain(|&migration| !applied[migration]),
             PlanType::Revert(revert_plan) => {
                 order.retain(|&migration| applied[migration]);
@@ -377,7 +377,7 @@ impl Relations {
                 .copied()
                 .filter(|&migration| is_target(migration))
                 .collect::<Vec<_>>();
-            self.only_related(order, &targets, &plan.plan_type);
+            self.only_related(order, &targets, &plan.kind);
         } else if let Some(count) = plan.count {
             if count == 0 {
                 return Err(Error::PlanError {

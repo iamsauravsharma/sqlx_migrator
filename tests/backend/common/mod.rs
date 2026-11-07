@@ -23,12 +23,10 @@ pub(crate) use self::locking::*;
 /// Returns the connection url from `variable`. Tests needing one are marked
 /// `#[ignore]` and only run with `--include-ignored`, so a missing variable is
 /// a configuration error rather than a reason to skip silently.
-#[expect(clippy::panic, reason = "a missing url is a test setup error")]
 pub(crate) fn database_url(variable: &str) -> String {
-    std::env::var(variable)
-        .ok()
-        .filter(|url| !url.is_empty())
-        .unwrap_or_else(|| panic!("{variable} must be set to run this test"))
+    let url = std::env::var(variable).unwrap_or_default();
+    assert!(!url.is_empty(), "{variable} must be set to run this test");
+    url
 }
 
 /// Migration defined by plain SQL strings so each test can use its own table

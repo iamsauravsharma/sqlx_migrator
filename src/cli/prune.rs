@@ -1,6 +1,6 @@
 //! `prune` subcommand
-#![expect(clippy::print_stdout, reason = "allow printing to stdout in cli")]
 use std::collections::HashSet;
+use std::io::Write as _;
 
 use clap::Parser;
 use sqlx::Database;
@@ -25,6 +25,7 @@ impl Prune {
     where
         DB: SupportedDatabase,
     {
+        let mut stdout = std::io::stdout();
         let applied_migrations = migrator.fetch_applied_migration_from_db(connection).await?;
         let known_keys = migrator
             .migrations()
@@ -37,7 +38,7 @@ impl Prune {
             .map(|row| (row.app(), row.name()))
             .collect::<Vec<_>>();
         if unknown.is_empty() {
-            println!("No unknown migration to prune");
+            writeln!(stdout, "No unknown migration to prune")?;
             return Ok(());
         }
         if !self.force
@@ -49,11 +50,14 @@ impl Prune {
                 &unknown,
             )?
         {
-            println!("Aborted pruning migrations");
+            writeln!(stdout, "Aborted pruning migrations")?;
             return Ok(());
         }
         let pruned_count = migrator.prune(connection).await?;
-        println!("Pruned {pruned_count} unknown migrations from migration table");
+        writeln!(
+            stdout,
+            "Pruned {pruned_count} unknown migrations from migration table"
+        )?;
         Ok(())
     }
 }

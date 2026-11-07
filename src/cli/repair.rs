@@ -1,5 +1,6 @@
 //! `repair` subcommand
-#![expect(clippy::print_stdout, reason = "allow printing to stdout in cli")]
+use std::io::Write as _;
+
 use clap::Parser;
 use sqlx::Database;
 
@@ -23,6 +24,7 @@ impl Repair {
     where
         DB: SupportedDatabase,
     {
+        let mut stdout = std::io::stdout();
         let applied_migrations = migrator.fetch_applied_migration_from_db(connection).await?;
         let failed = applied_migrations
             .iter()
@@ -30,7 +32,7 @@ impl Repair {
             .map(|row| (row.app(), row.name()))
             .collect::<Vec<_>>();
         if failed.is_empty() {
-            println!("No failed migration to repair");
+            writeln!(stdout, "No failed migration to repair")?;
             return Ok(());
         }
         if !self.force
@@ -44,11 +46,14 @@ impl Repair {
                 &failed,
             )?
         {
-            println!("Aborted repairing migrations");
+            writeln!(stdout, "Aborted repairing migrations")?;
             return Ok(());
         }
         let repaired_count = migrator.repair(connection).await?;
-        println!("Removed {repaired_count} failed migrations from migration table");
+        writeln!(
+            stdout,
+            "Removed {repaired_count} failed migrations from migration table"
+        )?;
         Ok(())
     }
 }

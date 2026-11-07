@@ -1,6 +1,6 @@
 //! `list` subcommand
-#![expect(clippy::print_stdout, reason = "allow printing to stdout in cli")]
 use std::collections::HashSet;
+use std::io::Write as _;
 
 use clap::Parser;
 #[cfg(feature = "json")]
@@ -230,9 +230,10 @@ impl List {
     where
         DB: SupportedDatabase,
     {
+        let mut stdout = std::io::stdout();
         let applied_migrations = migrator.fetch_applied_migration_from_db(connection).await?;
         let entries = list_entries(migrator, &applied_migrations)?;
-        println!("{}", render_list(&entries, self.format)?);
+        writeln!(stdout, "{}", render_list(&entries, self.format)?)?;
         Ok(())
     }
 }

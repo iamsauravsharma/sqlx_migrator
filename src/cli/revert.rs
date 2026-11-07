@@ -1,5 +1,6 @@
 //! `revert` subcommand
-#![expect(clippy::print_stdout, reason = "allow printing to stdout in cli")]
+use std::io::Write as _;
+
 use clap::Parser;
 use sqlx::Database;
 
@@ -8,7 +9,10 @@ use crate::error::Error;
 use crate::migrator::{Migrator, Plan, SupportedDatabase};
 
 #[derive(Parser, Debug)]
-#[expect(clippy::struct_excessive_bools)]
+#[expect(
+    clippy::struct_excessive_bools,
+    reason = "each bool is an independent cli flag"
+)]
 pub(super) struct Revert {
     /// Revert all migration. Conflicts with app args
     #[arg(long, conflicts_with = "app")]
@@ -55,6 +59,7 @@ impl Revert {
     where
         DB: SupportedDatabase,
     {
+        let mut stdout = std::io::stdout();
         let mut revert_last = false;
         let plan = if let Some(count) = self.count {
             Plan::revert_count(count)
@@ -83,18 +88,19 @@ impl Revert {
             migrator.generate_migration_plan(Some(&plan), &applied_rows)?
         };
         if self.plan {
-            println!(
+            writeln!(
+                stdout,
                 "{}",
                 render_plan(
                     revert_migrations.iter().map(AsRef::as_ref),
                     self.format,
                     "No migration exists for reverting"
                 )?
-            );
+            )?;
             return Ok(());
         }
         if revert_migrations.is_empty() {
-            println!("No migration exists for reverting");
+            writeln!(stdout, "No migration exists for reverting")?;
             return Ok(());
         }
         let items = revert_migrations
@@ -109,15 +115,16 @@ impl Revert {
                 &items,
             )?
         {
-            println!("Aborted reverting migrations");
+            writeln!(stdout, "Aborted reverting migrations")?;
             return Ok(());
         }
         let report = migrator.run(connection, &plan).await?;
-        println!(
+        writeln!(
+            stdout,
             "Successfully reverted {} migrations according to plan in {}ms",
             report.len(),
             report.total_elapsed().as_millis()
-        );
+        )?;
         Ok(())
     }
 }

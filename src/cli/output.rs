@@ -1,5 +1,4 @@
 //! Output helpers shared by the subcommands: formats, tables and prompts
-#![expect(clippy::print_stdout, reason = "allow printing to stdout in cli")]
 use std::io::{IsTerminal as _, Write as _};
 
 use clap::ValueEnum;
@@ -116,14 +115,15 @@ fn can_prompt() -> bool {
 /// # Errors
 /// When stdin is not a terminal so no answer can be read
 pub(super) fn confirm(question: &str, items: &[(&str, &str)]) -> Result<bool, Error> {
+    let mut stdout = std::io::stdout();
     if !can_prompt() {
         return Err(Error::ConfirmationRequired);
     }
-    println!("{question} (y/N)");
+    writeln!(stdout, "{question} (y/N)")?;
     for (position, (app, name)) in items.iter().enumerate() {
-        println!("{}. {app} : {name}", position + 1);
+        writeln!(stdout, "{}. {app} : {name}", position + 1)?;
     }
-    std::io::stdout().flush()?;
+    stdout.flush()?;
     let mut input = String::new();
     std::io::stdin().read_line(&mut input)?;
     let input_trimmed = input.trim().to_ascii_lowercase();

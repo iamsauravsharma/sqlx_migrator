@@ -137,12 +137,11 @@ fn generate_apply_all_plan(
 /// Using names instead of comparing `Box<dyn Migration<Sqlite>>` values gives
 /// much cleaner failure messages (e.g. `["a", "b", "c"]` vs raw pointer
 /// comparisons), and is sufficient because every test uses unique names.
-#[expect(
-    clippy::borrowed_box,
-    reason = "plan slices hold &Box<dyn Migration> from generate_migration_plan"
-)]
-fn plan_names<'a>(plan: &'a [&'a Box<dyn Migration<Sqlite>>]) -> Vec<&'a str> {
-    plan.iter().map(|m| m.name()).collect()
+fn plan_names<M>(plan: &[M]) -> Vec<&str>
+where
+    M: AsRef<dyn Migration<Sqlite>>,
+{
+    plan.iter().map(|m| m.as_ref().name()).collect()
 }
 
 // ── Internal migrations of the migration table ───────────────────────────────

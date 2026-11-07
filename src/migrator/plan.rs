@@ -17,11 +17,7 @@ pub(super) enum PlanType {
 /// all migrations, specific migrations, or a limited number of migrations.
 #[derive(Debug)]
 pub struct Plan {
-    #[expect(
-        clippy::struct_field_names,
-        reason = "type is a keyword so it cannot be used"
-    )]
-    pub(super) plan_type: PlanType,
+    pub(super) kind: PlanType,
     pub(super) app_migration: Option<(String, Option<String>)>,
     pub(super) count: Option<usize>,
     pub(super) fake: bool,
@@ -30,12 +26,12 @@ pub struct Plan {
 
 impl Plan {
     fn new(
-        plan_type: PlanType,
+        kind: PlanType,
         app_migration: Option<(String, Option<String>)>,
         count: Option<usize>,
     ) -> Self {
         Self {
-            plan_type,
+            kind,
             app_migration,
             count,
             fake: false,

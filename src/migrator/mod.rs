@@ -722,7 +722,7 @@ where
                 .iter()
                 .map(|migration| applied_keys.contains(&(migration.app(), migration.name())))
                 .collect::<Vec<_>>();
-            let last_batch_keys: HashSet<(&str, &str)> = match &some_plan.plan_type {
+            let last_batch_keys: HashSet<(&str, &str)> = match &some_plan.kind {
                 PlanType::Revert(revert_plan) if revert_plan.last_batch => {
                     let last_batch = applied_migration_sql_rows
                         .iter()
@@ -958,7 +958,7 @@ where
     ) -> Result<RunReport, Error> {
         let run_span = tracing::info_span!(
             "sqlx_migrator_run",
-            plan_type = ?plan.plan_type,
+            plan_type = ?plan.kind,
             fake = plan.fake
         );
         async {

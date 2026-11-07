@@ -1,5 +1,6 @@
 //! `redo` subcommand
-#![expect(clippy::print_stdout, reason = "allow printing to stdout in cli")]
+use std::io::Write as _;
+
 use clap::Parser;
 use sqlx::Database;
 
@@ -23,6 +24,7 @@ impl Redo {
     where
         DB: SupportedDatabase,
     {
+        let mut stdout = std::io::stdout();
         let applied_rows = migrator.fetch_applied_migration_from_db(connection).await?;
         // the revert all plan lists applied migrations last applied first,
         // so its head is the migration to redo
@@ -31,7 +33,7 @@ impl Redo {
             .first()
             .map(|m| (m.app().to_string(), m.name().to_string()))
         else {
-            println!("No applied migration to redo");
+            writeln!(stdout, "No applied migration to redo")?;
             return Ok(());
         };
         let revert_plan = Plan::revert_count(1);
@@ -41,17 +43,18 @@ impl Redo {
                 &[(&app, &name)],
             )?
         {
-            println!("Aborted redoing migration");
+            writeln!(stdout, "Aborted redoing migration")?;
             return Ok(());
         }
         migrator.run(connection, &revert_plan).await?;
         let report = migrator
             .run(connection, &Plan::apply_name(&app, Some(&name)))
             .await?;
-        println!(
+        writeln!(
+            stdout,
             "Successfully redid {app} : {name} in {}ms",
             report.total_elapsed().as_millis()
-        );
+        )?;
         Ok(())
     }
 }

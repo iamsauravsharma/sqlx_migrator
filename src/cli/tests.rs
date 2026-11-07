@@ -1,8 +1,4 @@
 //! Tests for the cli module
-#![expect(
-    clippy::unreachable,
-    reason = "tests destructure a subcommand they just parsed"
-)]
 use super::list::{ListStatus, list_entries, milliseconds, render_list};
 use super::output::{OutputFormat, render_plan, render_table};
 use super::*;
@@ -11,6 +7,22 @@ use crate::migrator::Plan;
 
 fn parse(args: &[&str]) -> Result<MigrationCommand, clap::Error> {
     MigrationCommand::try_parse_from(std::iter::once("migrator").chain(args.iter().copied()))
+}
+
+fn parse_apply(args: &[&str]) -> Apply {
+    match parse(args).unwrap().sub_command {
+        SubCommand::Apply(apply) => Some(apply),
+        _ => None,
+    }
+    .expect("arguments should parse to the apply subcommand")
+}
+
+fn parse_list(args: &[&str]) -> List {
+    match parse(args).unwrap().sub_command {
+        SubCommand::List(list) => Some(list),
+        _ => None,
+    }
+    .expect("arguments should parse to the list subcommand")
 }
 
 #[test]
@@ -61,19 +73,12 @@ fn every_subcommand_parses() {
 fn apply_argument_rules() {
     #[cfg(feature = "json")]
     {
-        let SubCommand::Apply(apply) = parse(&["apply", "--plan", "--format", "json"])
-            .unwrap()
-            .sub_command
-        else {
-            unreachable!()
-        };
+        let apply = parse_apply(&["apply", "--plan", "--format", "json"]);
         assert!(apply.plan);
         assert_eq!(apply.format, OutputFormat::Json);
     }
 
-    let SubCommand::Apply(apply) = parse(&["apply"]).unwrap().sub_command else {
-        unreachable!()
-    };
+    let apply = parse_apply(&["apply"]);
     assert_eq!(apply.format, OutputFormat::Table);
 
     // format requires plan (and json is rejected entirely without the feature)
@@ -127,16 +132,11 @@ fn revert_argument_rules() {
 
 #[test]
 fn list_format_argument() {
-    let SubCommand::List(list) = parse(&["list"]).unwrap().sub_command else {
-        unreachable!()
-    };
+    let list = parse_list(&["list"]);
     assert_eq!(list.format, OutputFormat::Table);
     #[cfg(feature = "json")]
     {
-        let SubCommand::List(list) = parse(&["list", "--format", "json"]).unwrap().sub_command
-        else {
-            unreachable!()
-        };
+        let list = parse_list(&["list", "--format", "json"]);
         assert_eq!(list.format, OutputFormat::Json);
     }
     assert!(parse(&["list", "--format", "yaml"]).is_err());

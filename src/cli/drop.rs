@@ -1,5 +1,6 @@
 //! `drop` subcommand
-#![expect(clippy::print_stdout, reason = "allow printing to stdout in cli")]
+use std::io::Write as _;
+
 use sqlx::Database;
 
 use crate::error::Error;
@@ -12,6 +13,7 @@ pub(super) async fn drop_migrations<DB>(
 where
     DB: SupportedDatabase,
 {
+    let mut stdout = std::io::stdout();
     // hold lock for dropping migration table to avoid race condition where
     // another process is applying migration and we are dropping the table
     let mut locked = migrator.lock(connection).await?;
@@ -32,6 +34,6 @@ where
     result.and(unlock_result)?;
     // the lock table cannot be dropped while its row is held
     migrator.drop_lock_table_if_exists(connection).await?;
-    println!("Dropped migrations table");
+    writeln!(stdout, "Dropped migrations table")?;
     Ok(())
 }

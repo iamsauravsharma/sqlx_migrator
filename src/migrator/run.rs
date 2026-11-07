@@ -298,7 +298,7 @@ async fn execute_plan<DB>(
 where
     DB: SupportedDatabase,
 {
-    let apply = matches!(plan.plan_type, PlanType::Apply);
+    let apply = matches!(plan.kind, PlanType::Apply);
     migrator.before_run_hooks(connection, apply).await?;
     let mut report = RunReport {
         apply,
@@ -316,7 +316,7 @@ where
         );
         let elapsed = async {
             let start_instant = std::time::Instant::now();
-            match plan.plan_type {
+            match plan.kind {
                 PlanType::Apply => {
                     tracing::info!("applying migration");
                     apply_migration(migrator, connection, migration, plan.fake, batch).await?;
