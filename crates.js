@@ -1,2 +1,2 @@
-window.ALL_CRATES = ["sqlx_migrator"];
-//{"start":21,"fragment_lengths":[15]}
+window.ALL_CRATES = [{"c":"sqlx_migrator"}];
+//{"start":21,"fragment_lengths":[21]}
