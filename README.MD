@@ -21,7 +21,7 @@ Supported databases: PostgreSQL, SQLite and MySQL.
 Enable `postgres`, `mysql` or `sqlite` (and `json` for CLI JSON output):
 
 ```toml
-sqlx_migrator = { version = "0.20.0", features = ["postgres"] }
+sqlx_migrator = { version = "0.21.0", features = ["postgres"] }
 ```
 
 ## Quick start
